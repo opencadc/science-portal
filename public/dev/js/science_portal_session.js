@@ -88,7 +88,8 @@
       "desktop" : 2,
       "carta" : 3,
       "contributed" : 4,
-      "headless" : 5
+      "headless" : 5,
+      "vscode-server" : 6,
     }
 
     function sortSessions(sList) {
