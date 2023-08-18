@@ -22,6 +22,12 @@
         "form_fields": ["name", "type", "image", "memory", "cores"],
         "portal_icon": "fas_cube.png",
         "portal_text": "contributed"
+      },
+      {
+        "name": "vscode-server",
+        "form_fields": ["name", "type", "image", "memory", "cores"],
+        "portal_icon": "vscode_logo.png",
+        "portal_text": "VSCode"
       }
     ],
   "default" : "notebook"
