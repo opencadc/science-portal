@@ -33,16 +33,21 @@
     *    }
    */
   function PortalApp(inputs) {
-    var _reactApp = window.SciencePortalApp
+    const _reactApp = window.SciencePortalApp
+
+    const _selfPortalApp = this
+
+    this.baseURL = inputs.baseURL
+
+    inputs.headerURLs.baseURLCanfar = inputs.baseURL
 
     inputs.reactApp = _reactApp
+    _reactApp.setThemeName(inputs.themeName)
+    _reactApp.setHeaderURLs(inputs.headerURLs)
+
     var portalCore = new cadc.web.science.portal.core.PortalCore(inputs)
     var portalSessions = new cadc.web.science.portal.session.PortalSession(inputs)
     var portalForm = new cadc.web.science.portal.form.PortalForm(inputs)
-
-    var _selfPortalApp = this
-
-    this.baseURL = inputs.baseURL
 
     // This folder is the location of config json and other assets
     // Variable to support the dev and dist environments
@@ -67,11 +72,11 @@
 
     function init() {
       attachListeners()
+      portalForm.setContentBase(contentBase)
+
       // loads from session_type_map_en.json.
       // Timing issues can occur on very fast systems, so this issues it's own
       // event when finished to control when the next stage of portal initialization occurs
-      portalCore.setHeaderURLs()
-      portalForm.setContentBase(contentBase)
       portalForm.loadSessionTypeMap()
       portalCore.setPageState("all", "primary", true, "")
     }
@@ -101,14 +106,14 @@
 
       // Data Flow/javascript object listeners
       // portalCore listeners
-      portalCore.subscribe(portalCore, cadc.web.science.portal.core.events.onAuthenticated, function (e, data) {
+      portalCore.subscribe(portalCore, cadc.web.science.portal.core.events.onAuthenticated, (_e, data) => {
         // onServiceURLOK comes from here
         // Contacts the registry to discover where the sessions web service is,
         // builds endpoints used to manage sessions, get session, context, image lists, etc.
-        portalCore.init(URLOverrides)
+        portalCore.init(URLOverrides, data.accessToken)
       })
 
-      portalCore.subscribe(portalCore, cadc.web.science.portal.core.events.onServiceURLOK, function (e, data) {
+      portalCore.subscribe(portalCore, cadc.web.science.portal.core.events.onServiceURLOK, (_e, data) => {
         portalSessions.setServiceURLs(portalCore.sessionServiceURLs)
         portalForm.setServiceURLs(portalCore.sessionServiceURLs)
 
@@ -416,6 +421,7 @@
     }
 
     function postSessionRequestAjax(serviceURL, sessionData) {
+      var portalLogin = new cadc.web.science.portal.login.PortalLogin({reactApp: _reactApp})
       return new Promise(function (resolve, reject) {
         var request = new XMLHttpRequest()
 
@@ -430,6 +436,12 @@
               resolve({"name": sessionData.get("name"), "type": sessionData.get("type")})
             } else if (request.status === 400) {
               reject(request)
+            } else if (request.status === 401) {
+              portalCore.hideModal()
+              var userState = {
+                loginHandler : portalLogin.handleLoginRequest
+              }
+              _reactApp.setNotAuthenticated(userState)
             }
           },
           false

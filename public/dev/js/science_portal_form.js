@@ -94,8 +94,6 @@
       // but it's not available yet
       var contentFileURL =  _selfPortalForm.contentBase + "/json/sessiontype_map_en.json"
 
-      // Using a json input file because it's anticipated that the
-      // number of sessions will increase fairly soon.
       $.getJSON(contentFileURL, function (jsonData) {
         _selfPortalForm._sessionTypeMap = jsonData
 

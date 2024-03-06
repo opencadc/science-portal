@@ -5,12 +5,13 @@
 
 
 <%
-  final ApplicationConfiguration configuration =
-                    new ApplicationConfiguration(ApplicationConfiguration.DEFAULT_CONFIG_FILE_PATH);
+  final ApplicationConfiguration configuration = new ApplicationConfiguration(); 
   final String sessionsResourceID = configuration.getResourceID();
   final String sessionsStandardID = configuration.getStandardID();
+  final String themeName = configuration.getThemeName();
   String bannerText = configuration.getBannerMessage();
-
+  String headerURLJSON = configuration.getHeaderURLs().toString();
+  
   if (bannerText == null) {
       bannerText = "";
   }
@@ -46,9 +47,11 @@
     <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.user.js"></script>
     <script type="text/javascript" src="https://www.canfar.net/canfar/javascript/cadc.redirect.util.js"></script>
 
+    <% if ("canfar".equals(themeName)) { %>
     <!-- Adding gdpr cookie banner -->
     <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.gdpr.cookie.js"></script>
     <link  type="text/css" href="https://www.canfar.net/canfar/css/cadc.gdpr.cookie.css" rel="stylesheet" media="screen">
+    <% } %>
 
     <!--[if lt IE 9]>
 <!--        <script src="/html5shiv.googlecode.com/svn/trunk/html5.js"></script>-->
@@ -57,7 +60,7 @@
     <title>Science Portal</title>
   </head>
 
-  <body>
+  <body class="theme-<%= configuration.getThemeName() %>">
     <div class="container-fluid fill">
       <div class="row fill">
         <div role="main" class="col-sm-12 col-md-12 main fill">
@@ -83,14 +86,26 @@
     <script type="application/javascript" src="${contextPath}/dist_config/sp_dist_config.js?v=${buildVersion}"></script>
 
     <script type="application/javascript">
+      function generateState() {
+        const length = 16
+        const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        let result = '';
+        for (var i = length; i > 0; --i) {
+          result += chars[Math.floor(Math.random() * chars.length)]
+        }
+        return result;
+      }
+
       window.runStartupTasks = () => {
         // Set up controller for Science Portal Session Launch page
         const launch_js = new cadc.web.science.portal.PortalApp({
           baseURL: window.location.origin,
           sessionsResourceID: '<%= sessionsResourceID %>',
           sessionsStandardID: '<%= sessionsStandardID %>',
+          themeName: '<%= themeName %>',
           bannerText: '<%= bannerText %>',
-          contentBase: "${contextPath}/dist"
+          contentBase: "${contextPath}/dist",
+          headerURLs: JSON.parse('<%= headerURLJSON %>')
         })
 
         launch_js.init()

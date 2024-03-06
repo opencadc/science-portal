@@ -9,3 +9,11 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/*
+Specific to themes.
+*/
+
+body.theme-src span.display-name {
+  font-size: 1.5em;
+}

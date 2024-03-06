@@ -304,6 +304,10 @@
       return parseFloat(matches.map(m => m[1])[0]).toFixed(2)
     }
 
+    function zeroPrefix(value) {
+      return ("0" + value).slice(-2)
+    }
+
     function loadPlatformUsage(refreshHandler) {
       var statsURL = _selfPortalSess.sessionServiceURL + "?view=stats"
       Promise.resolve(_getAjaxData(statsURL, {}))
@@ -312,8 +316,8 @@
             var nowDate = new Date()
             var month = nowDate.getUTCMonth() + 1
             _selfPortalSess._platformUsage.updated = nowDate.getUTCFullYear() + "-"
-                + ("0" + month).slice(-2) + "-" + ("0" + nowDate.getUTCDate()).slice(-2)
-                + " " + nowDate.getUTCHours() + ":" + nowDate.getMinutes()
+                + zeroPrefix(month) + "-" + zeroPrefix(nowDate.getUTCDate())
+                + " " + zeroPrefix(nowDate.getUTCHours()) + ":" + zeroPrefix(nowDate.getMinutes())
 
             _selfPortalSess._platformUsage.cpu = {
               "used" : platformUsage.cores.requestedCPUCores,

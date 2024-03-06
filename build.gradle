@@ -10,23 +10,25 @@ plugins {
 }
 
 node {
-    version = '14.15.5'
+    version = '18.18.0'
 }
 
 repositories {
     mavenLocal()
     mavenCentral()
-    maven {
-        url = 'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/m2repo'
-    }
 }
 
 
 dependencies {
-    implementation 'org.opencadc:cadc-util:[1.6,)'
-    implementation 'org.apache.commons:commons-configuration2:2.3'
-    implementation 'commons-net:commons-net:3.6'
     implementation 'com.opencsv:opencsv:[5.1,6.0)'
+    implementation 'commons-net:commons-net:3.9.0'
+    implementation 'org.apache.commons:commons-configuration2:2.8.0'
+    implementation 'org.opencadc:cadc-access-control-identity:[1.1.0,)'
+    implementation 'org.opencadc:cadc-gms:[1.0.12,2.0)'
+    implementation 'org.opencadc:cadc-log:[1.1.5,)'
+    implementation 'org.opencadc:cadc-rest:[1.3.9,)'
+    implementation 'org.opencadc:cadc-util:[1.6,)'
+    implementation 'org.opencadc:cadc-web-token:[1.1.0,2.0.0)'
 
     runtimeOnly 'javax.servlet.jsp.jstl:jstl-api:1.2'
     runtimeOnly 'javax.servlet:jstl:1.2'
@@ -44,7 +46,7 @@ war {
         }
     }
 
-    archiveName = 'science-portal.war'
+    archiveName 'science-portal.war'
 }
 
 task buildReactApp(type: NodeTask, dependsOn: 'npmInstall') {

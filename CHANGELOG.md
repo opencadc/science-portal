@@ -1,4 +1,10 @@
-## Feb 9, 2023
+## Oct 23, 2023
+
+### 3.5
+- Add OpenID Connect capabilities
+- Add themes to support SRC (`src`) and CANFAR (`canfar`)
+- Add local endpoints to remove risk of CORS
+
 ### 3.3
 Supporting Changes
 (none)

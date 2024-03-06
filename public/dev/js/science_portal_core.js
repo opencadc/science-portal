@@ -16,7 +16,11 @@
               headerURI: {
                 search: "ivo://cadc.nrc.ca/search",
                 gmui: "ivo://cadc.nrc.ca/groups"
-              }
+              },
+              userInfoEndpoint: '/science-portal/userinfo',
+              sessionEndpoint: '/science-portal/session',
+              imageEndpoint: '/science-portal/image',
+              contextEndpoint: '/science-portal/context'
             }
           }
         }
@@ -35,28 +39,13 @@
   function PortalCore(inputs) {
 
     var _selfPortalCore = this
-    var baseURL =
+    const baseURL =
             inputs && inputs.hasOwnProperty("baseURL")
                 ? inputs.baseURL
                 : "https://www.canfar.net"
 
-    var _registryClient
-    var _headerURLCallCount = 0
-
-    if (typeof inputs.registryLocation !== "undefined") {
-      _registryClient= new Registry({
-        baseURL: inputs.registryLocation
-      })
-      inputs.registryClient = _registryClient
-    } else {
-      _registryClient = new Registry({
-        baseURL: baseURL
-      })
-    }
-
     var portalLogin = new cadc.web.science.portal.login.PortalLogin(inputs)
-    this.userManager = new cadc.web.UserManager(inputs)
-    var _isAuthenticated = false
+    this.userInfo = {}
 
     var _rApp = inputs.reactApp
     this.pageState = _rApp.getPageState()
@@ -67,11 +56,8 @@
       "usage" : "spPlatformUsage"
     }
 
-    var _sessionServiceResourceID = inputs.sessionsResourceID
-    const _sessionServiceStandardID = inputs.sessionsStandardID
-
-    function init(overrideURLs) {
-      setSessionServiceURLs(overrideURLs)
+    function init(overrideURLs, accessToken) {
+      setSessionServiceURLs(overrideURLs, accessToken)
     }
 
     // Primarily used for testing
@@ -81,7 +67,7 @@
 
     // ------------ Page state management functions ------------
 
-    function setModal(modalLink, title, msg, showSpinner, showReload, showHome) {
+    function setModal(_modalLink, title, msg, showSpinner, showReload, showHome) {
       var modaldata = {
         "msg": msg,
         "title": title,
@@ -105,7 +91,7 @@
       _rApp.updateModal(modaldata)
     }
 
-    function setConfirmModal(modalLink, confirmFn, confirmData) {
+    function setConfirmModal(_modalLink, confirmFn, confirmData) {
       var deleteMsg = "Session name " + confirmData.name + ", id " + confirmData.id
 
       var modaldata = {
@@ -154,7 +140,7 @@
     }
 
     function hideLoginModal() {
-      _rApp.openLoginodal(false)
+      _rApp.openLoginModal(false)
     }
 
     function clearAjaxAlert() {
@@ -215,9 +201,17 @@
     }
 
     function setAjaxFail(pageSection, message) {
-      var alertMsg = message.status + ": " + getRcDisplayText(message)
-      setPageState(pageSection,"danger", false, alertMsg)
-      hideModal()
+      if (message.status === 401) {
+        hideModal()
+        var userState = {
+          loginHandler : portalLogin.handleLoginRequest
+        }
+        _rApp.setNotAuthenticated(userState)
+      } else {
+        var alertMsg = message.status + ": " + getRcDisplayText(message)
+        setPageState(pageSection,"danger", false, alertMsg)
+        hideModal()
+      }
     }
 
     function setAjaxSuccess(pageSection, message) {
@@ -280,16 +274,6 @@
 
     // ------------ HTTP/Ajax functions ------------
 
-    function getSessionServiceEndpoint() {
-      return _registryClient
-          .getServiceURL(
-            _sessionServiceResourceID,
-            _sessionServiceStandardID,
-              "vs:ParamHTTP",
-              "cookie"
-          )
-    }
-
     // ------ Set up web service URLs ------
 
     function setSessionServiceURLs(URLs) {
@@ -298,63 +282,16 @@
         trigger(_selfPortalCore, cadc.web.science.portal.core.events.onServiceURLOK)
       } else {
         setModal(_rApp, "Loading Page Resources", "Locating session web service.", true, false, false)
-        Promise.resolve(getSessionServiceEndpoint())
-          .then(function (serviceURL) {
-              if (typeof serviceURL != "undefined") {
+        _selfPortalCore.sessionServiceURLs = {
+          "base": baseURL,
+          "session": `${baseURL}${cadc.web.science.portal.core.sessionEndpoint}`,
+          "context": `${baseURL}${cadc.web.science.portal.core.contextEndpoint}`,
+          "images": `${baseURL}${cadc.web.science.portal.core.imageEndpoint}`
+        }
 
-                _selfPortalCore.sessionServiceURLs = {
-                  "base": serviceURL,
-                  "session": serviceURL + "/session",
-                  "context": serviceURL + "/context",
-                  "images": serviceURL + "/image"
-                }
-                _selfPortalCore.hideModal()
-                trigger(_selfPortalCore, cadc.web.science.portal.core.events.onServiceURLOK)
-              } else {
-                // Don't hide modal as the page isn't ready to be interacted with yet
-                trigger(_selfPortalCore, cadc.web.science.portal.core.events.onServiceURLFail)
-              }
-            }
-          )
-          .catch(function (message) {
-            trigger(_selfPortalCore, cadc.web.science.portal.core.events.onServiceURLFail)
-          })
+        _selfPortalCore.hideModal()
+        trigger(_selfPortalCore, cadc.web.science.portal.core.events.onServiceURLOK)
       }
-    }
-
-    function setHeaderURLs() {
-        // TODO: this modal likely to go away
-        setModal(_rApp, "Loading Header Resources", "Locating session web service.", true, false, false)
-
-        const headerURIs = [
-          ca.nrc.cadc.accountURI.passchg,
-          ca.nrc.cadc.accountURI.passreset,
-          ca.nrc.cadc.accountURI.acctrequest,
-          ca.nrc.cadc.accountURI.acctupdate,
-          cadc.web.science.portal.core.headerURI.gmui,
-          cadc.web.science.portal.core.headerURI.search
-        ]
-        _selfPortalCore.headerURLs = new Object()
-        _selfPortalCore.headerURLs.baseURLCanfar = baseURL
-        _headerURLCallCount = headerURIs.length
-
-      // Get entire applications registry to process
-      _registryClient.getApplicationsEndpoints()
-        .then(function (urlRequest) {
-          for (var i = 0; i < headerURIs.length; i++) {
-            var uri = headerURIs[i]
-            let url = _registryClient.extractURL(urlRequest, uri)
-            var uriKey = uri.substring(uri.lastIndexOf("\/") + 1, uri.length)
-            console.log("uriKey: " + uriKey)
-            _selfPortalCore.headerURLs[uriKey] = url
-            console.log("finished loop step " + i)
-          }
-          _rApp.setHeaderURLs(_selfPortalCore.headerURLs)
-        })
-        .catch(function (err) {
-          alert("Error obtaining registry applications list msg: " + err)
-        })
-
     }
 
 // ------------ Service Status parsing & display functions ------------
@@ -377,6 +314,9 @@
             displayText = "Limit of number of sessions of selected type reached"
             break
           }
+        case 501:
+          displayText = 'The Skaha web service is not configured in the Registry.'
+          break;
         default:
           displayText = request.responseText
           break
@@ -410,67 +350,89 @@
 
     function checkAuthentication(isDev) {
       // From cadc.user.js. Listens for when user logs in
-      _selfPortalCore.userManager.subscribe(cadc.web.events.onUserLoad,
-          function (event, data) {
-            // Check to see if user is logged in or not
-            if (typeof(data.error) !== "undefined") {
-              hideModal()
-              var userState = {
-                loginHandler : portalLogin.handleLoginRequest
-              }
-              _rApp.setNotAuthenticated(userState)
-            } else {
-              // Don't directly access react app from here so this
-              // function can be connected to the portalLogin
-              // cadc.web.science.portal.login.events.onAuthenticateOK event as well.
-              // That event is fired after the login form is submitted.
-              setAuthenticated()
+      // _selfPortalCore.userManager.subscribe(cadc.web.events.onUserLoad,
+      //     function (_event, data) {
+      //       // Check to see if user is logged in or not
+      //       if (typeof(data.error) !== "undefined") {
+      fetch(baseURL + cadc.web.science.portal.core.userInfoEndpoint)
+      .then((response) => {
+        if (!response.ok) {
+          if (response.status === 401) {
+            const userState = {
+              loginHandler : portalLogin.handleLoginRequest
             }
-          })
-
-      if (isDev === true) {
-        _selfPortalCore.userManager.user = {fullname: "dev user"}
+            _rApp.setNotAuthenticated(userState)
+          } else {
+            const alertMsg = getRcDisplayText(response)
+            setPageState(_selfPortalCore.pageSections.sessionList, "danger", false, alertMsg)
+          }
+          hideModal()
+          return Promise.reject(response)
+        } else {
+          return response.json()
+        }
+      }).then((responseJSON) => {
+        this.userInfo = responseJSON
         setAuthenticated()
-      } else {
-        // Call the whoami endpoint to get the user details
-        // if they are not logged in, same event is thrown, return payload
-        // needs to be checked
-        _selfPortalCore.userManager.loadCurrent()
-      }
-    }
+      }).catch((error) => {
+        console.warn(error)
+      })
+              // hideModal()
+              // var userState = {
+              //   loginHandler : portalLogin.handleLoginRequest
+              // }
+              // _rApp.setNotAuthenticated(userState)
+          //   } else {
+          //     // Don't directly access react app from here so this
+          //     // function can be connected to the portalLogin
+          //     // cadc.web.science.portal.login.events.onAuthenticateOK event as well.
+          //     // That event is fired after the login form is submitted.
+          //     setAuthenticated()
+          //   }
+          // })
 
-    function afterAuthActions() {
-      // Call the whoami endpoint again
-      _selfPortalCore.userManager.loadCurrent()
-    }
-
-    function setAuthenticatedError() {
-      var userState = {
-        "username": "Login",
-        "submitHandler": portalLogin.handleLoginRequest,
-        "errMsg": "unable to log in (invalid username or password, or system error)"
-      }
-      _rApp.setAuthenticatedError(userState)
+      // if (isDev === true) {
+      //   _selfPortalCore.userManager.user = {name: "dev user"}
+      //   setAuthenticated()
+      // } else {
+      //   // Call the whoami endpoint to get the user details
+      //   // if they are not logged in, same event is thrown, return payload
+      //   // needs to be checked
+      //   _selfPortalCore.userManager.loadCurrent()
+      // }
     }
 
     function setAuthenticated() {
-      var userFullname = "Username"
-      if (_selfPortalCore.userManager.user.getFullName !== undefined) {
-        userFullname = _selfPortalCore.userManager.user.getFullName()
-      } else if (_selfPortalCore.userManager.user.fullname !== undefined) {
-        userFullname = _selfPortalCore.userManager.user.ffullname
+      const userState = {}
+      if (Object.keys(_selfPortalCore.userInfo).length === 0) {
+        userState.username = "Unknown"
+        userState.name = "Unknown"
+      } else {
+        const userInfo = _selfPortalCore.userInfo
+        if (userInfo.hasOwnProperty('preferred_username')) {
+          userState.username = userInfo.preferred_username
+        } else if (userInfo.hasOwnProperty('name')) {
+          userState.username = userInfo.name
+        } else {
+          userState.username = "Unknown"
+        }
+
+        // Prefer name property when displaying actual name.
+        if (userInfo.hasOwnProperty('name')) {
+          userState.name = userInfo.name
+        } else if (userInfo.hasOwnProperty('preferred_username')) {
+          userState.name = userInfo.preferred_username
+        } else {
+          userState.name = "Unknown"
+        }
       }
-      var userState = {
-        "username": userFullname
-      }
+
       _rApp.setAuthenticated(userState)
       trigger(_selfPortalCore, cadc.web.science.portal.core.events.onAuthenticated, {"userState": userState})
     }
 
     $.extend(this, {
       init: init,
-      getSessionServiceEndpoint: getSessionServiceEndpoint,
-      setHeaderURLs: setHeaderURLs,
       setSessionServiceURLs: setSessionServiceURLs,
       setAjaxSuccess: setAjaxSuccess,
       setAjaxFail: setAjaxFail,

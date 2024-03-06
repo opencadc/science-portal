@@ -1,8 +1,8 @@
 # CANFAR Science Portal
-### V 3.3
-##### Feb 9, 2023
+### V 3.5
+##### Oct 23, 2023
 
-UI for accessing and managing Jupyterlab notebooks, carta, desktop and other interactive sessions that back onto CANFAR resources.
+UI for accessing and managing JupyterLab notebooks, Carta, Desktop and other interactive sessions that back onto CANFAR resources.
 
 Platform Load information is available, including current CPU usage and counts of running instances.
 
@@ -14,6 +14,10 @@ allowing the amount of memory and number of cores you designate to be used to po
 
 ## Endpoint locations
 All endpoints require authentication with CANFAR, and authorization to access Skaha resource allocations.
+
+### OIDC configuration
+The Science Portal UI is now configurable to work with an OpenID Connect provider.  See the
+`oidc` settings in the [org.opencadc.science-portal.properties](./org.opencadc.science-portal.properties) file.
 
 ### Science Portal URL
 https://www.canfar.net/science-portal

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import Button from "react-bootstrap/Button";
 import Modal from "react-bootstrap/Modal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -11,7 +11,7 @@ class CanfarLoginModal extends React.Component {
     super(props)
     this.state = {
       isOpen: props.isOpen,
-      modalURLs: props.modalURLs,
+      modalURLs: props.modalURLs
     }
   }
 
@@ -26,15 +26,17 @@ class CanfarLoginModal extends React.Component {
   closeModal = () => this.setState({ isOpen: false });
 
   render() {
-    var show = false
+    let show = false
     if (this.state.isOpen === true) {
       show = true
     }
 
-    var errMsg = ""
+    let errMsg = ""
     if (this.state.errMsg !== undefined) {
       errMsg = <div class="sp-error-msg"> {this.state.errMsg} </div>
     }
+
+    let hideFormClass = ""
 
     return (
       <>
@@ -48,8 +50,8 @@ class CanfarLoginModal extends React.Component {
             <Modal.Title className="sp-modal-header">Authentication required</Modal.Title>
           </Modal.Header>
           <Modal.Body className="sp-auth-form-body">
-            <form className="access-control" id="modalloginForm" role="form" onSubmit={this.props.submitHandler}
-                  action={this.state.modalURLs.baseURLCanfar +"/access/login"}>
+            <form className={"access-control " + hideFormClass} id="modalloginForm" role="form" onSubmit={this.props.submitHandler} action={this.state.modalURLs.baseURLCanfar + "/access/login"}>
+              <input type="hidden" name="target" value={this.state.modalURLs.baseURLCanfar + "/science-portal"} />
               <div className="modal-body">
                 <span id="modal_login_fail" className="text-danger help-block pull-left"></span>
                 <div className="form-group">
@@ -67,7 +69,7 @@ class CanfarLoginModal extends React.Component {
                 {errMsg}
                 <a href={this.state.modalURLs.passreset}
                    className="account_access_info"
-                   tabIndex="5" className="account_access_info" title="Forgot Password">
+                   tabIndex="5" title="Forgot Password">
                   Forgot your Account information?</a>
                 <br/>
                 <a href={this.state.modalURLs.acctrequest}
