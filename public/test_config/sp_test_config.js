@@ -110,6 +110,20 @@ const SESSION_DISPLAY_DATA = [
     "deleteHandler": handleDeleteSession,
     "connectHandler": handleConnectRequest,
     "startTime" : '2022-11-22T20:49:56Z'
+  },
+  {
+    "name": "TEST vscode",
+    "id": "abcd1234",
+    "image": "images-rc.canfar.net/skaha/vscode-server:3.0",
+    "status": "Running",
+    "type": "headless",
+    "RAM": "2G",
+    "cores": "2 cores",
+    "logo": "https://www.canfar.net/science-portal/images/vscode-server.png",
+    "altText": "carta",
+    "deleteHandler": handleDeleteSession,
+    "connectHandler": handleConnectRequest,
+    "startTime" : '2022-11-22T20:49:56Z'
   }
 ]
 
