@@ -5,14 +5,14 @@
 
 
 <%
-  final ApplicationConfiguration configuration = new ApplicationConfiguration(); 
+  final ApplicationConfiguration configuration = new ApplicationConfiguration();
   final String sessionsResourceID = configuration.getResourceID();
   final String sessionsStandardID = configuration.getStandardID();
   final String themeName = configuration.getThemeName();
   final String[] tabLabels = configuration.getTabLabels();
   String bannerText = configuration.getBannerMessage();
   String headerURLJSON = configuration.getHeaderURLs().toString();
-  
+
   if (bannerText == null) {
       bannerText = "";
   }
@@ -36,23 +36,9 @@
 
     <base href="${fn:substring(url, 0, fn:length(url) - fn:length(uri))}${req.contextPath}/" />
 
-    <!-- Located in ROOT.war -->
-    <script type="application/javascript" src="https://www.canfar.net/canfar/javascript/jquery-2.2.4.min.js"></script>
-
-    <!-- Add Promises if missing/broken. -->
-    <script type="application/javascript" src="https://cdn.jsdelivr.net/npm/es6-promise/dist/es6-promise.auto.js"></script>
-    <!-- Found in canfar-root: tomcat(-canfar)/webapps/ROOT unless an absolute URL -->
-    <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.registry-client.js"></script>
-    <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/org.opencadc.js"></script>
-    <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.uri.js"></script>
-    <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.user.js"></script>
-    <script type="text/javascript" src="https://www.canfar.net/canfar/javascript/cadc.redirect.util.js"></script>
-
-    <% if ("canfar".equals(themeName)) { %>
-    <!-- Adding gdpr cookie banner -->
-    <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.gdpr.cookie.js"></script>
-    <link  type="text/css" href="https://www.canfar.net/canfar/css/cadc.gdpr.cookie.css" rel="stylesheet" media="screen">
-    <% } %>
+    <!-- Include React dependencies first -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
     <!--[if lt IE 9]>
 <!--        <script src="/html5shiv.googlecode.com/svn/trunk/html5.js"></script>-->
@@ -70,7 +56,7 @@
               <%--  CANFAR React App loads here --%>
               <div class="science-portal-authenticated">
                 <div id="sp_listnavbar" class="panel panel-default sp-panel">
-                <div id="react-mountpoint"></div>
+                <div id="science-portal-root"></div>
               <!-- Content ends -->
             </section>
           </div>
@@ -78,13 +64,6 @@
       </div>
     </div>
 
-    <%--local files ot pick up--%>
-    <script type="application/javascript" src="${contextPath}/dist/js/science_portal_login.js?v=${buildVersion}"></script>
-    <script type="application/javascript" src="${contextPath}/dist/js/science_portal_core.js?v=${buildVersion}"></script>
-    <script type="application/javascript" src="${contextPath}/dist/js/science_portal_session.js?v=${buildVersion}"></script>
-    <script type="application/javascript" src="${contextPath}/dist/js/science_portal_form.js?v=${buildVersion}"></script>
-    <script type="application/javascript" src="${contextPath}/dist/js/science_portal.js?v=${buildVersion}"></script>
-    <script type="application/javascript" src="${contextPath}/dist_config/sp_dist_config.js?v=${buildVersion}"></script>
 
     <script type="application/javascript">
       function generateState() {
@@ -102,9 +81,8 @@
       tabLabelArray[<%= i %>] = "<%= tabLabels[i] %>";
       <% } %>
 
-      window.runStartupTasks = () => {
         // Set up controller for Science Portal Session Launch page
-        const launch_js = new cadc.web.science.portal.PortalApp({
+        const launchData = {
           baseURL: window.location.origin,
           sessionsResourceID: '<%= sessionsResourceID %>',
           sessionsStandardID: '<%= sessionsStandardID %>',
@@ -113,15 +91,39 @@
           bannerText: '<%= bannerText %>',
           contentBase: "${contextPath}/dist",
           headerURLs: JSON.parse('<%= headerURLJSON %>')
-        })
+        }
 
-        launch_js.init()
+      // Create a function to mount the app
+      function mountSciencePortal() {
+        if (window.SciencePortal && window.SciencePortal.mount) {
+          window.SciencePortal.mount(
+                  document.getElementById('science-portal-root'),
+                  {
+                    initialData: launchData,
+                    config: {
+                      environment: 'production',
+                    }
+                  }
+          );
+        } else {
+          console.error('SciencePortal not loaded correctly');
+        }
       }
     </script>
 
+    <!-- Load React app last -->
+    <script src="${contextPath}/dist/react-app.js?v=${buildVersion}"></script>
+
+    <!-- Mount after React app is loaded -->
+    <script>
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mountSciencePortal);
+      } else {
+        mountSciencePortal();
+      }
+    </script>
     <%-- render the react app last - App.js's render cycle will call
       window.runStartupTasks() on completion. --%>
-    <script src="${contextPath}/dist/react-app.js?v=${buildVersion}"></script>
 
   </body>
 </html>

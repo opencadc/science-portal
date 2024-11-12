@@ -9,10 +9,6 @@ plugins {
     id 'idea'
 }
 
-node {
-    version = '18.18.0'
-}
-
 repositories {
     mavenLocal()
     mavenCentral()
@@ -53,22 +49,74 @@ war {
     archiveName 'science-portal.war'
 }
 
-task buildReactApp(type: NodeTask, dependsOn: 'npmInstall') {
-    script = project.file('node_modules/webpack/bin/webpack.js')
-    args = [
-            '--mode', 'development',
-            '--entry', './src/index.js',
-            '-o', './src/main/webapp/dist'
-    ]
+node {
+    version = '20.11.0'
+    npmVersion = '10.2.0'
+    download = true
+    workDir = file("${project.buildDir}/nodejs")
+    npmWorkDir = file("${project.buildDir}/npm")
+    // Set the working directory using nodeModulesDir
+    nodeModulesDir = file("${project.projectDir}/client")
 }
 
-// Copy js and json files from dev working area to distribution assembly folder
-tasks.register('copyDevToDist', Copy) {
-    from layout.projectDirectory.file("public/dev")
-    into layout.projectDirectory.file("src/main/webapp/dist")
+npmInstall {
+    inputs.file('client/package.json')
+    inputs.file('client/package-lock.json')
+
+    logging.level = LogLevel.INFO
+
+    doLast {
+        def nodeModules = file('client/node_modules')
+        if (!nodeModules.exists()) {
+            throw new GradleException("npm install failed: node_modules directory not found in client folder")
+        }
+    }
 }
+
+task buildReactApp(type: NpmTask, dependsOn: 'npmInstall') {
+    // Enable verbose output
+    logging.level = LogLevel.INFO
+    environment = [
+            'NODE_ENV': 'production',
+            'CI': 'true'
+    ]
+
+    inputs.files(fileTree('client/src'))
+    inputs.file('client/package.json')
+    inputs.file('client/tsconfig.json')
+    inputs.file('client/vite.config.ts')
+
+    outputs.dir('src/main/webapp/dist')
+
+    args = ['run', 'build', '--verbose']
+
+    doFirst {
+        println "Running npm build in directory: ${project.projectDir}/client"
+        println "Node version: ${node.version}"
+        println "NPM version: ${node.npmVersion}"
+    }
+
+    doLast {
+        def jsFile = file('src/main/webapp/dist/react-app.js')
+        def cssFile = file('src/main/webapp/dist/react-app.css')
+
+        if (!jsFile.exists() || !cssFile.exists()) {
+            throw new GradleException("Build failed: Expected output files were not generated")
+        }
+    }
+}
+
+task cleanNodeModules(type: Delete) {
+    delete 'client/node_modules'
+    delete 'client/package-lock.json'
+}
+
+task cleanReactApp(type: Delete) {
+    delete 'src/main/webapp/dist'
+}
+
+task cleanAll(dependsOn: [clean, cleanNodeModules, cleanReactApp])
 
 processResources.dependsOn 'buildReactApp'
-assemble.dependsOn 'copyDevToDist'
 
 clean.delete << file('src/main/webapp/dist')
