@@ -1,5 +1,17 @@
 ## Oct 23, 2023
 
+## [0.5.2](https://github.com/opencadc/science-portal/compare/0.5.2...0.5.2) (2024-11-25)
+
+
+### Bug Fixes
+
+* increment old version file to force release build ([c742d91](https://github.com/opencadc/science-portal/commit/c742d91f3cf8c385ce4cff8a2d916101ce8f86c8))
+
+
+### Miscellaneous Chores
+
+* release 0.5.2 ([bd4f393](https://github.com/opencadc/science-portal/commit/bd4f393800747035093777cf210b1440e1a75027))
+
 ## [0.5.2](https://github.com/opencadc/science-portal/compare/0.5.1...0.5.2) (2024-11-25)
 
 
