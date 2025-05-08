@@ -1,5 +1,12 @@
 ## Oct 23, 2023
 
+## [0.6.0](https://github.com/opencadc/science-portal/compare/0.5.3...0.6.0) (2025-05-08)
+
+
+### Features
+
+* add firefly and provide compilation fixes ([749c954](https://github.com/opencadc/science-portal/commit/749c95439f2e590fd1f45ff14304b8efddc469f4))
+
 ## [0.5.3](https://github.com/opencadc/science-portal/compare/0.5.2...0.5.3) (2024-11-25)
 
 
