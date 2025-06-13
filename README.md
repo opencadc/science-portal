@@ -1,4 +1,12 @@
 # CANFAR Science Portal
+
+### V 3.5.1
+#### June 13, 2025
+added a VOSpace usage widget
+added a format script
+```
+npm run format src/App.js
+```
 ### V 3.5
 ##### Oct 23, 2023
 

@@ -12,7 +12,8 @@
   final String[] tabLabels = configuration.getTabLabels();
   String bannerText = configuration.getBannerMessage();
   String headerURLJSON = configuration.getHeaderURLs().toString();
-  
+  String storageXmlInfoUrl = configuration.getStorageXmlInfoUrl();
+
   if (bannerText == null) {
       bannerText = "";
   }
@@ -112,7 +113,8 @@
           tabLabels: tabLabelArray,
           bannerText: '<%= bannerText %>',
           contentBase: "${contextPath}/dist",
-          headerURLs: JSON.parse('<%= headerURLJSON %>')
+          headerURLs: JSON.parse('<%= headerURLJSON %>'),
+          storageXmlInfoUrl: '<%= storageXmlInfoUrl %>',
         })
 
         launch_js.init()

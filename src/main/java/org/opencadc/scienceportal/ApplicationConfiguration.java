@@ -171,6 +171,10 @@ public class ApplicationConfiguration {
         return getStringValue(ConfigurationKey.OIDC_SCOPE);
     }
 
+    public String getStorageXmlInfoUrl() {
+        return getStringValue(ConfigurationKey.STORAGE_XML_INFO_URL);
+    }
+
     public boolean isOIDCConfigured() {
         return StringUtil.hasText(getOIDCClientID())
                 && StringUtil.hasText(getOIDCClientSecret())
@@ -215,7 +219,8 @@ public class ApplicationConfiguration {
         OIDC_CLIENT_SECRET("org.opencadc.science-portal.oidc.clientSecret", false),
         OIDC_REDIRECT_URI("org.opencadc.science-portal.oidc.redirectURI", false),
         OIDC_CALLBACK_URI("org.opencadc.science-portal.oidc.callbackURI", false),
-        OIDC_SCOPE("org.opencadc.science-portal.oidc.scope", false);
+        OIDC_SCOPE("org.opencadc.science-portal.oidc.scope", false),
+        STORAGE_XML_INFO_URL("org.opencadc.science-portal.storageXmlInfoUrl", false);
 
         private final String propertyName;
         private final boolean required;
