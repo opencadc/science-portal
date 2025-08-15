@@ -89,6 +89,6 @@ public class GetAction extends SciencePortalAuthGetAction {
         final ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
         final URI apiServiceURI = URI.create(applicationConfiguration.getResourceID());
         final RegistryClient registryClient = new RegistryClient();
-        return registryClient.getServiceURL(apiServiceURI, Standards.PROC_SESSIONS_10, AuthMethod.TOKEN);
+        return registryClient.getServiceURL(apiServiceURI, Standards.PLATFORM_REPO_1, AuthMethod.TOKEN);
     }
 }

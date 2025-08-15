@@ -131,7 +131,7 @@ public class GetAction extends SciencePortalAuthAction {
         final URI apiServiceURI = URI.create(applicationConfiguration.getResourceID());
         final RegistryClient registryClient = new RegistryClient();
         final URL registryServiceBaseURL =
-                registryClient.getServiceURL(apiServiceURI, Standards.PROC_SESSIONS_10, AuthMethod.TOKEN);
+                registryClient.getServiceURL(apiServiceURI, Standards.PLATFORM_SESSION_1, AuthMethod.TOKEN);
         if (registryServiceBaseURL == null) {
             throw new IOException("The Skaha web service is not configured in the Registry.  Please ensure that "
                     + apiServiceURI + " exists.");
