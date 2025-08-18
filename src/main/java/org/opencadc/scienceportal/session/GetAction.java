@@ -72,19 +72,16 @@ import ca.nrc.cadc.auth.AuthMethod;
 import ca.nrc.cadc.reg.Standards;
 import ca.nrc.cadc.reg.client.RegistryClient;
 import ca.nrc.cadc.util.StringUtil;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import org.opencadc.scienceportal.ApplicationConfiguration;
 import org.opencadc.scienceportal.SciencePortalAuthGetAction;
 
 public class GetAction extends SciencePortalAuthGetAction {
-    private static final String SESSION_ENDPOINT = "/session";
-
-    @Override
     protected String getEndpoint() {
         final String path = this.syncInput.getPath();
         final StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append(GetAction.SESSION_ENDPOINT);
 
         if (StringUtil.hasText(path)) {
             final String trimPath = path.trim();
@@ -99,10 +96,13 @@ public class GetAction extends SciencePortalAuthGetAction {
     }
 
     @Override
-    protected URL getAPIURL() {
+    protected URL getAPIURL() throws IOException {
         final ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
         final URI apiServiceURI = URI.create(applicationConfiguration.getResourceID());
         final RegistryClient registryClient = new RegistryClient();
-        return registryClient.getServiceURL(apiServiceURI, Standards.PLATFORM_SESSION_1, AuthMethod.TOKEN);
+        final URL sessionURL =
+                registryClient.getServiceURL(apiServiceURI, Standards.PLATFORM_SESSION_1, AuthMethod.TOKEN);
+
+        return new URL(sessionURL.toExternalForm() + getEndpoint());
     }
 }

@@ -77,13 +77,6 @@ import org.opencadc.scienceportal.ApplicationConfiguration;
 import org.opencadc.scienceportal.SciencePortalAuthGetAction;
 
 public class GetAction extends SciencePortalAuthGetAction {
-    private static final String REGISTRY_ENDPOINT = "/repository";
-
-    @Override
-    protected String getEndpoint() {
-        return GetAction.REGISTRY_ENDPOINT;
-    }
-
     @Override
     protected URL getAPIURL() {
         final ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();

@@ -86,6 +86,7 @@ import org.opencadc.scienceportal.ApplicationConfiguration;
 import org.opencadc.scienceportal.SciencePortalAuthAction;
 
 public class GetAction extends SciencePortalAuthAction {
+
     @Override
     public void doAction() throws Exception {
         final URL sessionsURL = getSessionsURL();
@@ -137,6 +138,6 @@ public class GetAction extends SciencePortalAuthAction {
                     + apiServiceURI + " exists.");
         }
 
-        return new URL(registryServiceBaseURL.toExternalForm() + "/session");
+        return registryServiceBaseURL;
     }
 }
