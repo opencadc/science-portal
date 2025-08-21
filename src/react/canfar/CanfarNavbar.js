@@ -72,7 +72,7 @@ class CanfarNavbar extends React.Component {
             <Navbar.Toggle aria-controls="basic-navbar-nav" />
             <Navbar.Collapse className="justify-content-end">
               <Nav className="justify-content-end flex-grow-1 pe-3">
-              <Nav.Link href="https://www.opencadc.org/science-containers/">Documentation</Nav.Link>
+              <Nav.Link href="https://www.opencadc.org/canfar/latest/">Documentation</Nav.Link>
               <NavDropdown title="Services">
                 <NavDropdown.Item href={baseURLCanfar + "/storage/list"}  target="_blank">Storage Management</NavDropdown.Item>
                 <NavDropdown.Item href={this.state.headerURLs[GROUP_MANAGEMENT_URI]} target="_blank">Group Management</NavDropdown.Item>
@@ -84,7 +84,7 @@ class CanfarNavbar extends React.Component {
               <Nav.Link href={baseURLCanfar + "/en/about/organization/"}>About</Nav.Link>
               <Nav.Link href="https://github.com/opencadc">Open Source</Nav.Link>
               <NavDropdown title="Support">
-                <NavDropdown.Item href="mailto:support@canfar.net"  target="_blank">Help</NavDropdown.Item>
+                <NavDropdown.Item href="mailto:support@canfar.net" target="_blank">Help</NavDropdown.Item>
                 <NavDropdown.Item href={baseURLCanfar + "/slack"} target="_blank">Join us on Slack</NavDropdown.Item>
               </NavDropdown>
               </Nav>
