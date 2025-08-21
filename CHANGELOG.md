@@ -1,5 +1,12 @@
 # Science Portal User Interface
 
+## [0.7.4](https://github.com/opencadc/science-portal/compare/0.7.3...0.7.4) (2025-08-21)
+
+
+### Bug Fixes
+
+* documentation links corrected ([538c99a](https://github.com/opencadc/science-portal/commit/538c99a3831eec6ef27e286227f9e1d91632b394))
+
 ## [0.7.3](https://github.com/opencadc/science-portal/compare/0.7.2...0.7.3) (2025-08-13)
 
 
