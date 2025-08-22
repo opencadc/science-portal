@@ -72,7 +72,7 @@ class CanfarNavbar extends React.Component {
             <Navbar.Toggle aria-controls="basic-navbar-nav" />
             <Navbar.Collapse className="justify-content-end">
               <Nav className="justify-content-end flex-grow-1 pe-3">
-              <Nav.Link href={baseURLCanfar + "/en/docs/quick_start/"}>Documentation</Nav.Link>
+              <Nav.Link href="https://www.opencadc.org/canfar/latest/">Documentation</Nav.Link>
               <NavDropdown title="Services">
                 <NavDropdown.Item href={baseURLCanfar + "/storage/list"}  target="_blank">Storage Management</NavDropdown.Item>
                 <NavDropdown.Item href={this.state.headerURLs[GROUP_MANAGEMENT_URI]} target="_blank">Group Management</NavDropdown.Item>
