@@ -81,7 +81,7 @@ class CanfarNavbar extends React.Component {
                 <NavDropdown.Item href={this.state.headerURLs[ADVANCED_SEARCH_URI]} target="_blank">CADC Search</NavDropdown.Item>
                 <NavDropdown.Item href="https://arbutus-canfar.cloud.computecanada.ca" target="_blank">OpenStack Cloud</NavDropdown.Item>
               </NavDropdown>
-              <Nav.Link href={baseURLCanfar + "/en/about/organization/"}>About</Nav.Link>
+              <Nav.Link href="https://www.opencadc.org/canfar/latest/about/home/">About</Nav.Link>
               <Nav.Link href="https://github.com/opencadc">Open Source</Nav.Link>
               <NavDropdown title="Support">
                 <NavDropdown.Item href="mailto:support@canfar.net"  target="_blank">Help</NavDropdown.Item>
