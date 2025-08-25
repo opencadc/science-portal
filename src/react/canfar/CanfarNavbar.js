@@ -84,7 +84,7 @@ class CanfarNavbar extends React.Component {
               <Nav.Link href="https://www.opencadc.org/canfar/latest/about/home/">About</Nav.Link>
               <Nav.Link href="https://github.com/opencadc">Open Source</Nav.Link>
               <NavDropdown title="Support">
-                <NavDropdown.Item href="mailto:support@canfar.net"  target="_blank">Help</NavDropdown.Item>
+                <NavDropdown.Item href="mailto:support@canfar.net" target="_blank">Help</NavDropdown.Item>
                 <NavDropdown.Item href="https://discord.gg/vcCQ8QBvBa" target="_blank">Join us on Discord</NavDropdown.Item>
               </NavDropdown>
               </Nav>
