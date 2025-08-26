@@ -307,7 +307,8 @@
             "connectHandler": handleConnectRequest,
             "renewHandler": handleRenewSession,
             "viewLogsURL": portalSessions.getViewLogsURL(this.id ),
-            "viewEventsURL" : portalSessions.getViewEventsURL(this.id)
+            "viewEventsURL" : portalSessions.getViewEventsURL(this.id),
+            "isFixedResources": this.isFixedResources
           }
 
           // Add to the list
