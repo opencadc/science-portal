@@ -56,8 +56,8 @@ function SessionItem(props) {
 
 
     if (props.sessData.isFixedResources === true) {
-      displayCores = `${props.sessData.coresInUse} / ${props.sessData.requestedCPUCores}`
-      displayMemory = `${props.sessData.ramInUse} / ${props.sessData.requestedRAM}`
+      displayCores = `${props.sessData.coresInUse ?? ""} / ${props.sessData.requestedCPUCores}`
+      displayMemory = `${props.sessData.ramInUse ?? ""} / ${props.sessData.requestedRAM}`
     } else {
       displayCores = props.sessData.coresInUse
       displayMemory = props.sessData.ramInUse
@@ -112,7 +112,7 @@ function SessionItem(props) {
               <Col>
                 <div className="sp-card-text">
                   <span className="sp-card-text-label">memory:</span>
-                  <span className="sp-card-text-data">{displayMemory} GB</span>
+                  <span className="sp-card-text-data">{displayMemory}  GB</span>
                 </div>
             </Col>
           </Row>
