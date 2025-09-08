@@ -121,9 +121,10 @@ class SciencePortalForm extends React.Component {
   }
 
   renderPopover(headerText, bodyText) {
+    const overlayKey = `${headerText.toLowerCase().replace(/\s+/g, '-')}-popover-overlay`
     return <OverlayTrigger
       trigger="click"
-      key="top"
+      key={overlayKey}
       placement="top"
       rootClose={true}
         overlay={

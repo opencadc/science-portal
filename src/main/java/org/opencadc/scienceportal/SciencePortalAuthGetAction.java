@@ -71,6 +71,7 @@ package org.opencadc.scienceportal;
 import ca.nrc.cadc.net.HttpGet;
 import ca.nrc.cadc.util.StringUtil;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -80,20 +81,16 @@ import javax.security.auth.Subject;
 
 public abstract class SciencePortalAuthGetAction extends SciencePortalAuthAction {
 
-    protected abstract String getEndpoint();
-
-    protected abstract URL getAPIURL();
+    protected abstract URL getAPIURL() throws IOException;
 
     @Override
     public void doAction() throws Exception {
         final URL apiURL = getAPIURL();
         final Subject subject = getCurrentSubject(apiURL);
-        final String apiEndpoint = String.format("%s%s", apiURL.toExternalForm(), getEndpoint());
-        final URL apiEndpointURL = new URL(apiEndpoint);
         final String query;
 
         if (!syncInput.getParameterNames().isEmpty()) {
-            query = (StringUtil.hasText(apiEndpointURL.getQuery()) ? "&" : "?")
+            query = (StringUtil.hasText(apiURL.getQuery()) ? "&" : "?")
                     + syncInput.getParameterNames().stream()
                             .map(k -> k + "=" + this.syncInput.getParameter(k))
                             .collect(Collectors.joining("&"));
@@ -102,7 +99,7 @@ public abstract class SciencePortalAuthGetAction extends SciencePortalAuthAction
         }
 
         Subject.doAs(subject, (PrivilegedExceptionAction<?>) () -> {
-            final HttpGet httpGet = new HttpGet(new URL(apiEndpoint + query), true);
+            final HttpGet httpGet = new HttpGet(new URL(apiURL.toExternalForm() + query), true);
             httpGet.setRequestProperty("accept", "application/json");
             httpGet.prepare();
 

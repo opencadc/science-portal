@@ -96,7 +96,6 @@ public class PostAction extends SciencePortalAuthAction {
     static final String SECRET_REQUEST_HEADER_NAME_TO_SKAHA = "x-skaha-registry-auth";
     static final String REPOSITORY_AUTH_SECRET_FROM_BROWSER = "x-repository-secret";
     static final String REPOSITORY_AUTH_USERNAME_FROM_BROWSER = "x-repository-username";
-    private static final String SESSION_ENDPOINT = "/session";
 
     PostAction(final SyncInput syncInput) {
         this.syncInput = syncInput;
@@ -156,7 +155,7 @@ public class PostAction extends SciencePortalAuthAction {
 
     URL buildAPIURL() throws MalformedURLException {
         final StringBuilder apiURLBuilder =
-                new StringBuilder(lookupAPIEndpoint().toExternalForm() + PostAction.SESSION_ENDPOINT);
+                new StringBuilder(lookupAPIEndpoint().toExternalForm());
 
         // Preserve path items.
         final String path = this.syncInput.getPath();
@@ -175,7 +174,7 @@ public class PostAction extends SciencePortalAuthAction {
         final ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
         final URI apiServiceURI = URI.create(applicationConfiguration.getResourceID());
         final RegistryClient registryClient = new RegistryClient();
-        return registryClient.getServiceURL(apiServiceURI, Standards.PROC_SESSIONS_10, AuthMethod.TOKEN);
+        return registryClient.getServiceURL(apiServiceURI, Standards.PLATFORM_SESSION_1, AuthMethod.TOKEN);
     }
 
     void write(final InputStream inputStream) throws IOException {

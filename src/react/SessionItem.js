@@ -28,6 +28,8 @@ function SessionItem(props) {
   var alwaysAvailableCSS = "sp-card-text sp-session-button"
   var hiddenPendingCSS = "sp-card-text sp-session-button"
   var displayGPU = true
+  let displayCores;
+  let displayMemory;
 
   if (props.listType === "list") {
     if (props.sessData.status === "Running") {
@@ -50,6 +52,15 @@ function SessionItem(props) {
     if ((props.sessData.requestedGPUCores === "<none>") ||
         (props.sessData.requestedGPUCores === "0") ) {
       displayGPU = false
+    }
+
+
+    if (props.sessData.isFixedResources === true) {
+      displayCores = `${props.sessData.coresInUse ?? ""} / ${props.sessData.requestedCPUCores}`
+      displayMemory = `${props.sessData.ramInUse ?? ""} / ${props.sessData.requestedRAM}`
+    } else {
+      displayCores = props.sessData.coresInUse
+      displayMemory = props.sessData.ramInUse
     }
   }
 
@@ -101,14 +112,14 @@ function SessionItem(props) {
               <Col>
                 <div className="sp-card-text">
                   <span className="sp-card-text-label">memory:</span>
-                  <span className="sp-card-text-data">{props.sessData.ramInUse} / {props.sessData.requestedRAM}</span>
+                  <span className="sp-card-text-data">{displayMemory}  GB</span>
                 </div>
             </Col>
           </Row>
           <Row className="sp-card-group-middle"><Col>
               <div className="sp-card-text">
                 <span className="sp-card-text-label">CPU cores:</span>
-                <span className="sp-card-text-data">{props.sessData.coresInUse} / {props.sessData.requestedCPUCores}</span>
+                <span className="sp-card-text-data">{displayCores}</span>
               </div>
           </Col></Row>
             {displayGPU === true &&
@@ -146,10 +157,9 @@ function SessionItem(props) {
         <Card.Footer>
           <Row><Col>
             <div className="sp-card-button">
-
                 <span className="sp-card-button-span">
                   <OverlayTrigger
-                    key="top"
+                    key="delete-session-overlay-tooltip"
                     placement="top"
                     className="sp-b-tooltip"
                     overlay={
@@ -169,7 +179,7 @@ function SessionItem(props) {
               <span className="sp-card-button-span">
                 <a href={props.sessData.viewEventsURL} target="_blank">
                   <OverlayTrigger
-                      key="top"
+                      key="view-session-launch-info-overlay-tooltip"
                       placement="top"
                       className="sp-b-tooltip"
                       overlay={
@@ -187,7 +197,7 @@ function SessionItem(props) {
               <span className="sp-card-button-span">
                 <a href={props.sessData.viewLogsURL} target="_blank">
                   <OverlayTrigger
-                    key="top"
+                    key="view-session-logs-overlay-tooltip"
                     placement="top"
                     className="sp-b-tooltip"
                     overlay={
@@ -203,7 +213,7 @@ function SessionItem(props) {
               </span>
               <span className="sp-card-button-span">
                 <OverlayTrigger
-                    key="top"
+                    key="renew-session-overlay-tooltip"
                     placement="top"
                     className="sp-b-tooltip"
                     overlay={

@@ -77,18 +77,11 @@ import org.opencadc.scienceportal.ApplicationConfiguration;
 import org.opencadc.scienceportal.SciencePortalAuthGetAction;
 
 public class GetAction extends SciencePortalAuthGetAction {
-    private static final String CONTEXT_ENDPOINT = "/context";
-
-    @Override
-    protected String getEndpoint() {
-        return GetAction.CONTEXT_ENDPOINT;
-    }
-
     @Override
     protected URL getAPIURL() {
         final ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
         final URI apiServiceURI = URI.create(applicationConfiguration.getResourceID());
         final RegistryClient registryClient = new RegistryClient();
-        return registryClient.getServiceURL(apiServiceURI, Standards.PROC_SESSIONS_10, AuthMethod.TOKEN);
+        return registryClient.getServiceURL(apiServiceURI, Standards.PLATFORM_CONTEXT_1, AuthMethod.TOKEN);
     }
 }

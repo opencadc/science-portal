@@ -313,7 +313,7 @@ class SciencePortalApp extends React.Component {
                   Active Sessions
                   <span className="sp-header-button">
                     <OverlayTrigger
-                      key="top"
+                      key="refresh-session-list-overlay-tooltip"
                       placement="top"
                       className="sp-b-tooltip"
                       overlay={
@@ -477,7 +477,7 @@ class SciencePortalApp extends React.Component {
                           Platform Load
                           <span className="sp-header-button">
                             <OverlayTrigger
-                              key="top"
+                              key="refresh-statistics-overlay-tooltip"
                               placement="top"
                               className="sp-b-tooltip"
                               overlay={

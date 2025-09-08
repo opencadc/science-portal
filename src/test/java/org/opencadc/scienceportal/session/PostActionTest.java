@@ -95,8 +95,13 @@ public class PostActionTest {
         Mockito.when(mockSyncInput.getParameter("param1")).thenReturn("val ue1");
         Mockito.when(mockSyncInput.getParameter("param2")).thenReturn(" value2 ");
 
-        final PostAction testSubject = new PostAction(mockSyncInput);
         final URL postURL = new URL("https://example.org/skaha/session-endpoint");
+        final PostAction testSubject = new PostAction(mockSyncInput) {
+            @Override
+            URL lookupAPIEndpoint() {
+                return postURL;
+            }
+        };
 
         final HttpPost httpPost = testSubject.createPostRequest(postURL);
 
@@ -136,7 +141,7 @@ public class PostActionTest {
         Mockito.when(mockSyncInput.getPath()).thenReturn("/version1/endpoint");
 
         final URL apiURL = testSubject.buildAPIURL();
-        Assert.assertEquals("Wrong API URL", apiEndpoint + "/session/version1/endpoint", apiURL.toExternalForm());
+        Assert.assertEquals("Wrong API URL", apiEndpoint + "/version1/endpoint", apiURL.toExternalForm());
 
         Mockito.verify(mockSyncInput, Mockito.times(1)).getPath();
     }

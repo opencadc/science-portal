@@ -72,6 +72,7 @@ import ca.nrc.cadc.auth.AuthMethod;
 import ca.nrc.cadc.net.HttpDelete;
 import ca.nrc.cadc.reg.Standards;
 import ca.nrc.cadc.reg.client.RegistryClient;
+import ca.nrc.cadc.util.StringUtil;
 import java.net.URI;
 import java.net.URL;
 import java.security.PrivilegedExceptionAction;
@@ -82,25 +83,26 @@ import org.opencadc.scienceportal.SciencePortalAuthAction;
 public class DeleteAction extends SciencePortalAuthAction {
     @Override
     public void doAction() throws Exception {
-        final URL apiURL = new URL(getAPIURL().toExternalForm()
-                + syncInput
-                        .getRequestPath()
-                        .substring(syncInput.getContextPath().length()));
+        final String sessionID = this.syncInput.getPath();
+        if (!StringUtil.hasText(sessionID)) {
+            throw new IllegalArgumentException("Session ID is required for delete action.");
+        } else {
+            final URL apiURL = new URL(getAPIURL().toExternalForm() + "/" + sessionID);
+            final Subject authenticatedUser = getCurrentSubject(apiURL);
 
-        final Subject authenticatedUser = getCurrentSubject(apiURL);
+            Subject.doAs(authenticatedUser, (PrivilegedExceptionAction<?>) () -> {
+                final HttpDelete httpDelete = new HttpDelete(apiURL, true);
+                httpDelete.prepare();
 
-        Subject.doAs(authenticatedUser, (PrivilegedExceptionAction<?>) () -> {
-            final HttpDelete httpDelete = new HttpDelete(apiURL, true);
-            httpDelete.prepare();
-
-            return null;
-        });
+                return null;
+            });
+        }
     }
 
     URL getAPIURL() {
         final ApplicationConfiguration applicationConfiguration = new ApplicationConfiguration();
         final URI apiServiceURI = URI.create(applicationConfiguration.getResourceID());
         final RegistryClient registryClient = new RegistryClient();
-        return registryClient.getServiceURL(apiServiceURI, Standards.PROC_SESSIONS_10, AuthMethod.TOKEN);
+        return registryClient.getServiceURL(apiServiceURI, Standards.PLATFORM_SESSION_1, AuthMethod.TOKEN);
     }
 }

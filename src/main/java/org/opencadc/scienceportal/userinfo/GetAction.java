@@ -86,6 +86,7 @@ import org.opencadc.scienceportal.ApplicationConfiguration;
 import org.opencadc.scienceportal.SciencePortalAuthAction;
 
 public class GetAction extends SciencePortalAuthAction {
+
     @Override
     public void doAction() throws Exception {
         final URL sessionsURL = getSessionsURL();
@@ -131,12 +132,12 @@ public class GetAction extends SciencePortalAuthAction {
         final URI apiServiceURI = URI.create(applicationConfiguration.getResourceID());
         final RegistryClient registryClient = new RegistryClient();
         final URL registryServiceBaseURL =
-                registryClient.getServiceURL(apiServiceURI, Standards.PROC_SESSIONS_10, AuthMethod.TOKEN);
+                registryClient.getServiceURL(apiServiceURI, Standards.PLATFORM_SESSION_1, AuthMethod.TOKEN);
         if (registryServiceBaseURL == null) {
             throw new IOException("The Skaha web service is not configured in the Registry.  Please ensure that "
                     + apiServiceURI + " exists.");
         }
 
-        return new URL(registryServiceBaseURL.toExternalForm() + "/session");
+        return registryServiceBaseURL;
     }
 }
