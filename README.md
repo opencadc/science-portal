@@ -1,4 +1,4 @@
-# CANFAR Science Portal
+# CANFAR Science Portal (1.0.0)`
 
 UI for accessing and managing JupyterLab notebooks, Carta, Desktop and other interactive sessions that back onto CANFAR resources.
 
