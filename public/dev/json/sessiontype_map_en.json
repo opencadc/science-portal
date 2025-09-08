@@ -2,7 +2,7 @@
   "session_types" : [
       {
         "name": "notebook",
-        "form_fields": ["name", "type", "image"],
+        "form_fields": ["name", "type", "image", "memory", "cores"],
         "portal_icon": "jupyterLogo.jpg",
         "portal_text": "JupyterLab"
       },
@@ -14,12 +14,12 @@
       },
       {
         "name": "carta",
-        "form_fields": ["name", "type", "image"],
+        "form_fields": ["name", "type", "image", "memory", "cores"],
         "portal_icon": "cartaLogo.png"
       },
       {
         "name": "contributed",
-        "form_fields": ["name", "type", "image"],
+        "form_fields": ["name", "type", "image", "memory", "cores"],
         "portal_icon": "fas_cube.png",
         "portal_text": "contributed"
       },
