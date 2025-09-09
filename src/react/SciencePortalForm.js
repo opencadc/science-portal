@@ -15,8 +15,8 @@ import {faQuestionCircle} from "@fortawesome/free-solid-svg-icons";
 // Utils
 import {getProjectImagesMap, getProjectNames} from "./utilities/utils";
 import {
-  DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES,
-  DEFAULT_RAM_NUMBER, SKAHA_PROJECT
+    DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES,
+    DEFAULT_RAM_NUMBER, HAS_FIXED, SKAHA_PROJECT
 } from "./utilities/constants";
 
 class SciencePortalForm extends React.Component {
@@ -112,8 +112,20 @@ class SciencePortalForm extends React.Component {
     console.log('componentDidUpdate()')
     if (this.props.fData !== nextProps.fData) {
       console.log(`componentDidUpdate(): OK`)
-      this.setState({
-        fData: nextProps.fData
+        const canHaveFixed = HAS_FIXED.includes(this.state.fData?.selectedType)
+        let newState = {
+            fData: nextProps.fData
+        }
+        if (!canHaveFixed) {
+            newState = {
+                ...newState,
+                resourceType: 'shared',
+                showRAM: false,
+                showCores: false
+            }
+        }
+        this.setState({
+        ...newState,
       });
     } else {
       console.log(`componentDidUpdate(): IGNORING`)
@@ -157,7 +169,7 @@ class SciencePortalForm extends React.Component {
     const imagesOfProject = this.state.selectedProject ? projectsOfType?.[this.state.selectedProject] : defaultImages
     const defaultImageName = this.state.fData?.selectedType ? DEFAULT_IMAGE_NAMES[this.state.fData.selectedType] : undefined
     const defaultImageId = defaultImageName ? imagesOfProject?.find(mObj => mObj.name === defaultImageName)?.id : imagesOfProject?.[0]?.id
-
+    const canHaveFixed = HAS_FIXED.includes(this.state.fData?.selectedType)
       return (
       <>
         {Object.keys(this.state.fData || {}).length !== 0 && 
@@ -241,7 +253,7 @@ class SciencePortalForm extends React.Component {
               </Col>
             </Row>
 
-            <Row className="sp-form-row radio-res d-flex align-items-center">
+              {canHaveFixed && (<Row className="sp-form-row radio-res d-flex align-items-center">
               <Col sm={4}>
                 <Form.Label className="sp-form-label" column="sm">resources</Form.Label>
               </Col>
@@ -264,12 +276,13 @@ class SciencePortalForm extends React.Component {
                   label="Fixed"
                   value="custom"
                   checked={this.state.resourceType === 'custom'}
-                  onChange={this.handleResourceTypeChange}
+                  onChange={(e) => canHaveFixed ? this.handleResourceTypeChange(e) : null }
+                  disabled={!canHaveFixed}
                   inline
                 />{this.renderPopover("Fixed", "Guaranteed dedicated resources that may be harder to allocate, especially for large memory and/or cores.")}
               </Col>
-            </Row>
-            {this.state.showRAM === true && this.state.showCores === true &&
+            </Row>)}
+            {this.state.showRAM === true && this.state.showCores === true && canHaveFixed &&
             <Row className="sp-form-row">
               <Col sm={4}>
                 {' '}
