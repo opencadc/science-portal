@@ -271,7 +271,7 @@ class SciencePortalForm extends React.Component {
                   checked={this.state.resourceType === 'shared'}
                   onChange={this.handleResourceTypeChange}
                   inline
-                />{this.renderPopover("Flexible", "Variable access to shared node resources as needed.")}
+                />{this.renderPopover("Flexible", "Variable access to shared node resources as needed. Jobs can dynamically use shared node resources as needed, with up to 8 CPU cores and 32 GB of RAM available.")}
 
                 <Form.Check
                   type="radio"
