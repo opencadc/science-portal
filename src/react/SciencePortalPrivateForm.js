@@ -13,7 +13,7 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faQuestionCircle} from "@fortawesome/free-solid-svg-icons";
 
 // Constants
-import {DEFAULT_CORES_NUMBER, DEFAULT_RAM_NUMBER} from "./utilities/constants";
+import {DEFAULT_CORES_NUMBER, DEFAULT_RAM_NUMBER, HAS_FIXED} from "./utilities/constants";
 
 class SciencePortalPrivateForm extends React.Component {
 
@@ -133,8 +133,20 @@ class SciencePortalPrivateForm extends React.Component {
     console.log('componentDidUpdate()')
     if (this.props.fData !== nextProps.fData) {
       console.log(`componentDidUpdate(): OK`)
-      this.setState({
-        fData: nextProps.fData
+        const canHaveFixed = HAS_FIXED.includes(this.state.fData?.selectedType)
+        let newState = {
+            fData: nextProps.fData
+        }
+        if (!canHaveFixed) {
+            newState = {
+                ...newState,
+                resourceType: 'shared',
+                showRAM: false,
+                showCores: false
+            }
+        }
+        this.setState({
+        ...newState,
       });
     } else {
       console.log(`componentDidUpdate(): IGNORING`)
@@ -172,7 +184,8 @@ class SciencePortalPrivateForm extends React.Component {
   }
 
   render() {
-    const repositoryHostComponent = this.state.fData.repositoryHosts.length > 1
+      const canHaveFixed = HAS_FIXED.includes(this.state.fData?.selectedType)
+      const repositoryHostComponent = this.state.fData.repositoryHosts.length > 1
         ? <Form.Select
             name="repositoryHost"
             size="sm"
@@ -297,7 +310,7 @@ class SciencePortalPrivateForm extends React.Component {
                   />
                 </Col>
               </Row>
-                <Row className="sp-form-row radio-res d-flex align-items-center">
+                {canHaveFixed && (<Row className="sp-form-row radio-res d-flex align-items-center">
                     <Col sm={4}>
                         <Form.Label className="sp-form-label" column="sm">resources</Form.Label>
                     </Col>
@@ -320,12 +333,13 @@ class SciencePortalPrivateForm extends React.Component {
                             label="Fixed"
                             value="custom"
                             checked={this.state.resourceType === 'custom'}
-                            onChange={this.handleResourceTypeChange}
+                            onChange={(e) => canHaveFixed ? this.handleResourceTypeChange(e) : null }
+                            disabled={!canHaveFixed}
                             inline
                         />{this.renderPopover("Fixed", "Guaranteed dedicated resources that may be harder to allocate, especially for large memory and/or cores.")}
                     </Col>
-                </Row>
-                {this.state.showRAM === true && this.state.showCores === true &&
+                </Row>)}
+                {this.state.showRAM === true && this.state.showCores === true && canHaveFixed &&
                     <Row className="sp-form-row">
                         <Col sm={4}>
                             {' '}
