@@ -151,22 +151,6 @@ class SciencePortalForm extends React.Component {
   }
 
   render() {
-    // For now, these are the only fields conditionally displayed
-    // per session type, so they'll be handled simply
-    // They are parsed out of the session json data in science_portal_form.js
-    let showRAM = false
-    let showCores = false
-    if (this.state.fData?.formFields !== undefined) {
-      if (this.state.fData.formFields?.showRAM !== undefined) {
-        showRAM = this.state.fData.formFields.showRAM
-      }
-      
-      showCores = false
-      if (this.state.fData.formFields?.showCores !== undefined) {
-        showCores = this.state.fData.formFields.showCores
-      }
-    }
-
     const projectsOfType = getProjectImagesMap(this.state.fData?.imageList)
     const availableProjects = getProjectNames(projectsOfType) || []
     const defaultImages =  projectsOfType?.[SKAHA_PROJECT] || []
