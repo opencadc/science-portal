@@ -1,5 +1,12 @@
 # Science Portal User Interface
 
+## [1.0.0](https://github.com/opencadc/science-portal/compare/1.0.0...1.0.0) (2025-09-09)
+
+
+### Miscellaneous Chores
+
+* release 1.0.0 ([42c6bc6](https://github.com/opencadc/science-portal/commit/42c6bc6fd6e0f11826323ae3f475784ce771e6a5))
+
 ## [1.0.0](https://github.com/opencadc/science-portal/compare/0.7.4...1.0.0) (2025-09-09)
 
 
