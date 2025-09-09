@@ -1,5 +1,24 @@
 # Science Portal User Interface
 
+## [1.0.0](https://github.com/opencadc/science-portal/compare/0.7.4...1.0.0) (2025-09-09)
+
+
+### Bug Fixes
+
+* about doc and discord ([d07a483](https://github.com/opencadc/science-portal/commit/d07a4839d7a50686cafb2c2f3d3c894296609b13))
+* adjust display for memory and fix non unique keys ([9033b5d](https://github.com/opencadc/science-portal/commit/9033b5d2c88d8e8f4bdcf36a60be148d4531b2f9))
+* doc discord link ([d58259e](https://github.com/opencadc/science-portal/commit/d58259ec99d4c8b27ec7316139de89e35c6c9702))
+* help and about links ([ca44caf](https://github.com/opencadc/science-portal/commit/ca44caf22f4e4f5e3f964b8195d2404af2f5ff19))
+* merge main doc change ([067d087](https://github.com/opencadc/science-portal/commit/067d087d792257b0ddd0696d1b49b39a8c2625d3))
+* remove undefined value from output ([5b93bd3](https://github.com/opencadc/science-portal/commit/5b93bd3c38fc7badaa0de198183f540d23bec663))
+* update doc about link ([20bb6aa](https://github.com/opencadc/science-portal/commit/20bb6aa36b3b94291d1fe11145c9cb458e50cb06))
+* update doc about link ([56026c2](https://github.com/opencadc/science-portal/commit/56026c244ce168d07e5206e8062a7a7b70d6f4e9))
+
+
+### Miscellaneous Chores
+
+* release 1.0.0 ([346db1a](https://github.com/opencadc/science-portal/commit/346db1ac7d978481e772d9cac547379a0ad45240))
+
 ## [0.7.4](https://github.com/opencadc/science-portal/compare/0.7.3...0.7.4) (2025-08-21)
 
 
