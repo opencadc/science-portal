@@ -28,7 +28,7 @@ function CanfarRange({
     return (
         <Form.Range
             value={rangePos}
-            name="ram"
+            name="range-slider"
             min={0}
             max={range.length - 1}
             step="1"
