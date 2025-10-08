@@ -58,7 +58,6 @@ class SciencePortalForm extends React.Component {
 
   handleRAMChange(event) {
       if (this.state.fData.experimentalFeatures?.slider) {
-
           const maybeNumber = +event?.target?.value || event
           if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableRAM[this.state.fData?.contextData?.availableRAM.length - 1] && this.state.fData?.contextData?.availableRAM.some(num => startsWithNumber(maybeNumber, num))) {
               this.setState({

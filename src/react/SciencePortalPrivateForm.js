@@ -79,10 +79,16 @@ class SciencePortalPrivateForm extends React.Component {
   }
 
     handleRAMChange(event) {
-        const maybeNumber = +event?.target?.value || event
-        if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableRAM[this.state.fData?.contextData?.availableRAM.length - 1] && this.state.fData?.contextData?.availableRAM.some(num => startsWithNumber(maybeNumber, num))) {
+        if (this.state.fData.experimentalFeatures?.slider) {
+            const maybeNumber = +event?.target?.value || event
+            if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableRAM[this.state.fData?.contextData?.availableRAM.length - 1] && this.state.fData?.contextData?.availableRAM.some(num => startsWithNumber(maybeNumber, num))) {
+                this.setState({
+                    selectedRAM: maybeNumber
+                });
+            }
+        } else {
             this.setState({
-                selectedRAM: maybeNumber
+                selectedRAM: event.target.value
             });
         }
     }
@@ -95,10 +101,16 @@ class SciencePortalPrivateForm extends React.Component {
         }
     }
     handleCoresChange(event) {
-        const maybeNumber = +event?.target?.value || event
-        if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableCores[this.state.fData?.contextData?.availableCores.length - 1] && this.state.fData?.contextData?.availableCores.some(num => startsWithNumber(maybeNumber, num))) {
+        if (this.state.fData.experimentalFeatures?.slider) {
+            const maybeNumber = +event?.target?.value || event
+            if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableCores[this.state.fData?.contextData?.availableCores.length - 1] && this.state.fData?.contextData?.availableCores.some(num => startsWithNumber(maybeNumber, num))) {
+                this.setState({
+                    selectedCores: maybeNumber
+                });
+            }
+        } else {
             this.setState({
-                selectedCores: maybeNumber
+                selectedCores: event.target.value
             });
         }
     }
@@ -374,6 +386,7 @@ class SciencePortalPrivateForm extends React.Component {
                             <Row>
                                 <Col sm={6}>
                                     <Form.Label className="sp-form-sublabel">Memory (GB)</Form.Label>
+                                    {this.state.fData.experimentalFeatures?.slider ? (<>
                                     <CanfarRange value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER} name="cores-range" onChange={this.handleRAMChange.bind(this)} range={this.state.fData?.contextData?.availableRAM || []}/>
                                     <Form.Control
                                         type='number'
@@ -384,10 +397,21 @@ class SciencePortalPrivateForm extends React.Component {
                                         value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
                                         onChange={this.handleRAMChange.bind(this)}
                                         onBlur={this.handleRAMOnBlur.bind(this)}
-                                    />
+                                    /></>) : (
+                                        <Form.Select
+                                            value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
+                                            name="ram"
+                                            className="sp-form-cursor"
+                                            onChange={this.handleRAMChange.bind(this)}>
+                                            {(this.state.fData?.contextData?.availableRAM || []).map(mapObj => (
+                                                <option key={mapObj} value={mapObj}>{mapObj}</option>
+                                            ))}
+                                        </Form.Select>
+                                        )}
                                 </Col>
                                 <Col sm={6}>
                                     <Form.Label className="sp-form-sublabel">CPU Cores</Form.Label>
+                                    {this.state.fData.experimentalFeatures?.slider ? (<>
                                     <CanfarRange value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER} name="cores-range" onChange={this.handleCoresChange.bind(this)} range={this.state.fData?.contextData?.availableCores || []}/>
                                     <Form.Control
                                         type='number'
@@ -398,7 +422,17 @@ class SciencePortalPrivateForm extends React.Component {
                                         value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
                                         onChange={this.handleCoresChange.bind(this)}
                                         onBlur={this.handleCoresOnBlur.bind(this)}
-                                    />
+                                    /></>) : (
+                                        <Form.Select
+                                            name="cores"
+                                            className="sp-form-cursor"
+                                            value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
+                                            onChange={this.handleCoresChange.bind(this)}>
+                                            {(this.state.fData?.contextData?.availableCores || []).map(mapObj => (
+                                                <option key={mapObj} value={mapObj}>{mapObj}</option>
+                                            ))}
+                                        </Form.Select>
+                                        )}
                                 </Col>
                             </Row>
                         </Col>
