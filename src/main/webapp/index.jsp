@@ -13,6 +13,7 @@
   String bannerText = configuration.getBannerMessage();
   String headerURLJSON = configuration.getHeaderURLs().toString();
   String storageXmlInfoUrl = configuration.getStorageXmlInfoUrl();
+  final String experimentalJSON = configuration.getExperimentalFeatures().toJSONString();
 
   if (bannerText == null) {
       bannerText = "";
@@ -38,10 +39,12 @@
     <base href="${fn:substring(url, 0, fn:length(url) - fn:length(uri))}${req.contextPath}/" />
 
     <!-- Located in ROOT.war -->
-    <script type="application/javascript" src="https://www.canfar.net/canfar/javascript/jquery-2.2.4.min.js"></script>
+    <script type="application/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
 
     <!-- Add Promises if missing/broken. -->
     <script type="application/javascript" src="https://cdn.jsdelivr.net/npm/es6-promise/dist/es6-promise.auto.js"></script>
+
+    <% if ("canfar".equals(themeName)) { %>
     <!-- Found in canfar-root: tomcat(-canfar)/webapps/ROOT unless an absolute URL -->
     <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.registry-client.js"></script>
     <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/org.opencadc.js"></script>
@@ -49,7 +52,6 @@
     <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.user.js"></script>
     <script type="text/javascript" src="https://www.canfar.net/canfar/javascript/cadc.redirect.util.js"></script>
 
-    <% if ("canfar".equals(themeName)) { %>
     <!-- Adding gdpr cookie banner -->
     <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.gdpr.cookie.js"></script>
     <link  type="text/css" href="https://www.canfar.net/canfar/css/cadc.gdpr.cookie.css" rel="stylesheet" media="screen">
@@ -115,6 +117,7 @@
           contentBase: "${contextPath}/dist",
           headerURLs: JSON.parse('<%= headerURLJSON %>'),
           storageXmlInfoUrl: '<%= storageXmlInfoUrl %>',
+          experimentalFeatures: JSON.parse('<%= experimentalJSON %>')
         })
 
         launch_js.init()

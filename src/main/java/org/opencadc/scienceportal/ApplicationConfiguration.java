@@ -9,8 +9,12 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.configuration2.CombinedConfiguration;
 import org.apache.commons.configuration2.Configuration;
@@ -172,6 +176,10 @@ public class ApplicationConfiguration {
         return getStringValue(ConfigurationKey.OIDC_SCOPE);
     }
 
+    public ExperimentalFeatures getExperimentalFeatures() {
+        return ExperimentalFeatures.fromConfiguration(this.configuration);
+    }
+
     /**
      * Returns the URL to the storage XML info service. Return an empty string if not configured to conform to the
      * JavaScript this value will be injected into.
@@ -236,6 +244,42 @@ public class ApplicationConfiguration {
         ConfigurationKey(String propertyName, boolean required) {
             this.propertyName = propertyName;
             this.required = required;
+        }
+    }
+
+    /**
+     * Experimental features that can be toggled on/off via configuration. These are unreleased features behind a
+     * feature flag in the "org.opencadc.science-portal.experimental" namespace.
+     */
+    public static class ExperimentalFeatures {
+        private static final String NAMESPACE = "org.opencadc.science-portal.experimental";
+
+        private final Map<String, Boolean> featureGates = new HashMap<>();
+
+        public String toJSONString() {
+            final JSONObject jsonObject = new JSONObject();
+            featureGates.forEach(jsonObject::put);
+            return jsonObject.toString();
+        }
+
+        private static ExperimentalFeatures fromConfiguration(Configuration configuration) {
+            final Map<String, Boolean> configuredFeatureGates = new HashMap<>();
+            Objects.requireNonNullElse(
+                            configuration.getKeys(ExperimentalFeatures.NAMESPACE, "."),
+                            Collections.<String>emptyIterator())
+                    .forEachRemaining(gate -> {
+                        if (StringUtil.hasText(gate)) {
+                            final String[] gateEnable = gate.split("=");
+                            LOGGER.debug("Experimental feature gate: " + gateEnable[0] + " = " + gateEnable[1]);
+                            configuredFeatureGates.put(gateEnable[0], Boolean.parseBoolean(gateEnable[1]));
+                        }
+                    });
+            return new ExperimentalFeatures(configuredFeatureGates);
+        }
+
+        private ExperimentalFeatures(final Map<String, Boolean> configuredFeatureGates) {
+            Objects.requireNonNull(configuredFeatureGates, "configuredFeatureGates cannot be null");
+            this.featureGates.putAll(configuredFeatureGates);
         }
     }
 }
