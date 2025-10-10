@@ -368,7 +368,7 @@
     /**
      * Triggered from the delete modal
      */
-    function handleConfirmedDelete(event) {
+    function handleConfirmedDelete(_event) {
       var sessionData = _state.currentSessionData
       portalCore.hideConfirmModal(_reactApp)
       portalCore.setModal(_reactApp, "Delete Request", "Deleting session", true, false, false)
@@ -378,7 +378,7 @@
     /**
      * Triggered from the delete modal
      */
-    function handleCancelDelete(event) {
+    function handleCancelDelete(_event) {
       portalCore.hideConfirmModal(_reactApp)
     }
 
@@ -498,14 +498,15 @@
     }
 
     function buildFormDataForType(sType) {
-      var defaultName = portalSessions.getDefaultSessionName(sType.trim())
-      var formDataForType = portalForm.getFormDataForType(sType, defaultName)
+      const defaultName = portalSessions.getDefaultSessionName(sType.trim())
+      const formDataForType = portalForm.getFormDataForType(sType, defaultName)
       // Q: not sure what happens with the old handlers, are they GCd correctly?
       // Consider having handlers submitted as props, and only the variable
       // parts of the form - dropdown content, set as state values
       formDataForType.submitHandler = handleSessionRequest
       formDataForType.changeTypeHandler = setLaunchFormForType
       formDataForType.resetHandler = resetLaunchForm
+      formDataForType.experimentalFeatures = inputs.experimentalFeatures
       return formDataForType
     }
 

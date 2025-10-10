@@ -138,7 +138,7 @@ class SciencePortalApp extends React.Component {
       userInfo: {},
       themeName: "canfar",
       tabLabels: ["Public", "Advanced"],
-      fetchingStorageQuota: false,
+      fetchingStorageQuota: false
     };
   }
 
@@ -571,7 +571,7 @@ class SciencePortalApp extends React.Component {
   componentDidMount() {
     // This runs after App.js has rendered. Important that it executes
     // because if the javascript objects that drive this app try to
-    // start up before this react app has finished rendering, the portal
+    // start up before this ReactJS app has finished rendering, the portal
     // won't work.
     // At page load, after the first time the app is rendered,
     // an object needs to be set as a window reference
