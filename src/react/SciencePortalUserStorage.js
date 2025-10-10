@@ -136,7 +136,7 @@ function SciencePortalUserStorage({ isAuthenticated, name, storageUrl }) {
       });
 
       if (!response.ok) {
-        setErrorMessage(`HTTP ${response.status}`);
+        setErrorMessage(`HTTP ${response.status}: ${response.statusText}`);
       }
 
       const xmlString = await response.text();
