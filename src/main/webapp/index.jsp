@@ -39,10 +39,10 @@
     <base href="${fn:substring(url, 0, fn:length(url) - fn:length(uri))}${req.contextPath}/" />
 
     <!-- Located in ROOT.war -->
-    <script type="application/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script type="application/javascript" src="${contextPath}/dist/js/jquery-2.2.4.min.js"></script>
 
     <!-- Add Promises if missing/broken. -->
-    <script type="application/javascript" src="https://cdn.jsdelivr.net/npm/es6-promise/dist/es6-promise.auto.js"></script>
+    <script type="application/javascript" src="${contextPath}/dist/js/es6-promise.auto.js"></script>
 
     <% if ("canfar".equals(themeName)) { %>
     <!-- Found in canfar-root: tomcat(-canfar)/webapps/ROOT unless an absolute URL -->
