@@ -8,12 +8,16 @@ import Row from 'react-bootstrap/Row';
 import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Placeholder from 'react-bootstrap/Placeholder';
 import Popover from 'react-bootstrap/Popover';
+import CanfarRange from "./components/CanfarRange/CanfarRange";
 
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faQuestionCircle} from "@fortawesome/free-solid-svg-icons";
 
 // Constants
 import {DEFAULT_CORES_NUMBER, DEFAULT_RAM_NUMBER, HAS_FIXED} from "./utilities/constants";
+
+// Utils
+import {startsWithNumber} from "./components/CanfarRange/utils";
 
 class SciencePortalPrivateForm extends React.Component {
 
@@ -74,17 +78,51 @@ class SciencePortalPrivateForm extends React.Component {
     })
   }
 
-  handleRAMChange(event) {
-    this.setState({
-      selectedRAM: event.target.value
-    });
-  }
+    handleRAMChange(event) {
+        if (this.state.fData.experimentalFeatures?.slider) {
+            const maybeNumber = +event?.target?.value || event
+            if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableRAM[this.state.fData?.contextData?.availableRAM.length - 1] && this.state.fData?.contextData?.availableRAM.some(num => startsWithNumber(maybeNumber, num))) {
+                this.setState({
+                    selectedRAM: maybeNumber
+                });
+            }
+        } else {
+            this.setState({
+                selectedRAM: event.target.value
+            });
+        }
+    }
+    handleRAMOnBlur(event) {
+        const maybeNumber = +event?.target?.value || event
+        if (!(maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableRAM[this.state.fData?.contextData?.availableRAM.length - 1] && this.state.fData?.contextData?.availableRAM.includes(maybeNumber))) {
+            this.setState({
+                selectedRAM: undefined
+            });
+        }
+    }
+    handleCoresChange(event) {
+        if (this.state.fData.experimentalFeatures?.slider) {
+            const maybeNumber = +event?.target?.value || event
+            if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableCores[this.state.fData?.contextData?.availableCores.length - 1] && this.state.fData?.contextData?.availableCores.some(num => startsWithNumber(maybeNumber, num))) {
+                this.setState({
+                    selectedCores: maybeNumber
+                });
+            }
+        } else {
+            this.setState({
+                selectedCores: event.target.value
+            });
+        }
+    }
 
-  handleCoresChange(event) {
-    this.setState({
-      selectedCores: event.target.value
-    });
-  }
+    handleCoresOnBlur(event) {
+        const maybeNumber = +event?.target?.value || event
+        if (!(maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableCores[this.state.fData?.contextData?.availableCores.length - 1] && this.state.fData?.contextData?.availableCores.includes(maybeNumber))) {
+            this.setState({
+                selectedCores: undefined
+            });
+        }
+    }
 
   handleResourceTypeChange(event) {
     const resourceType = event.target.value;
@@ -348,27 +386,53 @@ class SciencePortalPrivateForm extends React.Component {
                             <Row>
                                 <Col sm={6}>
                                     <Form.Label className="sp-form-sublabel">Memory (GB)</Form.Label>
-                                    <Form.Select
-                                        value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
+                                    {this.state.fData.experimentalFeatures?.slider ? (<>
+                                    <CanfarRange value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER} name="cores-range" onChange={this.handleRAMChange.bind(this)} range={this.state.fData?.contextData?.availableRAM || []}/>
+                                    <Form.Control
+                                        type='number'
                                         name="ram"
-                                        className="sp-form-cursor"
-                                        onChange={this.handleRAMChange.bind(this)}>
-                                        {(this.state.fData?.contextData?.availableRAM || []).map(mapObj => (
-                                            <option key={mapObj} value={mapObj}>{mapObj}</option>
-                                        ))}
-                                    </Form.Select>
+                                        max={this.state.fData?.contextData?.availableRAM?.[this.state.fData?.contextData?.availableRAM?.length - 1] || DEFAULT_RAM_NUMBER}
+                                        min={DEFAULT_RAM_NUMBER}
+                                        className="sp-form-input"
+                                        value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
+                                        onChange={this.handleRAMChange.bind(this)}
+                                        onBlur={this.handleRAMOnBlur.bind(this)}
+                                    /></>) : (
+                                        <Form.Select
+                                            value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
+                                            name="ram"
+                                            className="sp-form-cursor"
+                                            onChange={this.handleRAMChange.bind(this)}>
+                                            {(this.state.fData?.contextData?.availableRAM || []).map(mapObj => (
+                                                <option key={mapObj} value={mapObj}>{mapObj}</option>
+                                            ))}
+                                        </Form.Select>
+                                        )}
                                 </Col>
                                 <Col sm={6}>
                                     <Form.Label className="sp-form-sublabel">CPU Cores</Form.Label>
-                                    <Form.Select
+                                    {this.state.fData.experimentalFeatures?.slider ? (<>
+                                    <CanfarRange value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER} name="cores-range" onChange={this.handleCoresChange.bind(this)} range={this.state.fData?.contextData?.availableCores || []}/>
+                                    <Form.Control
+                                        type='number'
                                         name="cores"
-                                        className="sp-form-cursor"
+                                        max={this.state.fData?.contextData?.availableCores?.[this.state.fData?.contextData?.availableCores?.length - 1] || DEFAULT_CORES_NUMBER}
+                                        min={DEFAULT_CORES_NUMBER}
+                                        className="sp-form-input"
                                         value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
-                                        onChange={this.handleCoresChange.bind(this)}>
-                                        {(this.state.fData?.contextData?.availableCores || []).map(mapObj => (
-                                            <option key={mapObj} value={mapObj}>{mapObj}</option>
-                                        ))}
-                                    </Form.Select>
+                                        onChange={this.handleCoresChange.bind(this)}
+                                        onBlur={this.handleCoresOnBlur.bind(this)}
+                                    /></>) : (
+                                        <Form.Select
+                                            name="cores"
+                                            className="sp-form-cursor"
+                                            value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
+                                            onChange={this.handleCoresChange.bind(this)}>
+                                            {(this.state.fData?.contextData?.availableCores || []).map(mapObj => (
+                                                <option key={mapObj} value={mapObj}>{mapObj}</option>
+                                            ))}
+                                        </Form.Select>
+                                        )}
                                 </Col>
                             </Row>
                         </Col>
