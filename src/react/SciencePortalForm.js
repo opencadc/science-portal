@@ -329,7 +329,7 @@ class SciencePortalForm extends React.Component {
                   <Col sm={6}>
                     <Form.Label className="sp-form-sublabel">Memory (GB)</Form.Label>
                       {this.state.fData.experimentalFeatures?.slider ? (<>
-                      <CanfarRange value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER} name="cores-range" onChange={this.handleRAMChange.bind(this)} range={this.state.fData?.contextData?.availableRAM || []}/>
+                      <CanfarRange value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER} name="ram-range" onChange={this.handleRAMChange.bind(this)} range={this.state.fData?.contextData?.availableRAM || []}/>
                       <Form.Control
                           type='number'
                           name="ram"
@@ -354,7 +354,6 @@ class SciencePortalForm extends React.Component {
                   <Col sm={6}>
                     <Form.Label className="sp-form-sublabel">CPU Cores</Form.Label>
                       {this.state.fData.experimentalFeatures?.slider ? (<>
-
                       <CanfarRange value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER} name="cores-range" onChange={this.handleCoresChange.bind(this)} range={this.state.fData?.contextData?.availableCores || []}/>
                       <Form.Control
                           type='number'
