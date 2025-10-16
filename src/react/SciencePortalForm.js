@@ -334,7 +334,7 @@ class SciencePortalForm extends React.Component {
                           type='number'
                           name="ram"
                           max={this.state.fData?.contextData?.availableRAM?.[this.state.fData?.contextData?.availableRAM?.length - 1] || DEFAULT_RAM_NUMBER}
-                          min={DEFAULT_RAM_NUMBER}
+                          min={1}
                           className="sp-form-input"
                           value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
                           onChange={this.handleRAMChange.bind(this)}
@@ -360,7 +360,7 @@ class SciencePortalForm extends React.Component {
                           type='number'
                           name="cores"
                           max={this.state.fData?.contextData?.availableCores?.[this.state.fData?.contextData?.availableCores?.length - 1] || DEFAULT_CORES_NUMBER}
-                          min={DEFAULT_CORES_NUMBER}
+                          min={1}
                           className="sp-form-input"
                           value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
                           onChange={this.handleCoresChange.bind(this)}
