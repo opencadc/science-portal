@@ -6,17 +6,18 @@ function CanfarRange({
     value,
     range, onChange
                      }) {
-    const initialValue = range.findIndex( (el) => el === value) || 0
+    const initialValue = range.findIndex( (el) => parseInt(el) === parseInt(value)) || 0
     const [rangePos, setRangePos] = useState(initialValue)
     const handleChange = (e) => {
-        onChange(range[e.target.value])
-        setRangePos(e.target.value)
+        onChange(parseInt(range[e.target.value]))
+        setRangePos(parseInt(e.target.value))
     }
 
     React.useEffect(() => {
         if (value) {
-            const newRangePos = range.findIndex( (el) => el === value || el === value + 1 || el === value - 1) || 0
-            setRangePos(newRangePos)
+            const newRangePos = range.findIndex( (el) => parseInt(el) === parseInt(value)) || 0
+            console.log(`Setting range pos to ${newRangePos} for value ${value}`)
+            setRangePos(parseInt(newRangePos))
         }
 
     }, [value, range, setRangePos])

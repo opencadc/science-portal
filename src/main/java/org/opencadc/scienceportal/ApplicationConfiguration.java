@@ -9,8 +9,12 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.configuration2.CombinedConfiguration;
 import org.apache.commons.configuration2.Configuration;
@@ -30,15 +34,12 @@ public class ApplicationConfiguration {
     public static final long BUILD_TIME_MS = new Date().getTime();
 
     public static final String FIRST_PARTY_COOKIE_NAME = "__Host-science-portal-auth";
-    public static final String DEFAULT_CONFIG_FILE_PATH =
+    private static final String CONFIG_FILE_PATH =
             System.getProperty("user.home") + "/config/org.opencadc.science-portal.properties";
     private static final Logger LOGGER = Logger.getLogger(ApplicationConfiguration.class);
     private final Configuration configuration;
-    private final String filePath;
 
     public ApplicationConfiguration() {
-        this.filePath = ApplicationConfiguration.DEFAULT_CONFIG_FILE_PATH;
-
         final CombinedConfiguration combinedConfiguration = new CombinedConfiguration(new MergeCombiner());
 
         // Prefer System properties.
@@ -47,15 +48,25 @@ public class ApplicationConfiguration {
         final Parameters parameters = new Parameters();
         final FileBasedConfigurationBuilder<PropertiesConfiguration> builder = new FileBasedConfigurationBuilder<>(
                         PropertiesConfiguration.class)
-                .configure(parameters.properties().setFileName(filePath));
+                .configure(parameters.properties().setFileName(ApplicationConfiguration.CONFIG_FILE_PATH));
 
         try {
             combinedConfiguration.addConfiguration(builder.getConfiguration());
         } catch (ConfigurationException exception) {
-            LOGGER.warn(String.format("No configuration found at %s.\nUsing defaults.", filePath));
+            LOGGER.warn(String.format(
+                    "No configuration found at %s.\nUsing defaults.", ApplicationConfiguration.CONFIG_FILE_PATH));
         }
 
         this.configuration = combinedConfiguration;
+    }
+
+    /**
+     * Create an ApplicationConfiguration from a given PropertiesConfiguration. Mainly for testing.
+     *
+     * @param configuration Configuration to use.
+     */
+    ApplicationConfiguration(final Configuration configuration) {
+        this.configuration = configuration;
     }
 
     public String getResourceID() {
@@ -93,7 +104,7 @@ public class ApplicationConfiguration {
                 .toArray(String[]::new);
         if (tabLabelArray.length == 0) {
             throw new IllegalStateException("Configuration property " + ConfigurationKey.TAB_LABELS.propertyName
-                    + " is missing" + this.filePath);
+                    + " is missing" + ApplicationConfiguration.CONFIG_FILE_PATH);
         }
 
         return tabLabelArray;
@@ -141,8 +152,8 @@ public class ApplicationConfiguration {
         final String val = this.configuration.getString(key);
 
         if (required && !StringUtil.hasText(val)) {
-            throw new IllegalStateException(
-                    "Configuration property " + key + " is missing or invalid at " + this.filePath);
+            throw new IllegalStateException("Configuration property " + key + " is missing or invalid at "
+                    + ApplicationConfiguration.CONFIG_FILE_PATH);
         } else {
             return val;
         }
@@ -170,6 +181,10 @@ public class ApplicationConfiguration {
 
     public String getOIDCScope() {
         return getStringValue(ConfigurationKey.OIDC_SCOPE);
+    }
+
+    public ExperimentalFeatures getExperimentalFeatures() {
+        return ExperimentalFeatures.fromConfiguration(this.configuration);
     }
 
     /**
@@ -236,6 +251,67 @@ public class ApplicationConfiguration {
         ConfigurationKey(String propertyName, boolean required) {
             this.propertyName = propertyName;
             this.required = required;
+        }
+    }
+
+    /**
+     * Experimental features that can be toggled on/off via configuration. These are unreleased features behind a
+     * feature flag in the "org.opencadc.science-portal.experimental" namespace.
+     */
+    public static class ExperimentalFeatures {
+        static final String NAMESPACE = "org.opencadc.science-portal.experimental";
+
+        private final Map<String, Boolean> featureGates = new HashMap<>();
+
+        public String toJSONString() {
+            final JSONObject jsonObject = new JSONObject();
+            this.featureGates.forEach(jsonObject::put);
+            return jsonObject.toString();
+        }
+
+        public boolean isFeatureEnabled(String featureName) {
+            if (this.featureGates.containsKey(featureName)) {
+                return this.featureGates.get(featureName);
+            } else {
+                throw new IllegalArgumentException("Unknown experimental feature: " + featureName);
+            }
+        }
+
+        private static ExperimentalFeatures fromConfiguration(final Configuration configuration) {
+            final Map<String, Boolean> configuredFeatureGates = new HashMap<>();
+            Objects.requireNonNullElse(
+                            configuration.getKeys(ExperimentalFeatures.NAMESPACE, "."),
+                            Collections.<String>emptyIterator())
+                    .forEachRemaining(gate -> {
+                        if (StringUtil.hasText(gate)) {
+                            final String gateConfig =
+                                    gate.substring((ExperimentalFeatures.NAMESPACE + "\\.").length() - 1);
+                            if (!gateConfig.isEmpty()) {
+                                final String[] gateConfigItems = gateConfig.split("\\.");
+                                if (gateConfigItems.length > 0) {
+                                    final String gateName = gateConfigItems[0];
+                                    if (gateConfigItems.length > 1) {
+                                        final boolean enabled = configuration.getBoolean(gate, false);
+                                        configuredFeatureGates.put(gateName, enabled);
+                                    } else {
+                                        LOGGER.warn(
+                                                "Experimental feature gate missing enabled/disabled entry -> " + gate);
+                                        configuredFeatureGates.put(gateName, false);
+                                    }
+                                } else {
+                                    LOGGER.warn("Experimental feature gate entry found -> " + gate);
+                                }
+                            } else {
+                                LOGGER.warn("Empty experimental feature gate found in configuration -> " + gate);
+                            }
+                        }
+                    });
+            return new ExperimentalFeatures(configuredFeatureGates);
+        }
+
+        private ExperimentalFeatures(final Map<String, Boolean> configuredFeatureGates) {
+            Objects.requireNonNull(configuredFeatureGates, "configuredFeatureGates cannot be null");
+            this.featureGates.putAll(configuredFeatureGates);
         }
     }
 }

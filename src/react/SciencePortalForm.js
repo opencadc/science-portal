@@ -329,12 +329,12 @@ class SciencePortalForm extends React.Component {
                   <Col sm={6}>
                     <Form.Label className="sp-form-sublabel">Memory (GB)</Form.Label>
                       {this.state.fData.experimentalFeatures?.slider ? (<>
-                      <CanfarRange value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER} name="cores-range" onChange={this.handleRAMChange.bind(this)} range={this.state.fData?.contextData?.availableRAM || []}/>
+                      <CanfarRange value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER} name="ram-range" onChange={this.handleRAMChange.bind(this)} range={this.state.fData?.contextData?.availableRAM || []}/>
                       <Form.Control
                           type='number'
                           name="ram"
                           max={this.state.fData?.contextData?.availableRAM?.[this.state.fData?.contextData?.availableRAM?.length - 1] || DEFAULT_RAM_NUMBER}
-                          min={DEFAULT_RAM_NUMBER}
+                          min={1}
                           className="sp-form-input"
                           value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
                           onChange={this.handleRAMChange.bind(this)}
@@ -354,13 +354,12 @@ class SciencePortalForm extends React.Component {
                   <Col sm={6}>
                     <Form.Label className="sp-form-sublabel">CPU Cores</Form.Label>
                       {this.state.fData.experimentalFeatures?.slider ? (<>
-
                       <CanfarRange value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER} name="cores-range" onChange={this.handleCoresChange.bind(this)} range={this.state.fData?.contextData?.availableCores || []}/>
                       <Form.Control
                           type='number'
                           name="cores"
                           max={this.state.fData?.contextData?.availableCores?.[this.state.fData?.contextData?.availableCores?.length - 1] || DEFAULT_CORES_NUMBER}
-                          min={DEFAULT_CORES_NUMBER}
+                          min={1}
                           className="sp-form-input"
                           value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
                           onChange={this.handleCoresChange.bind(this)}
