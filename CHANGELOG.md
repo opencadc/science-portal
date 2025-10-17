@@ -1,5 +1,20 @@
 # Science Portal User Interface
 
+## [1.1.0](https://github.com/opencadc/science-portal/compare/1.0.1...1.1.0) (2025-10-17)
+
+
+### Features
+
+* add experimental feature gate ([2bb6b45](https://github.com/opencadc/science-portal/commit/2bb6b4592928f0a1bf8c627dab2559f2e1f46106))
+* allow enabling of sliders ([f514b41](https://github.com/opencadc/science-portal/commit/f514b414dd75bcb7a90ac4b6506ee9c76545ebae))
+
+
+### Bug Fixes
+
+* bundle js to speed up page loading and not rely on external sources ([4e66aa8](https://github.com/opencadc/science-portal/commit/4e66aa8dce42d4f973d158286b7c2a336d5fe61b))
+* make min value 1 to allow reduction from default amount ([40cdd01](https://github.com/opencadc/science-portal/commit/40cdd014913ac327367829ea7f371401aadabc0f))
+* small fixes for minimum value and initial page load ([e8e49ad](https://github.com/opencadc/science-portal/commit/e8e49ad0f40c0ec3599d2e4bf4699d4b670096f2))
+
 ## [1.0.1](https://github.com/opencadc/science-portal/compare/1.0.0...1.0.1) (2025-09-09)
 
 
