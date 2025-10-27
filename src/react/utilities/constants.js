@@ -11,7 +11,6 @@ export const CARTA_TYPE = 'carta'
 export const CONTRIBUTED_TYPE = 'contributed'
 export const DESKTOP_TYPE = 'desktop'
 export const FIREFLY_TYPE = 'firefly'
-export const SKAHA_PROJECT = 'skaha'
 
 export const DEFAULT_IMAGE_NAMES = {
     [CARTA_TYPE]: DEFAULT_CARTA_SKAHA_IMAGE,

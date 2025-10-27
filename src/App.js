@@ -138,7 +138,8 @@ class SciencePortalApp extends React.Component {
       userInfo: {},
       themeName: "canfar",
       tabLabels: ["Public", "Advanced"],
-      fetchingStorageQuota: false
+      fetchingStorageQuota: false,
+      defaultProjectName: ""
     };
   }
 
@@ -213,6 +214,10 @@ class SciencePortalApp extends React.Component {
 
   setThemeName(themeName) {
     this.setState({ themeName: themeName });
+  }
+
+  setDefaultProjectName(projectName) {
+    this.setState({ defaultProjectName: projectName });
   }
 
   setTabLabels(tabLabels) {

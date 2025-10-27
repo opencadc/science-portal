@@ -5,6 +5,7 @@ import ca.nrc.cadc.reg.Standards;
 import ca.nrc.cadc.reg.client.LocalAuthority;
 import ca.nrc.cadc.reg.client.RegistryClient;
 import ca.nrc.cadc.util.StringUtil;
+import jakarta.validation.constraints.NotNull;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
@@ -183,6 +184,15 @@ public class ApplicationConfiguration {
         return getStringValue(ConfigurationKey.OIDC_SCOPE);
     }
 
+    /**
+     * Get the default project name for the pull-down menu from configuration.
+     *
+     * @return Default project name, never null.
+     */
+    @NotNull public String getDefaultProjectName() {
+        return getStringValue(ConfigurationKey.DEFAULT_PROJECT_NAME);
+    }
+
     public ExperimentalFeatures getExperimentalFeatures() {
         return ExperimentalFeatures.fromConfiguration(this.configuration);
     }
@@ -243,7 +253,8 @@ public class ApplicationConfiguration {
         OIDC_REDIRECT_URI("org.opencadc.science-portal.oidc.redirectURI", false),
         OIDC_CALLBACK_URI("org.opencadc.science-portal.oidc.callbackURI", false),
         OIDC_SCOPE("org.opencadc.science-portal.oidc.scope", false),
-        STORAGE_XML_INFO_URL("org.opencadc.science-portal.storageXmlInfoUrl", false);
+        STORAGE_XML_INFO_URL("org.opencadc.science-portal.storageXmlInfoUrl", false),
+        DEFAULT_PROJECT_NAME("org.opencadc.science-portal.defaultProjectName", true);
 
         private final String propertyName;
         private final boolean required;

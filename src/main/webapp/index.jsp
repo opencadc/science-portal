@@ -117,6 +117,7 @@
           contentBase: "${contextPath}/dist",
           headerURLs: JSON.parse('<%= headerURLJSON %>'),
           storageXmlInfoUrl: '<%= storageXmlInfoUrl %>',
+          defaultProjectName: '<%= configuration.getDefaultProjectName() %>',
           experimentalFeatures: JSON.parse('<%= experimentalJSON %>')
         })
 

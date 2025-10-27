@@ -17,7 +17,7 @@ import {faQuestionCircle} from "@fortawesome/free-solid-svg-icons";
 import {getProjectImagesMap, getProjectNames} from "./utilities/utils";
 import {
     DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES,
-    DEFAULT_RAM_NUMBER, HAS_FIXED, SKAHA_PROJECT
+    DEFAULT_RAM_NUMBER, HAS_FIXED
 } from "./utilities/constants";
 import {startsWithNumber} from "./components/CanfarRange/utils";
 
@@ -202,7 +202,7 @@ class SciencePortalForm extends React.Component {
   render() {
     const projectsOfType = getProjectImagesMap(this.state.fData?.imageList)
     const availableProjects = getProjectNames(projectsOfType) || []
-    const defaultImages =  projectsOfType?.[SKAHA_PROJECT] || []
+    const defaultImages =  projectsOfType?.[this.state.fData?.defaultProjectName] || []
     const imagesOfProject = this.state.selectedProject ? projectsOfType?.[this.state.selectedProject] : defaultImages
     const defaultImageName = this.state.fData?.selectedType ? DEFAULT_IMAGE_NAMES[this.state.fData.selectedType] : undefined
     const defaultImageId = defaultImageName ? imagesOfProject?.find(mObj => mObj.name === defaultImageName)?.id : imagesOfProject?.[0]?.id
@@ -243,7 +243,7 @@ class SciencePortalForm extends React.Component {
                     name="project"
                     className="sp-form-cursor"
                     onChange={(e) => this.setState({selectedProject: e.target.value || undefined})}
-                    value={this.state.selectedProject || SKAHA_PROJECT}
+                    value={this.state.selectedProject || this.state.fData?.defaultProjectName}
                 >
                   <option className="sp-form" value="">Select project</option>
                   {availableProjects?.map(project => (
