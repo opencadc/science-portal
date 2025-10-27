@@ -27,7 +27,6 @@ dependencies {
 
     implementation 'com.opencsv:opencsv:[5.1,6.0)'
     implementation 'commons-net:commons-net:3.9.0'
-    implementation 'jakarta.validation:jakarta.validation-api:3.1.1'
     implementation 'org.apache.commons:commons-configuration2:[2.11.0,3.0.0)'
     implementation 'org.opencadc:cadc-access-control-identity:[1.2.5,)'
     implementation 'org.opencadc:cadc-gms:[1.0.12,2.0)'

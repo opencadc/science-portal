@@ -5,7 +5,6 @@ import ca.nrc.cadc.reg.Standards;
 import ca.nrc.cadc.reg.client.LocalAuthority;
 import ca.nrc.cadc.reg.client.RegistryClient;
 import ca.nrc.cadc.util.StringUtil;
-import jakarta.validation.constraints.NotNull;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
@@ -150,7 +149,11 @@ public class ApplicationConfiguration {
     }
 
     String getStringValue(final String key, final boolean required) {
-        final String val = this.configuration.getString(key);
+        if (!this.configuration.containsKey(key)) {
+            LOGGER.warn("Requested configuration key not found: " + key);
+        }
+
+        final String val = this.configuration.getString(key, "");
 
         if (required && !StringUtil.hasText(val)) {
             throw new IllegalStateException("Configuration property " + key + " is missing or invalid at "
@@ -189,7 +192,7 @@ public class ApplicationConfiguration {
      *
      * @return Default project name, never null.
      */
-    @NotNull public String getDefaultProjectName() {
+    public String getDefaultProjectName() {
         return getStringValue(ConfigurationKey.DEFAULT_PROJECT_NAME);
     }
 
