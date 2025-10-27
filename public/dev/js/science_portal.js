@@ -42,7 +42,7 @@
     inputs.headerURLs.baseURLCanfar = inputs.baseURL
 
     inputs.reactApp = _reactApp
-    _reactApp.setDefaultProjectName(inputs.defaultProjectName)
+
     _reactApp.setThemeName(inputs.themeName)
     _reactApp.setHeaderURLs(inputs.headerURLs)
     if (inputs.storageXmlInfoUrl) {
@@ -508,6 +508,7 @@
       formDataForType.changeTypeHandler = setLaunchFormForType
       formDataForType.resetHandler = resetLaunchForm
       formDataForType.experimentalFeatures = inputs.experimentalFeatures
+      formDataForType.defaultProjectName = inputs.defaultProjectName
       return formDataForType
     }
 

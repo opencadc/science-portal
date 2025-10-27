@@ -254,7 +254,7 @@ public class ApplicationConfiguration {
         OIDC_CALLBACK_URI("org.opencadc.science-portal.oidc.callbackURI", false),
         OIDC_SCOPE("org.opencadc.science-portal.oidc.scope", false),
         STORAGE_XML_INFO_URL("org.opencadc.science-portal.storageXmlInfoUrl", false),
-        DEFAULT_PROJECT_NAME("org.opencadc.science-portal.defaultProjectName", true);
+        DEFAULT_PROJECT_NAME("org.opencadc.science-portal.defaultProjectName", false);
 
         private final String propertyName;
         private final boolean required;

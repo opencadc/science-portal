@@ -32,7 +32,7 @@ class SciencePortalForm extends React.Component {
       this.selectedCores = Math.max(props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER, DEFAULT_CORES_NUMBER)
     }
     this.state = {
-      fData:props.fData,
+      fData: props.fData,
       selectedRAM: this.selectedRAM,
       selectedCores: this.selectedCores,
       selectedProject: undefined,
