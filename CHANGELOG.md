@@ -1,5 +1,18 @@
 # Science Portal User Interface
 
+## [1.2.0](https://github.com/opencadc/science-portal/compare/1.1.0...1.2.0) (2025-10-30)
+
+
+### Features
+
+* add configurable default project for project pull down ([3d94b63](https://github.com/opencadc/science-portal/commit/3d94b63ee6bef912f6d14b8e7a5d70c91bff1697))
+* configurable project name ([8a6a81f](https://github.com/opencadc/science-portal/commit/8a6a81fc1eef9b4d80f40fc98bad1e0b36a7103f))
+
+
+### Bug Fixes
+
+* change missing config requirement ([ab11d34](https://github.com/opencadc/science-portal/commit/ab11d344490ec16430afec9ae5a2ba46976ffaf6))
+
 ## [1.1.0](https://github.com/opencadc/science-portal/compare/1.0.1...1.1.0) (2025-10-17)
 
 
