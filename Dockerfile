@@ -1,10 +1,10 @@
 FROM gradle:8-jdk21 AS base
-ARG NODE_VERSION=v22.18.0
+ARG NODE_VERSION=v22.21.0
 ARG NVM_DIR=/nvm
 ARG NVM_VERSION=v0.40.3
 
 FROM base AS builder
-ARG NODE_VERSION=v22.18.0
+ARG NODE_VERSION=v22.21.0
 ARG NVM_DIR=/nvm
 ARG NVM_VERSION=v0.40.3
 
@@ -16,7 +16,7 @@ RUN \
     && . ${NVM_DIR}/nvm.sh \
     && nvm install ${NODE_VERSION} \
     # verifies the right Node.js version is in the environment
-    && node -v # should print `v22.18.0` \
+    && node -v # should print `v22.21.0` \
     # verifies the right npm version is in the environment
     && npm -v # should print `10.9.0`
 COPY . /science-portal

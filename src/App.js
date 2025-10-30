@@ -128,7 +128,9 @@ class SciencePortalApp extends React.Component {
     this.state = {
       sessionData: { listType: "loading", sessData: [] },
       modalData: MODAL_DATA,
-      fData: {},
+      fData: {
+          defaultProjectName: "",
+      },
       platformUsage: PLATFORM_USAGE_TEST,
       urls: URLS,
       confirmModalData: { dynamicProps: { isOpen: false } },
@@ -213,6 +215,10 @@ class SciencePortalApp extends React.Component {
 
   setThemeName(themeName) {
     this.setState({ themeName: themeName });
+  }
+
+  setDefaultProjectName(projectName) {
+    this.setState({ defaultProjectName: projectName });
   }
 
   setTabLabels(tabLabels) {

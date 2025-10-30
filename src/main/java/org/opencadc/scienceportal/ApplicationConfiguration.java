@@ -149,7 +149,11 @@ public class ApplicationConfiguration {
     }
 
     String getStringValue(final String key, final boolean required) {
-        final String val = this.configuration.getString(key);
+        if (!this.configuration.containsKey(key)) {
+            LOGGER.warn("Requested configuration key not found: " + key);
+        }
+
+        final String val = this.configuration.getString(key, "");
 
         if (required && !StringUtil.hasText(val)) {
             throw new IllegalStateException("Configuration property " + key + " is missing or invalid at "
@@ -181,6 +185,15 @@ public class ApplicationConfiguration {
 
     public String getOIDCScope() {
         return getStringValue(ConfigurationKey.OIDC_SCOPE);
+    }
+
+    /**
+     * Get the default project name for the pull-down menu from configuration.
+     *
+     * @return Default project name, never null.
+     */
+    public String getDefaultProjectName() {
+        return getStringValue(ConfigurationKey.DEFAULT_PROJECT_NAME);
     }
 
     public ExperimentalFeatures getExperimentalFeatures() {
@@ -243,7 +256,8 @@ public class ApplicationConfiguration {
         OIDC_REDIRECT_URI("org.opencadc.science-portal.oidc.redirectURI", false),
         OIDC_CALLBACK_URI("org.opencadc.science-portal.oidc.callbackURI", false),
         OIDC_SCOPE("org.opencadc.science-portal.oidc.scope", false),
-        STORAGE_XML_INFO_URL("org.opencadc.science-portal.storageXmlInfoUrl", false);
+        STORAGE_XML_INFO_URL("org.opencadc.science-portal.storageXmlInfoUrl", false),
+        DEFAULT_PROJECT_NAME("org.opencadc.science-portal.defaultProjectName", false);
 
         private final String propertyName;
         private final boolean required;
