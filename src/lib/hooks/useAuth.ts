@@ -37,16 +37,9 @@ function isCanfarMode(): boolean {
   // IMPORTANT: Always use environment variable as source of truth
   const envMode = process.env.NEXT_PUBLIC_USE_CANFAR === 'true';
   const storageMode = localStorage.getItem('AUTH_MODE');
-
-  console.log('🔍 Client-side mode detection:');
-  console.log('  - NEXT_PUBLIC_USE_CANFAR:', process.env.NEXT_PUBLIC_USE_CANFAR);
-  console.log('  - localStorage AUTH_MODE:', storageMode);
-  console.log('  - Resolved to CANFAR mode:', envMode);
-
   // Sync localStorage to match environment
   const correctMode = envMode ? 'CANFAR' : 'OIDC';
   if (storageMode !== correctMode) {
-    console.log(`  - Updating localStorage from "${storageMode}" to "${correctMode}"`);
     localStorage.setItem('AUTH_MODE', correctMode);
   }
 
@@ -98,7 +91,6 @@ export function useAuthStatus(
       // Store the access token in localStorage for API calls
       const { saveToken } = require('@/lib/auth/token-storage');
       saveToken(session.accessToken);
-      console.log('  - Saved access token to localStorage for API calls');
     }
   }, [isCanfar, status, session?.accessToken]);
 

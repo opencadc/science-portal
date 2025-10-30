@@ -59,16 +59,6 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
 
   // Check if using OIDC mode
   const isOIDC = process.env.NEXT_USE_CANFAR !== 'true';
-
-  console.log('\n' + '🔍'.repeat(40));
-  console.log('🔍 /api/auth/status - Mode Detection:');
-  console.log('🔍'.repeat(40));
-  console.log('📋 NEXT_USE_CANFAR:', process.env.NEXT_USE_CANFAR);
-  console.log('📋 NEXT_USE_CANFAR type:', typeof process.env.NEXT_USE_CANFAR);
-  console.log('📋 isOIDC:', isOIDC);
-  console.log('📋 Authorization header:', request.headers.get('authorization') ? 'present' : 'missing');
-  console.log('🔍'.repeat(40) + '\n');
-
   if (isOIDC) {
     // In OIDC mode, decode the JWT token to get user info
     // instead of calling external whoami endpoint
