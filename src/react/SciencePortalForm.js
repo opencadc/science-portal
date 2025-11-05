@@ -30,9 +30,9 @@ class SciencePortalForm extends React.Component {
     this.selectedCores = DEFAULT_CORES_NUMBER
     this.selectedGPU = DEFAULT_GPU_NUMBER
     if (typeof props.fData.contextData !== "undefined") {
-      this.selectedRAM = Math.max(props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER, DEFAULT_RAM_NUMBER)
-      this.selectedCores = Math.max(props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER, DEFAULT_CORES_NUMBER)
-      this.selectedGPU = Math.max(props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER, DEFAULT_GPU_NUMBER)
+      this.selectedRAM = props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER
+      this.selectedCores = props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER
+      this.selectedGPU = props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER
     }
     this.state = {
       fData: props.fData,
@@ -153,9 +153,9 @@ class SciencePortalForm extends React.Component {
     event.stopPropagation();
 
     this.setState({
-      selectedCores : Math.max(this.props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER, DEFAULT_CORES_NUMBER),
-      selectedRAM : Math.max(this.props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER, DEFAULT_RAM_NUMBER),
-      selectedGPU : Math.max(this.props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER, DEFAULT_GPU_NUMBER),
+      selectedCores : this.props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER,
+      selectedRAM : this.props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER,
+      selectedGPU : this.props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER,
       selectedProject: '',
       selectedImageId: '',
       resourceType: 'shared',

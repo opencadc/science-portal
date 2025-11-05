@@ -29,9 +29,9 @@ class SciencePortalPrivateForm extends React.Component {
     this.selectedGPU = DEFAULT_GPU_NUMBER
     this.repositoryUsername = props.authenticatedUsername && props.authenticatedUsername !== "Login" ? props.authenticatedUsername : ""
     if (typeof props.fData.contextData !== "undefined") {
-      this.selectedRAM = Math.max(props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER, DEFAULT_RAM_NUMBER)
-      this.selectedCores = Math.max(props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER, DEFAULT_CORES_NUMBER)
-      this.selectedGPU = Math.max(props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER, DEFAULT_GPU_NUMBER)
+      this.selectedRAM = props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER
+      this.selectedCores = props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER
+      this.selectedGPU = props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER
     }
 
     const repositoryHostArray = props.fData.repositoryHosts
@@ -175,9 +175,9 @@ class SciencePortalPrivateForm extends React.Component {
     const formProps = this.props;
 
     this.setState({
-      selectedCores : Math.max(this.props.fData.contextData.defaultCores || DEFAULT_CORES_NUMBER, DEFAULT_CORES_NUMBER),
-      selectedRAM : Math.max(this.props.fData.contextData.defaultRAM || DEFAULT_RAM_NUMBER, DEFAULT_RAM_NUMBER),
-      selectedGPU : Math.max(this.props.fData.contextData.defaultGPU || DEFAULT_GPU_NUMBER, DEFAULT_GPU_NUMBER),
+      selectedCores : this.props.fData.contextData.defaultCores || DEFAULT_CORES_NUMBER,
+      selectedRAM : this.props.fData.contextData.defaultRAM || DEFAULT_RAM_NUMBER,
+      selectedGPU : this.props.fData.contextData.defaultGPU || DEFAULT_GPU_NUMBER,
       repositoryUsername: formProps.authenticatedUsername && formProps.authenticatedUsername !== "Login"
           ? formProps.authenticatedUsername : "",
         resourceType: 'shared',
