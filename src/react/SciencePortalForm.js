@@ -74,14 +74,6 @@ class SciencePortalForm extends React.Component {
           });
       }
   }
-    handleRAMOnBlur(event) {
-        const maybeNumber = +event?.target?.value || event
-        if (!(maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableRAM[this.state.fData?.contextData?.availableRAM.length - 1] && this.state.fData?.contextData?.availableRAM.includes(maybeNumber))) {
-            this.setState({
-                selectedRAM: undefined
-            });
-        }
-    }
     handleCoresChange(event) {
       if (this.state.fData.experimentalFeatures?.slider) {
           const maybeNumber = +event?.target?.value || event
@@ -95,15 +87,6 @@ class SciencePortalForm extends React.Component {
               selectedCores: event.target.value
           });
       }
-    }
-
-    handleCoresOnBlur(event) {
-        const maybeNumber = +event?.target?.value || event
-        if (!(maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableCores[this.state.fData?.contextData?.availableCores.length - 1] && this.state.fData?.contextData?.availableCores.includes(maybeNumber))) {
-            this.setState({
-                selectedCores: undefined
-            });
-        }
     }
 
     handleGPUChange(event) {
@@ -120,16 +103,6 @@ class SciencePortalForm extends React.Component {
               selectedGPU: event.target.value
           });
       }
-    }
-
-    handleGPUOnBlur(event) {
-        const maybeNumber = +event?.target?.value || event
-        const availableGPU = this.state.fData?.contextData?.availableGPU || [0]
-        if (!(maybeNumber >= 0 && maybeNumber <= availableGPU[availableGPU.length - 1] && availableGPU.includes(maybeNumber))) {
-            this.setState({
-                selectedGPU: undefined
-            });
-        }
     }
 
 
