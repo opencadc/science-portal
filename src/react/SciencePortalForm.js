@@ -123,8 +123,8 @@ class SciencePortalForm extends React.Component {
     event.stopPropagation();
 
     this.setState({
-      selectedCores : Math.max(this.props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER, DEFAULT_CORES_NUMBER),
-      selectedRAM : Math.max(this.props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER, DEFAULT_RAM_NUMBER),
+      selectedCores : this.props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER,
+      selectedRAM : this.props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER,
       selectedProject: '',
       selectedImageId: '',
       resourceType: 'shared',
