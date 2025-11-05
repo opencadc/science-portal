@@ -1,6 +1,6 @@
 // Defaults
-export const DEFAULT_CORES_NUMBER = 2
-export const DEFAULT_RAM_NUMBER = 8
+export const DEFAULT_CORES_NUMBER = 1
+export const DEFAULT_RAM_NUMBER = 1
 export const DEFAULT_GPU_NUMBER = 0
 export const DEFAULT_NOTEBOOK_SKAHA_IMAGE = 'astroml:latest'
 export const DEFAULT_DESKTOP_SKAHA_IMAGE = 'desktop:latest'
