@@ -282,7 +282,8 @@
             _selfPortalForm._contextData.availableRAM = curContext.memoryGB.options
             _selfPortalForm._contextData.defaultCores = curContext.cores.default
             _selfPortalForm._contextData.defaultRAM = curContext.memoryGB.default
-
+            _selfPortalForm._contextData.availableGPU = curContext.gpus?.options?.length > 0 ? [0, curContext.gpus?.options?.[0]] : [0, 1]
+            _selfPortalForm._contextData.defaultGPU = curContext.gpus?.default || 0
             _selfPortalForm._ajaxCallCount--
             if (_selfPortalForm._ajaxCallCount === 0) {
               trigger(_selfPortalForm, cadc.web.science.portal.form.events.onLoadFormDataDone)

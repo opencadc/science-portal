@@ -9,6 +9,7 @@ import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
 import Placeholder from 'react-bootstrap/Placeholder';
 import Popover from 'react-bootstrap/Popover';
 import CanfarRange from "./components/CanfarRange/CanfarRange";
+import CanfarResourceInput from "./components/CanfarResourceInput/CanfarResourceInput";
 
 import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faQuestionCircle} from "@fortawesome/free-solid-svg-icons";
@@ -17,7 +18,7 @@ import {faQuestionCircle} from "@fortawesome/free-solid-svg-icons";
 import {getProjectImagesMap, getProjectNames} from "./utilities/utils";
 import {
     DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES,
-    DEFAULT_RAM_NUMBER, HAS_FIXED
+    DEFAULT_RAM_NUMBER, DEFAULT_GPU_NUMBER, HAS_FIXED
 } from "./utilities/constants";
 import {startsWithNumber} from "./components/CanfarRange/utils";
 
@@ -27,14 +28,17 @@ class SciencePortalForm extends React.Component {
     super(props)
     this.selectedRAM = DEFAULT_RAM_NUMBER
     this.selectedCores = DEFAULT_CORES_NUMBER
+    this.selectedGPU = DEFAULT_GPU_NUMBER
     if (typeof props.fData.contextData !== "undefined") {
-      this.selectedRAM = Math.max(props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER, DEFAULT_RAM_NUMBER)
-      this.selectedCores = Math.max(props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER, DEFAULT_CORES_NUMBER)
+      this.selectedRAM = props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER
+      this.selectedCores = props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER
+      this.selectedGPU = props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER
     }
     this.state = {
       fData: props.fData,
       selectedRAM: this.selectedRAM,
       selectedCores: this.selectedCores,
+      selectedGPU: this.selectedGPU,
       selectedProject: undefined,
       selectedImageId: undefined,
       resourceType: 'shared',
@@ -70,14 +74,6 @@ class SciencePortalForm extends React.Component {
           });
       }
   }
-    handleRAMOnBlur(event) {
-        const maybeNumber = +event?.target?.value || event
-        if (!(maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableRAM[this.state.fData?.contextData?.availableRAM.length - 1] && this.state.fData?.contextData?.availableRAM.includes(maybeNumber))) {
-            this.setState({
-                selectedRAM: undefined
-            });
-        }
-    }
     handleCoresChange(event) {
       if (this.state.fData.experimentalFeatures?.slider) {
           const maybeNumber = +event?.target?.value || event
@@ -93,13 +89,20 @@ class SciencePortalForm extends React.Component {
       }
     }
 
-    handleCoresOnBlur(event) {
-        const maybeNumber = +event?.target?.value || event
-        if (!(maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableCores[this.state.fData?.contextData?.availableCores.length - 1] && this.state.fData?.contextData?.availableCores.includes(maybeNumber))) {
-            this.setState({
-                selectedCores: undefined
-            });
-        }
+    handleGPUChange(event) {
+      if (this.state.fData.experimentalFeatures?.slider) {
+          const maybeNumber = +event?.target?.value || event
+          const availableGPU = this.state.fData?.contextData?.availableGPU || [0]
+          if (maybeNumber >= 0 && maybeNumber <= availableGPU[availableGPU.length - 1] && availableGPU.some(num => startsWithNumber(maybeNumber, num))) {
+              this.setState({
+                  selectedGPU: maybeNumber
+              });
+          }
+      } else {
+          this.setState({
+              selectedGPU: event.target.value
+          });
+      }
     }
 
 
@@ -125,6 +128,7 @@ class SciencePortalForm extends React.Component {
     this.setState({
       selectedCores : this.props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER,
       selectedRAM : this.props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER,
+      selectedGPU : this.props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER,
       selectedProject: '',
       selectedImageId: '',
       resourceType: 'shared',
@@ -326,20 +330,25 @@ class SciencePortalForm extends React.Component {
               </Col>
               <Col sm={7}>
                 <Row>
-                  <Col sm={6}>
+                  <Col sm={4}>
                     <Form.Label className="sp-form-sublabel">Memory (GB)</Form.Label>
                       {this.state.fData.experimentalFeatures?.slider ? (<>
-                      <CanfarRange value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER} name="ram-range" onChange={this.handleRAMChange.bind(this)} range={this.state.fData?.contextData?.availableRAM || []}/>
-                      <Form.Control
-                          type='number'
-                          name="ram"
-                          max={this.state.fData?.contextData?.availableRAM?.[this.state.fData?.contextData?.availableRAM?.length - 1] || DEFAULT_RAM_NUMBER}
-                          min={1}
-                          className="sp-form-input"
+                      <CanfarRange
                           value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
+                          name="ram-range"
                           onChange={this.handleRAMChange.bind(this)}
-                          onBlur={this.handleRAMOnBlur.bind(this)}
-                      /></>) : (
+                          range={this.state.fData?.contextData?.availableRAM || []}
+                          label="Memory (GB)"
+                      />
+                      <div className="mt-2">
+                        <CanfarResourceInput
+                            value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
+                            options={this.state.fData?.contextData?.availableRAM || []}
+                            onChange={this.handleRAMChange.bind(this)}
+                            label="Memory (GB)"
+                        />
+                      </div>
+                      </>) : (
                           <Form.Select
                               value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
                               name="ram"
@@ -351,20 +360,25 @@ class SciencePortalForm extends React.Component {
                           </Form.Select>
                           )}
                   </Col>
-                  <Col sm={6}>
+                  <Col sm={4}>
                     <Form.Label className="sp-form-sublabel">CPU Cores</Form.Label>
                       {this.state.fData.experimentalFeatures?.slider ? (<>
-                      <CanfarRange value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER} name="cores-range" onChange={this.handleCoresChange.bind(this)} range={this.state.fData?.contextData?.availableCores || []}/>
-                      <Form.Control
-                          type='number'
-                          name="cores"
-                          max={this.state.fData?.contextData?.availableCores?.[this.state.fData?.contextData?.availableCores?.length - 1] || DEFAULT_CORES_NUMBER}
-                          min={1}
-                          className="sp-form-input"
+                      <CanfarRange
                           value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
+                          name="cores-range"
                           onChange={this.handleCoresChange.bind(this)}
-                          onBlur={this.handleCoresOnBlur.bind(this)}
-                      /> </>) : (
+                          range={this.state.fData?.contextData?.availableCores || []}
+                          label="CPU Cores"
+                      />
+                      <div className="mt-2">
+                        <CanfarResourceInput
+                            value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
+                            options={this.state.fData?.contextData?.availableCores || []}
+                            onChange={this.handleCoresChange.bind(this)}
+                            label="CPU Cores"
+                        />
+                      </div>
+                      </>) : (
                           <Form.Select
                               name="cores"
                               className="sp-form-cursor"
@@ -372,6 +386,36 @@ class SciencePortalForm extends React.Component {
                               onChange={this.handleCoresChange.bind(this)}>
                               {(this.state.fData?.contextData?.availableCores || []).map(mapObj => (
                                   <option key={mapObj} value={mapObj}>{mapObj}</option>
+                              ))}
+                          </Form.Select>
+                          )}
+                  </Col>
+                  <Col sm={4}>
+                    <Form.Label className="sp-form-sublabel">GPU</Form.Label>
+                      {this.state.fData.experimentalFeatures?.slider ? (<>
+                      <CanfarRange
+                          value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
+                          name="gpu-range"
+                          onChange={this.handleGPUChange.bind(this)}
+                          range={this.state.fData?.contextData?.availableGPU || [0]}
+                          label="GPU"
+                      />
+                      <div className="mt-2">
+                        <CanfarResourceInput
+                            value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
+                            options={this.state.fData?.contextData?.availableGPU || [0]}
+                            onChange={this.handleGPUChange.bind(this)}
+                            label="GPU"
+                        />
+                      </div>
+                      </>) : (
+                          <Form.Select
+                              name="gpu"
+                              className="sp-form-cursor"
+                              value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
+                              onChange={this.handleGPUChange.bind(this)}>
+                              {(this.state.fData?.contextData?.availableGPU || [0]).map(mapObj => (
+                                  <option key={mapObj} value={mapObj}>{mapObj === 0 ? 'None' : mapObj}</option>
                               ))}
                           </Form.Select>
                           )}
