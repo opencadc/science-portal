@@ -139,20 +139,20 @@ class SciencePortalForm extends React.Component {
   }
 
   static getDerivedStateFromProps(props, state) {
-    console.log(`getDerivedStateFromProps()`)
+    console.debug(`getDerivedStateFromProps()`)
     if (props.fData !== state.fData) {
-      console.log(`getDerivedStateFromProps(): OK`)
+      console.debug(`getDerivedStateFromProps(): OK`)
       return {fData: props.fData}
     } else {
-      console.log(`getDerivedStateFromProps(): IGNORING`)
+      console.debug(`getDerivedStateFromProps(): IGNORING`)
       return null
     }
   }
 
   componentDidUpdate(nextProps) {
-    console.log('componentDidUpdate()')
+    console.debug('componentDidUpdate()')
     if (this.props.fData !== nextProps.fData) {
-      console.log(`componentDidUpdate(): OK`)
+      console.debug(`componentDidUpdate(): OK`)
         const canHaveFixed = HAS_FIXED.includes(this.state.fData?.selectedType)
         let newState = {
             fData: nextProps.fData
@@ -169,7 +169,7 @@ class SciencePortalForm extends React.Component {
         ...newState,
       });
     } else {
-      console.log(`componentDidUpdate(): IGNORING`)
+      console.debug(`componentDidUpdate(): IGNORING`)
     }
   }
 
@@ -210,6 +210,8 @@ class SciencePortalForm extends React.Component {
     const imagesOfProject = this.state.selectedProject ? projectsOfType?.[this.state.selectedProject] : defaultImages
     const defaultImageName = this.state.fData?.selectedType ? DEFAULT_IMAGE_NAMES[this.state.fData.selectedType] : undefined
     const defaultImageId = defaultImageName ? imagesOfProject?.find(mObj => mObj.name === defaultImageName)?.id : imagesOfProject?.[0]?.id
+    const supportsGPU = this.state.fData?.contextData?.availableGPU?.length > 0
+    const fixedColumnWidth = supportsGPU ? 4 : 6
     const canHaveFixed = HAS_FIXED.includes(this.state.fData?.selectedType)
       return (
       <>
@@ -330,7 +332,7 @@ class SciencePortalForm extends React.Component {
               </Col>
               <Col sm={7}>
                 <Row>
-                  <Col sm={4}>
+                  <Col sm={fixedColumnWidth}>
                     <Form.Label className="sp-form-sublabel">Memory (GB)</Form.Label>
                       {this.state.fData.experimentalFeatures?.slider ? (<>
                       <CanfarRange
@@ -360,7 +362,7 @@ class SciencePortalForm extends React.Component {
                           </Form.Select>
                           )}
                   </Col>
-                  <Col sm={4}>
+                  <Col sm={fixedColumnWidth}>
                     <Form.Label className="sp-form-sublabel">CPU Cores</Form.Label>
                       {this.state.fData.experimentalFeatures?.slider ? (<>
                       <CanfarRange
@@ -390,6 +392,7 @@ class SciencePortalForm extends React.Component {
                           </Form.Select>
                           )}
                   </Col>
+                  {supportsGPU ? (
                   <Col sm={4}>
                     <Form.Label className="sp-form-sublabel">GPU</Form.Label>
                       {this.state.fData.experimentalFeatures?.slider ? (<>
@@ -419,7 +422,7 @@ class SciencePortalForm extends React.Component {
                               ))}
                           </Form.Select>
                           )}
-                  </Col>
+                  </Col>) : null}
                 </Row>
               </Col>
             </Row>
