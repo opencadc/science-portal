@@ -71,7 +71,6 @@ package org.opencadc.scienceportal.userinfo;
 import ca.nrc.cadc.auth.AuthMethod;
 import ca.nrc.cadc.auth.AuthenticationUtil;
 import ca.nrc.cadc.auth.NotAuthenticatedException;
-import ca.nrc.cadc.net.HttpGet;
 import ca.nrc.cadc.reg.Standards;
 import ca.nrc.cadc.reg.client.RegistryClient;
 import java.io.IOException;
@@ -93,29 +92,19 @@ public class GetAction extends SciencePortalAuthAction {
         final Subject subjectFromCookie = getCurrentSubject(sessionsURL);
         Subject.doAs(subjectFromCookie, (PrivilegedExceptionAction<?>) () -> {
             try {
-                final HttpGet sessionAccessCheck = new HttpGet(sessionsURL, true);
-                sessionAccessCheck.run();
-
-                final Throwable getError = sessionAccessCheck.getThrowable();
-                if (getError instanceof NotAuthenticatedException) {
-                    syncOutput.setCode(HttpServletResponse.SC_UNAUTHORIZED);
-                } else {
-                    syncOutput.setHeader("content-type", "application/json");
-                    final JSONObject jsonObject = new JSONObject();
-                    final Subject validatedSubject = AuthenticationUtil.validateSubject(subjectFromCookie);
-                    jsonObject.put(
-                            "name", AuthenticationUtil.getIdentityManager().toDisplayString(validatedSubject));
-                    syncOutput.getOutputStream().write(jsonObject.toString().getBytes(StandardCharsets.UTF_8));
-                    syncOutput.getOutputStream().flush();
+                syncOutput.setHeader("content-type", "application/json");
+                final JSONObject jsonObject = new JSONObject();
+                final Subject validatedSubject = AuthenticationUtil.validateSubject(subjectFromCookie);
+                if (AuthenticationUtil.getAuthMethod(validatedSubject) == AuthMethod.ANON) {
+                    throw new NotAuthenticatedException("Unauthenticated user");
                 }
-            } catch (RuntimeException runtimeException) {
+                jsonObject.put("name", AuthenticationUtil.getIdentityManager().toDisplayString(validatedSubject));
+                syncOutput.getOutputStream().write(jsonObject.toString().getBytes(StandardCharsets.UTF_8));
+                syncOutput.getOutputStream().flush();
+            } catch (NotAuthenticatedException exception) {
                 // The Skaha API throws a RuntimeException when looking up the capabilities with an old Token.
-                if ((runtimeException.getCause() instanceof IOException)
-                        && (runtimeException.getCause().getCause() instanceof NotAuthenticatedException)) {
-                    syncOutput.setCode(HttpServletResponse.SC_UNAUTHORIZED);
-                    return null;
-                }
-                throw runtimeException;
+                syncOutput.setCode(HttpServletResponse.SC_UNAUTHORIZED);
+                return null;
             } catch (IOException exception) {
                 // Bad service configuration
                 syncOutput.setCode(HttpServletResponse.SC_NOT_IMPLEMENTED);
