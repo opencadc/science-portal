@@ -1,5 +1,13 @@
 # Science Portal User Interface
 
+## [1.2.1](https://github.com/opencadc/science-portal/compare/1.2.0...1.2.1) (2025-11-17)
+
+
+### Bug Fixes
+
+* fix to use interactive view for sessions ([b3b7eec](https://github.com/opencadc/science-portal/commit/b3b7eece1aa120129ec69b01dda89c221cf396de))
+* updates for default values ([42496a6](https://github.com/opencadc/science-portal/commit/42496a63eb99971b863de8c218357268386853c2))
+
 ## [1.2.0](https://github.com/opencadc/science-portal/compare/1.1.0...1.2.0) (2025-10-30)
 
 
