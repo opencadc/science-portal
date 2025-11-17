@@ -256,16 +256,16 @@ function SciencePortalPlatformLoad(props) {
               </div>
             </Col>
           </Row>
-          <Row className="sp-usage-bar-row">
-            <Col>
-              <div className="sp-usage-session-title">
-                Running Instances: {props.usage.instances.total}
-              </div>
-              <div className="sp-usage-bar">
-                <Bar options={horizontalStackedBarOptions} data={yAxisSessionData} />
-              </div>
-            </Col>
-          </Row>
+          {/*<Row className="sp-usage-bar-row">*/}
+          {/*  <Col>*/}
+          {/*    <div className="sp-usage-session-title">*/}
+          {/*      Running Instances: {props.usage.instances.total}*/}
+          {/*    </div>*/}
+          {/*    <div className="sp-usage-bar">*/}
+          {/*      <Bar options={horizontalStackedBarOptions} data={yAxisSessionData} />*/}
+          {/*    </div>*/}
+          {/*  </Col>*/}
+          {/*</Row>*/}
           <Row className="sp-usage-pie-row">
             <Col>
               <div className="sp-usage-text-date">
