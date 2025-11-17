@@ -5,7 +5,7 @@
 
 
 <%
-  final ApplicationConfiguration configuration = new ApplicationConfiguration(); 
+  final ApplicationConfiguration configuration = new ApplicationConfiguration();
   final String sessionsResourceID = configuration.getResourceID();
   final String sessionsStandardID = configuration.getStandardID();
   final String themeName = configuration.getThemeName();
@@ -14,6 +14,12 @@
   String headerURLJSON = configuration.getHeaderURLs().toString();
   String storageXmlInfoUrl = configuration.getStorageXmlInfoUrl();
   final String experimentalJSON = configuration.getExperimentalFeatures().toJSONString();
+
+  String defaultProjectName = configuration.getDefaultProjectName();
+
+  if (defaultProjectName == null || defaultProjectName.isEmpty()) {
+      defaultProjectName = "skaha";
+  }
 
   if (bannerText == null) {
       bannerText = "";
@@ -117,7 +123,7 @@
           contentBase: "${contextPath}/dist",
           headerURLs: JSON.parse('<%= headerURLJSON %>'),
           storageXmlInfoUrl: '<%= storageXmlInfoUrl %>',
-          defaultProjectName: '<%= configuration.getDefaultProjectName() %>',
+          defaultProjectName: '<%= defaultProjectName %>',
           experimentalFeatures: JSON.parse('<%= experimentalJSON %>')
         })
 

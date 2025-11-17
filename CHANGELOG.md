@@ -1,5 +1,27 @@
 # Science Portal User Interface
 
+## [1.2.3](https://github.com/opencadc/science-portal/compare/1.2.2...1.2.3) (2025-11-17)
+
+
+### Bug Fixes
+
+* disable gpu field ([b8cf0a3](https://github.com/opencadc/science-portal/commit/b8cf0a3203db0c2c647567ee5b59b13bc8b0d46c))
+
+## [1.2.2](https://github.com/opencadc/science-portal/compare/1.2.1...1.2.2) (2025-11-17)
+
+
+### Bug Fixes
+
+* add default skaha project name ([4c8722f](https://github.com/opencadc/science-portal/commit/4c8722f0c4b0ef76ce451311b61c478e7c3f46f6))
+
+## [1.2.1](https://github.com/opencadc/science-portal/compare/1.2.0...1.2.1) (2025-11-17)
+
+
+### Bug Fixes
+
+* fix to use interactive view for sessions ([b3b7eec](https://github.com/opencadc/science-portal/commit/b3b7eece1aa120129ec69b01dda89c221cf396de))
+* updates for default values ([42496a6](https://github.com/opencadc/science-portal/commit/42496a63eb99971b863de8c218357268386853c2))
+
 ## [1.2.0](https://github.com/opencadc/science-portal/compare/1.1.0...1.2.0) (2025-10-30)
 
 

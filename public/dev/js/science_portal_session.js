@@ -387,7 +387,7 @@
     }
 
     function loadSessionList() {
-      Promise.resolve(_getAjaxData(_selfPortalSess.sessionServiceURL, {}))
+      Promise.resolve(_getAjaxData(`${_selfPortalSess.sessionServiceURL}?view=interactive`, {}))
         .then(function(sessionList) {
           setSessionList(sessionList)
           trigger(_selfPortalSess, cadc.web.science.portal.session.events.onLoadSessionListDone)
@@ -504,7 +504,7 @@
         interval = interval || 200
 
         var checkCondition = function (resolve, reject) {
-          _getAjaxData(_selfPortalSess.sessionServiceURL)
+          _getAjaxData(`${_selfPortalSess.sessionServiceURL}?view=interactive`, {})
             .then(function (sessionList) {
               _selfPortalSess.setSessionList(sessionList)
               if (_selfPortalSess.isAllSessionsStable()) {
