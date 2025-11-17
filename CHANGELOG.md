@@ -1,5 +1,12 @@
 # Science Portal User Interface
 
+## [1.2.2](https://github.com/opencadc/science-portal/compare/1.2.1...1.2.2) (2025-11-17)
+
+
+### Bug Fixes
+
+* add default skaha project name ([4c8722f](https://github.com/opencadc/science-portal/commit/4c8722f0c4b0ef76ce451311b61c478e7c3f46f6))
+
 ## [1.2.1](https://github.com/opencadc/science-portal/compare/1.2.0...1.2.1) (2025-11-17)
 
 
