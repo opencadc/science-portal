@@ -1,5 +1,12 @@
 # Science Portal User Interface
 
+## [1.2.3](https://github.com/opencadc/science-portal/compare/1.2.2...1.2.3) (2025-11-17)
+
+
+### Bug Fixes
+
+* disable gpu field ([b8cf0a3](https://github.com/opencadc/science-portal/commit/b8cf0a3203db0c2c647567ee5b59b13bc8b0d46c))
+
 ## [1.2.2](https://github.com/opencadc/science-portal/compare/1.2.1...1.2.2) (2025-11-17)
 
 
