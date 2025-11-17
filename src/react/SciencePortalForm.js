@@ -63,7 +63,11 @@ class SciencePortalForm extends React.Component {
   handleRAMChange(event) {
       if (this.state.fData.experimentalFeatures?.slider) {
           const maybeNumber = +event?.target?.value || event
-          if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableRAM[this.state.fData?.contextData?.availableRAM.length - 1] && this.state.fData?.contextData?.availableRAM.some(num => startsWithNumber(maybeNumber, num))) {
+          // Validate against min/max bounds instead of array membership
+          const ramOptions = this.state.fData?.contextData?.availableRAM || [1, 64];
+          const minRAM = ramOptions[0];
+          const maxRAM = ramOptions[ramOptions.length - 1];
+          if (maybeNumber && maybeNumber >= minRAM && maybeNumber <= maxRAM) {
               this.setState({
                   selectedRAM: maybeNumber
               });
@@ -77,7 +81,11 @@ class SciencePortalForm extends React.Component {
     handleCoresChange(event) {
       if (this.state.fData.experimentalFeatures?.slider) {
           const maybeNumber = +event?.target?.value || event
-          if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableCores[this.state.fData?.contextData?.availableCores.length - 1] && this.state.fData?.contextData?.availableCores.some(num => startsWithNumber(maybeNumber, num))) {
+          // Validate against min/max bounds instead of array membership
+          const coresOptions = this.state.fData?.contextData?.availableCores || [1, 16];
+          const minCores = coresOptions[0];
+          const maxCores = coresOptions[coresOptions.length - 1];
+          if (maybeNumber && maybeNumber >= minCores && maybeNumber <= maxCores) {
               this.setState({
                   selectedCores: maybeNumber
               });
@@ -92,8 +100,11 @@ class SciencePortalForm extends React.Component {
     handleGPUChange(event) {
       if (this.state.fData.experimentalFeatures?.slider) {
           const maybeNumber = +event?.target?.value || event
-          const availableGPU = this.state.fData?.contextData?.availableGPU || [0]
-          if (maybeNumber >= 0 && maybeNumber <= availableGPU[availableGPU.length - 1] && availableGPU.some(num => startsWithNumber(maybeNumber, num))) {
+          // Validate against min/max bounds instead of array membership
+          const gpuOptions = this.state.fData?.contextData?.availableGPU || [0, 4];
+          const minGPU = gpuOptions[0];
+          const maxGPU = gpuOptions[gpuOptions.length - 1];
+          if (maybeNumber >= minGPU && maybeNumber <= maxGPU) {
               this.setState({
                   selectedGPU: maybeNumber
               });

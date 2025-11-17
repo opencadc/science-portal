@@ -69,9 +69,7 @@ function CanfarRange({
         return nearestIndex;
     }, [validRange]);
 
-    // Always compute current index based on value prop
-    const currentIndex = useMemo(() => getIndexForValue(value), [value, getIndexForValue]);
-    const [rangePos, setRangePos] = useState(currentIndex);
+    const [rangePos, setRangePos] = useState(() => getIndexForValue(value));
 
     // Handle slider change events
     const handleChange = useCallback((e) => {
@@ -88,8 +86,8 @@ function CanfarRange({
 
     // Sync internal state when external value changes
     useEffect(() => {
-        const newRangePos = getIndexForValue(value);
-        setRangePos(newRangePos);
+        const newIndex = getIndexForValue(value);
+        setRangePos(newIndex);
     }, [value, getIndexForValue]);
 
     // Calculate percentage for the gradient (handle edge case of single item)
