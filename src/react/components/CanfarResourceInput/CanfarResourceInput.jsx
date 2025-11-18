@@ -1,16 +1,21 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronUp, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { generateValuesWithPowersOfTwo } from '../CanfarRange/utils';
 import './CanfarResourceInput.css';
 
 /**
  * CanfarResourceInput - A numeric input with increment/decrement buttons
  *
+ * Validation: Accepts ANY numeric value between min and max (not restricted to powers of 2)
+ * Buttons: Step through powers of 2 (2, 4, 8, 16, 32, ...) for quick selection
+ *
  * @param {Object} props - Component props
  * @param {number} props.value - The current numeric value
- * @param {number[]} props.options - Array of valid numeric options
+ * @param {number} props.min - Minimum value (validation bound)
+ * @param {number} props.max - Maximum value (validation bound)
  * @param {function} props.onChange - Callback function that receives the selected value
  * @param {function} [props.onValidationChange] - Callback when validation state changes
  * @param {boolean} [props.disabled=false] - Whether the input is disabled
@@ -21,7 +26,8 @@ import './CanfarResourceInput.css';
  */
 function CanfarResourceInput({
     value,
-    options,
+    min,
+    max,
     onChange,
     onValidationChange,
     disabled = false,
@@ -29,6 +35,22 @@ function CanfarResourceInput({
     error = false,
     helperText
 }) {
+    // Generate options using powers of 2
+    const validOptions = useMemo(() => {
+        if (min === undefined || max === undefined) {
+            console.error('CanfarResourceInput: min and max are required props');
+            return [0];
+        }
+        if (typeof min !== 'number' || typeof max !== 'number') {
+            console.error('CanfarResourceInput: min and max must be numbers');
+            return [0];
+        }
+        if (min > max) {
+            console.warn('CanfarResourceInput: min cannot be greater than max, swapping values');
+            return generateValuesWithPowersOfTwo(max, min);
+        }
+        return generateValuesWithPowersOfTwo(min, max);
+    }, [min, max]);
     const [inputValue, setInputValue] = useState(String(value));
     const [internalError, setInternalError] = useState(false);
     const [invalidValue, setInvalidValue] = useState('');
@@ -45,18 +67,34 @@ function CanfarResourceInput({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value]);
 
-    // Find current index in options array
-    const currentIndex = options.findIndex((opt) => opt === value);
-    const isAtMax = currentIndex >= options.length - 1;
-    const isAtMin = currentIndex <= 0;
+    // Find next/previous values in validOptions (handles non-power-of-2 values)
+    const findNextValue = useCallback(() => {
+        // Find first value greater than current value
+        return validOptions.find((opt) => opt > value);
+    }, [validOptions, value]);
+
+    const findPreviousValue = useCallback(() => {
+        // Find last value less than current value
+        for (let i = validOptions.length - 1; i >= 0; i--) {
+            if (validOptions[i] < value) {
+                return validOptions[i];
+            }
+        }
+        return undefined;
+    }, [validOptions, value]);
+
+    const nextValue = findNextValue();
+    const previousValue = findPreviousValue();
+    const isAtMax = nextValue === undefined;
+    const isAtMin = previousValue === undefined;
 
     const handleIncrement = useCallback(() => {
-        if (currentIndex < options.length - 1) {
-            const newValue = options[currentIndex + 1];
+        const next = validOptions.find((opt) => opt > value);
+        if (next !== undefined) {
             if (onChange && typeof onChange === 'function') {
-                onChange(newValue);
+                onChange(next);
             }
-            setInputValue(String(newValue));
+            setInputValue(String(next));
             setInternalError(false);
             setInvalidValue('');
             // Clear validation error - enable button
@@ -64,15 +102,22 @@ function CanfarResourceInput({
                 onValidationChange(false);
             }
         }
-    }, [currentIndex, options, onChange, onValidationChange]);
+    }, [validOptions, value, onChange, onValidationChange]);
 
     const handleDecrement = useCallback(() => {
-        if (currentIndex > 0) {
-            const newValue = options[currentIndex - 1];
-            if (onChange && typeof onChange === 'function') {
-                onChange(newValue);
+        // Find last value less than current value
+        let prev = undefined;
+        for (let i = validOptions.length - 1; i >= 0; i--) {
+            if (validOptions[i] < value) {
+                prev = validOptions[i];
+                break;
             }
-            setInputValue(String(newValue));
+        }
+        if (prev !== undefined) {
+            if (onChange && typeof onChange === 'function') {
+                onChange(prev);
+            }
+            setInputValue(String(prev));
             setInternalError(false);
             setInvalidValue('');
             // Clear validation error - enable button
@@ -80,7 +125,7 @@ function CanfarResourceInput({
                 onValidationChange(false);
             }
         }
-    }, [currentIndex, options, onChange, onValidationChange]);
+    }, [validOptions, value, onChange, onValidationChange]);
 
     const handleInputChange = useCallback((event) => {
         const newValue = event.target.value;
@@ -88,9 +133,9 @@ function CanfarResourceInput({
         if (newValue.length <= 4) {
             setInputValue(newValue);
 
-            // Check if the new value is valid
+            // Check if the new value is valid (within min/max range)
             const numValue = Number(newValue);
-            const isValid = options.includes(numValue);
+            const isValid = numValue >= min && numValue <= max;
 
             if (!isValid && newValue !== '') {
                 // Invalid value while typing - disable button
@@ -108,13 +153,13 @@ function CanfarResourceInput({
                 }
             }
         }
-    }, [options, onValidationChange]);
+    }, [min, max, onValidationChange]);
 
     const handleInputBlur = useCallback(() => {
         const numValue = Number(inputValue);
 
-        // Check if the value is in the options array
-        if (options.includes(numValue)) {
+        // Check if the value is within min/max range
+        if (numValue >= min && numValue <= max && !isNaN(numValue)) {
             if (onChange && typeof onChange === 'function') {
                 onChange(numValue);
             }
@@ -137,11 +182,11 @@ function CanfarResourceInput({
                 onValidationChange(false);
             }
         }
-    }, [inputValue, options, onChange, onValidationChange, value]);
+    }, [inputValue, min, max, onChange, onValidationChange, value]);
 
     const showError = error || internalError;
     const errorMessage = internalError && invalidValue
-        ? `Value ${invalidValue} is not supported`
+        ? `Value must be between ${min} and ${max}`
         : helperText;
 
     return (
