@@ -85,7 +85,11 @@ class SciencePortalPrivateForm extends React.Component {
     handleRAMChange(event) {
         if (this.state.fData.experimentalFeatures?.slider) {
             const maybeNumber = +event?.target?.value || event
-            if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableRAM[this.state.fData?.contextData?.availableRAM.length - 1] && this.state.fData?.contextData?.availableRAM.some(num => startsWithNumber(maybeNumber, num))) {
+            // Validate against min/max bounds instead of array membership
+            const ramOptions = this.state.fData?.contextData?.availableRAM || [1, 64];
+            const minRAM = ramOptions[0];
+            const maxRAM = ramOptions[ramOptions.length - 1];
+            if (maybeNumber && maybeNumber >= minRAM && maybeNumber <= maxRAM) {
                 this.setState({
                     selectedRAM: maybeNumber
                 });
@@ -100,7 +104,11 @@ class SciencePortalPrivateForm extends React.Component {
     handleCoresChange(event) {
         if (this.state.fData.experimentalFeatures?.slider) {
             const maybeNumber = +event?.target?.value || event
-            if (maybeNumber && maybeNumber > 0 && maybeNumber <= this.state.fData?.contextData?.availableCores[this.state.fData?.contextData?.availableCores.length - 1] && this.state.fData?.contextData?.availableCores.some(num => startsWithNumber(maybeNumber, num))) {
+            // Validate against min/max bounds instead of array membership
+            const coresOptions = this.state.fData?.contextData?.availableCores || [1, 16];
+            const minCores = coresOptions[0];
+            const maxCores = coresOptions[coresOptions.length - 1];
+            if (maybeNumber && maybeNumber >= minCores && maybeNumber <= maxCores) {
                 this.setState({
                     selectedCores: maybeNumber
                 });
@@ -115,8 +123,11 @@ class SciencePortalPrivateForm extends React.Component {
     handleGPUChange(event) {
         if (this.state.fData.experimentalFeatures?.slider) {
             const maybeNumber = +event?.target?.value || event
-            const availableGPU = this.state.fData?.contextData?.availableGPU || [0]
-            if (maybeNumber >= 0 && maybeNumber <= availableGPU[availableGPU.length - 1] && availableGPU.some(num => startsWithNumber(maybeNumber, num))) {
+            // Validate against min/max bounds instead of array membership
+            const gpuOptions = this.state.fData?.contextData?.availableGPU || [0, 4];
+            const minGPU = gpuOptions[0];
+            const maxGPU = gpuOptions[gpuOptions.length - 1];
+            if (maybeNumber >= minGPU && maybeNumber <= maxGPU) {
                 this.setState({
                     selectedGPU: maybeNumber
                 });
@@ -391,23 +402,29 @@ class SciencePortalPrivateForm extends React.Component {
                             <Row>
                                 <Col sm={4}>
                                     <Form.Label className="sp-form-sublabel">Memory (GB)</Form.Label>
-                                    {this.state.fData.experimentalFeatures?.slider ? (<>
+                                    {this.state.fData.experimentalFeatures?.slider ? (() => {
+                                        const ramOptions = this.state.fData?.contextData?.availableRAM || [1, 64];
+                                        const minRAM = ramOptions[0];
+                                        const maxRAM = ramOptions[ramOptions.length - 1];
+                                        return (<>
                                     <CanfarRange
                                         value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
                                         name="ram-range"
                                         onChange={this.handleRAMChange.bind(this)}
-                                        range={this.state.fData?.contextData?.availableRAM || []}
+                                        min={minRAM}
+                                        max={maxRAM}
                                         label="Memory (GB)"
                                     />
                                     <div className="mt-2">
                                         <CanfarResourceInput
                                             value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
-                                            options={this.state.fData?.contextData?.availableRAM || []}
+                                            min={minRAM}
+                                            max={maxRAM}
                                             onChange={this.handleRAMChange.bind(this)}
                                             label="Memory (GB)"
                                         />
                                     </div>
-                                    </>) : (
+                                    </>)})() : (
                                         <Form.Select
                                             value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
                                             name="ram"
@@ -421,23 +438,29 @@ class SciencePortalPrivateForm extends React.Component {
                                 </Col>
                                 <Col sm={4}>
                                     <Form.Label className="sp-form-sublabel">CPU Cores</Form.Label>
-                                    {this.state.fData.experimentalFeatures?.slider ? (<>
+                                    {this.state.fData.experimentalFeatures?.slider ? (() => {
+                                        const coresOptions = this.state.fData?.contextData?.availableCores || [1, 16];
+                                        const minCores = coresOptions[0];
+                                        const maxCores = coresOptions[coresOptions.length - 1];
+                                        return (<>
                                     <CanfarRange
                                         value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
                                         name="cores-range"
                                         onChange={this.handleCoresChange.bind(this)}
-                                        range={this.state.fData?.contextData?.availableCores || []}
+                                        min={minCores}
+                                        max={maxCores}
                                         label="CPU Cores"
                                     />
                                     <div className="mt-2">
                                         <CanfarResourceInput
                                             value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
-                                            options={this.state.fData?.contextData?.availableCores || []}
+                                            min={minCores}
+                                            max={maxCores}
                                             onChange={this.handleCoresChange.bind(this)}
                                             label="CPU Cores"
                                         />
                                     </div>
-                                    </>) : (
+                                    </>)})() : (
                                         <Form.Select
                                             name="cores"
                                             className="sp-form-cursor"
@@ -451,23 +474,29 @@ class SciencePortalPrivateForm extends React.Component {
                                 </Col>
                                 <Col sm={4}>
                                     <Form.Label className="sp-form-sublabel">GPU</Form.Label>
-                                    {this.state.fData.experimentalFeatures?.slider ? (<>
+                                    {this.state.fData.experimentalFeatures?.slider ? (() => {
+                                        const gpuOptions = this.state.fData?.contextData?.availableGPU || [0, 4];
+                                        const minGPU = gpuOptions[0];
+                                        const maxGPU = gpuOptions[gpuOptions.length - 1];
+                                        return (<>
                                     <CanfarRange
                                         value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
                                         name="gpu-range"
                                         onChange={this.handleGPUChange.bind(this)}
-                                        range={this.state.fData?.contextData?.availableGPU || [0]}
+                                        min={minGPU}
+                                        max={maxGPU}
                                         label="GPU"
                                     />
                                     <div className="mt-2">
                                         <CanfarResourceInput
                                             value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
-                                            options={this.state.fData?.contextData?.availableGPU || [0]}
+                                            min={minGPU}
+                                            max={maxGPU}
                                             onChange={this.handleGPUChange.bind(this)}
                                             label="GPU"
                                         />
                                     </div>
-                                    </>) : (
+                                    </>)})() : (
                                         <Form.Select
                                             name="gpu"
                                             className="sp-form-cursor"
