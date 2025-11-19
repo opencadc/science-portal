@@ -312,7 +312,7 @@
     function loadPlatformUsage(refreshHandler) {
       var statsURL = _selfPortalSess.sessionServiceURL + "?view=stats"
       Promise.resolve(_getAjaxData(statsURL, {}))
-          .then(function(platformUsage) {
+          .then((platformUsage) => {
 
             var nowDate = new Date()
             var month = nowDate.getUTCMonth() + 1
@@ -345,6 +345,12 @@
               }
             }
 
+            /*
+            The platformUsages.instances object is checked here for backward compatibility.  It has been effectively
+            disabled on the server side, but if it is re-enabled in the future, this code will handle it.
+            jenkinsd
+            2025.11.19
+             */
             // These values may change over time, so store the key name
             // in order to use it as a label
             _selfPortalSess._platformUsage.instances = {
@@ -352,13 +358,14 @@
               data: new Array(),
               backgroundColor: new Array(),
               hoverBackgroundColor: new Array(),
-              total: platformUsage.instances.total
+              total: platformUsage.instances?.total
             }
 
-            let entries = Object.entries(platformUsage.instances)
+            let entries = Object.entries(platformUsage.instances || {})
             let i = 0;
             let biggestCount = 0;
-            entries.forEach( ([key, val] = entry) => {
+              let entry;
+              entries.forEach( ([key, val] = entry) => {
               if (key !== "total") {
                 _selfPortalSess._platformUsage.instances.labels.push(key)
                 _selfPortalSess._platformUsage.instances.data.push(val)
@@ -373,8 +380,7 @@
             // Code is here rather than in the SciencePortalPlatformUsage component
             // because it's better to do this work once than (potentially)
             // every time the component is rendered
-            const chartHeight = Math.ceil(biggestCount / 10) * 10
-            _selfPortalSess._platformUsage.instances.biggestCount = chartHeight
+            _selfPortalSess._platformUsage.instances.biggestCount = Math.ceil(biggestCount / 10) * 10
             _selfPortalSess._platformUsage.refreshHandler = refreshHandler
             _selfPortalSess._platformUsage.listType = "data"
 
