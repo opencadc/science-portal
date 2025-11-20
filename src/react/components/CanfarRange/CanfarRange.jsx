@@ -24,7 +24,8 @@ function CanfarRange({
     max,
     onChange,
     disabled = false,
-    label = "Range slider"
+    label = "Range slider",
+    name
 }) {
     // Generate range using powers of 2
     const validRange = useMemo(() => {
@@ -103,22 +104,24 @@ function CanfarRange({
     const currentValue = validRange[rangePos];
 
     return (
-        <Form.Range
-            value={rangePos}
-            name="range-slider"
-            min={0}
-            max={validRange.length - 1}
-            step={1}
-            onChange={handleChange}
-            disabled={disabled}
-            className="canfar-range"
-            style={{ '--value-percent': `${percentage}%` }}
-            aria-label={label}
-            aria-valuemin={minValue}
-            aria-valuemax={maxValue}
-            aria-valuenow={currentValue}
-            aria-valuetext={`${currentValue} out of ${maxValue}`}
-        />
+        <>
+            <Form.Range
+                value={rangePos}
+                min={0}
+                max={validRange.length - 1}
+                step={1}
+                onChange={handleChange}
+                disabled={disabled}
+                className="canfar-range"
+                style={{ '--value-percent': `${percentage}%` }}
+                aria-label={label}
+                aria-valuemin={minValue}
+                aria-valuemax={maxValue}
+                aria-valuenow={currentValue}
+                aria-valuetext={`${currentValue} out of ${maxValue}`}
+            />
+            {name && <input type="hidden" name={name} value={currentValue} />}
+        </>
     );
 }
 

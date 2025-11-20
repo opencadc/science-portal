@@ -353,7 +353,7 @@ class SciencePortalForm extends React.Component {
                         return (<>
                       <CanfarRange
                           value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
-                          name="ram-range"
+                          name="ram"
                           onChange={this.handleRAMChange.bind(this)}
                           min={minRAM}
                           max={maxRAM}
@@ -389,7 +389,7 @@ class SciencePortalForm extends React.Component {
                         return (<>
                       <CanfarRange
                           value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
-                          name="cores-range"
+                          name="cores"
                           onChange={this.handleCoresChange.bind(this)}
                           min={minCores}
                           max={maxCores}
@@ -426,7 +426,7 @@ class SciencePortalForm extends React.Component {
                         return (<>
                       <CanfarRange
                           value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
-                          name="gpu-range"
+                          name="gpu"
                           onChange={this.handleGPUChange.bind(this)}
                           min={minGPU}
                           max={maxGPU}
