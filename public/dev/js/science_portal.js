@@ -411,6 +411,12 @@
       const form = event.target
 
       for (const currentValue of form) {
+        // Skip fields without a name to avoid empty keys
+        if (!currentValue.name) continue;
+
+        // For radio/checkbox buttons, only submit if checked
+        if ((currentValue.type === 'radio' || currentValue.type === 'checkbox') && !currentValue.checked) continue;
+
         _prunedFormData.append(currentValue.name, currentValue.value)
       }
 

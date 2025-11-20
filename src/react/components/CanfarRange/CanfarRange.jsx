@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Form from "react-bootstrap/Form";
-import { generateValuesWithPowersOfTwo } from './utils';
 import './CanfarRange.css';
 
 /**
  * CanfarRange - A custom range slider component with visual gradient feedback
  *
- * Steps: Uses powers of 2 (2, 4, 8, 16, 32, ...) as selectable positions
- * Behavior: If value is not a power of 2, slider snaps to nearest power of 2
+ * Steps: Increments by 1 for smooth continuous sliding
+ * Behavior: Slider moves continuously between min and max values
  *
  * @param {Object} props - Component props
  * @param {number} props.value - The current numeric value
- * @param {number} props.min - Minimum value (generates range starting point)
- * @param {number} props.max - Maximum value (generates range ending point)
+ * @param {number} props.min - Minimum value
+ * @param {number} props.max - Maximum value
  * @param {function} props.onChange - Callback function that receives the selected value
  * @param {boolean} [props.disabled=false] - Whether the slider is disabled
  * @param {string} [props.label] - Accessible label for the slider
@@ -24,101 +23,86 @@ function CanfarRange({
     max,
     onChange,
     disabled = false,
-    label = "Range slider"
+    label = "Range slider",
+    name
 }) {
-    // Generate range using powers of 2
-    const validRange = useMemo(() => {
-        if (min === undefined || max === undefined) {
-            console.error('CanfarRange: min and max are required props');
-            return [0];
+    // Validate min and max
+    const validMin = useMemo(() => {
+        if (min === undefined || typeof min !== 'number') {
+            console.error('CanfarRange: min must be a number');
+            return 0;
         }
-        if (typeof min !== 'number' || typeof max !== 'number') {
-            console.error('CanfarRange: min and max must be numbers');
-            return [0];
+        return min;
+    }, [min]);
+
+    const validMax = useMemo(() => {
+        if (max === undefined || typeof max !== 'number') {
+            console.error('CanfarRange: max must be a number');
+            return 100;
         }
-        if (min > max) {
+        return max;
+    }, [max]);
+
+    // Ensure min is not greater than max
+    const [minValue, maxValue] = useMemo(() => {
+        if (validMin > validMax) {
             console.warn('CanfarRange: min cannot be greater than max, swapping values');
-            return generateValuesWithPowersOfTwo(max, min);
+            return [validMax, validMin];
         }
-        return generateValuesWithPowersOfTwo(min, max);
-    }, [min, max]);
+        return [validMin, validMax];
+    }, [validMin, validMax]);
 
-    // Find the index in the range array, or nearest value if not exact match
-    const getIndexForValue = useCallback((val) => {
-        if (val === null || val === undefined || validRange.length === 0) return 0;
+    // Clamp value to valid range
+    const clampedValue = useMemo(() => {
+        const val = parseInt(value);
+        if (isNaN(val)) return minValue;
+        return Math.max(minValue, Math.min(maxValue, val));
+    }, [value, minValue, maxValue]);
 
-        const parsedValue = parseInt(val);
-        if (isNaN(parsedValue)) return 0;
-
-        // First try to find exact match
-        const exactIndex = validRange.findIndex((el) => parseInt(el) === parsedValue);
-        if (exactIndex !== -1) return exactIndex;
-
-        // If not found, find the nearest value
-        let nearestIndex = 0;
-        let minDiff = Math.abs(validRange[0] - parsedValue);
-
-        for (let i = 1; i < validRange.length; i++) {
-            const diff = Math.abs(validRange[i] - parsedValue);
-            if (diff < minDiff) {
-                minDiff = diff;
-                nearestIndex = i;
-            }
-        }
-
-        return nearestIndex;
-    }, [validRange]);
-
-    const [rangePos, setRangePos] = useState(() => getIndexForValue(value));
+    const [currentValue, setCurrentValue] = useState(clampedValue);
 
     // Handle slider change events
     const handleChange = useCallback((e) => {
-        const newIndex = parseInt(e.target.value);
-        const newValue = parseInt(validRange[newIndex]);
+        const newValue = parseInt(e.target.value);
+        setCurrentValue(newValue);
 
-        setRangePos(newIndex);
-
-        // Call onChange with the actual value from the range array
+        // Call onChange with the actual value
         if (onChange && typeof onChange === 'function') {
             onChange(newValue);
         }
-    }, [validRange, onChange]);
+    }, [onChange]);
 
     // Sync internal state when external value changes
     useEffect(() => {
-        const newIndex = getIndexForValue(value);
-        setRangePos(newIndex);
-    }, [value, getIndexForValue]);
+        setCurrentValue(clampedValue);
+    }, [clampedValue]);
 
-    // Calculate percentage for the gradient (handle edge case of single item)
+    // Calculate percentage for the gradient
     const percentage = useMemo(() => {
-        const maxIndex = validRange.length - 1;
-        if (maxIndex === 0) return 100; // Single item - fill to 100%
-        return ((rangePos) / maxIndex) * 100;
-    }, [rangePos, validRange.length]);
-
-    // Get min and max values for accessibility
-    const minValue = validRange[0];
-    const maxValue = validRange[validRange.length - 1];
-    const currentValue = validRange[rangePos];
+        const range = maxValue - minValue;
+        if (range === 0) return 100; // Single value - fill to 100%
+        return ((currentValue - minValue) / range) * 100;
+    }, [currentValue, minValue, maxValue]);
 
     return (
-        <Form.Range
-            value={rangePos}
-            name="range-slider"
-            min={0}
-            max={validRange.length - 1}
-            step={1}
-            onChange={handleChange}
-            disabled={disabled}
-            className="canfar-range"
-            style={{ '--value-percent': `${percentage}%` }}
-            aria-label={label}
-            aria-valuemin={minValue}
-            aria-valuemax={maxValue}
-            aria-valuenow={currentValue}
-            aria-valuetext={`${currentValue} out of ${maxValue}`}
-        />
+        <>
+            <Form.Range
+                value={currentValue}
+                min={minValue}
+                max={maxValue}
+                step={1}
+                onChange={handleChange}
+                disabled={disabled}
+                className="canfar-range"
+                style={{ '--value-percent': `${percentage}%` }}
+                aria-label={label}
+                aria-valuemin={minValue}
+                aria-valuemax={maxValue}
+                aria-valuenow={currentValue}
+                aria-valuetext={`${currentValue} out of ${maxValue}`}
+            />
+            {name && <input type="hidden" name={name} value={currentValue} />}
+        </>
     );
 }
 
