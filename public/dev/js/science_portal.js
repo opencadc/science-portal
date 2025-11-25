@@ -10,6 +10,11 @@
             events: {
               onSessionRequestOK: new jQuery.Event("sciPort:onSessionRequestOK"),
               onSessionRequestFail: new jQuery.Event("sciPort:onSessionRequestFail"),
+            },
+            authErrorHandling: {
+                codes: [401, 403],
+                header: "Science Platform authorization issue",
+                body: "Your userid is not authorized to use Science Platform resources. Contact an admin for assistance."
             }
           }
         }
@@ -205,7 +210,6 @@
     } // end attachListeners()
 
     function handleServiceError(e, request) {
-
       // Stop any outstanding ajax calls from being processed. If one has failed,
       // it's assumed the skaha service is unreachable or has something else wrong,
       // so the page becomes unavailable
@@ -214,13 +218,12 @@
       // This should be triggered if the user doesn't have access to Skaha resources, as well as
       // other error conditions. Without access to Skaha, the user should be blocked from using the page,
       // but be directed to some place they can ask for what they need (a resource allocation.)
-      var msgHeader = "Service Error"
-      var msgBody = portalCore.getRcDisplayText(request)
-      if (request.status === 403 || request.status === 401) {
-        msgHeader = "Skaha authorization issue"
-        msgBody = "Your userid is not authorized to use Skaha resources. Contact CANFAR admin for assistance."
+      const authErrorHandling = cadc.web.science.portal.authErrorHandling
+      if (authErrorHandling.codes.includes(request.status)) {
+          portalCore.setModal(_reactApp, authErrorHandling.header, authErrorHandling.body, false, false, true)
+      } else {
+          portalCore.setModal(_reactApp, "Service Error", portalCore.getRcDisplayText(request), false, true, true)
       }
-      portalCore.setModal(_reactApp, msgHeader, msgBody, false, true, true)
     }
 
     function handlePlatformUsageLoad() {

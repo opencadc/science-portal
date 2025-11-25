@@ -47,29 +47,29 @@ function SciencePortalPlatformLoad(props) {
     //   ]
     // }
 
-    var yAxisSessionData = {
-      labels: ["instances"],
-      datasets: [
-        {
-          label: props.usage.instances.labels[0],
-          data: [props.usage.instances.data[0]],
-          backgroundColor: props.usage.instances.backgroundColor[0],
-          hoverBackgroundColor: props.usage.instances.hoverBackgroundColor[0]
-        },
-        {
-          label: props.usage.instances.labels[1],
-          data: [props.usage.instances.data[1]],
-          backgroundColor: props.usage.instances.backgroundColor[1],
-          hoverBackgroundColor: props.usage.instances.hoverBackgroundColor[1]
-        },
-        {
-          label: props.usage.instances.labels[2],
-          data: [props.usage.instances.data[2]],
-          backgroundColor: props.usage.instances.backgroundColor[2],
-          hoverBackgroundColor: props.usage.instances.hoverBackgroundColor[2]
-        },
-      ]
-    }
+    // var yAxisSessionData = {
+    //   labels: ["instances"],
+    //   datasets: [
+    //     {
+    //       label: props.usage.instances.labels[0],
+    //       data: [props.usage.instances.data[0]],
+    //       backgroundColor: props.usage.instances.backgroundColor[0],
+    //       hoverBackgroundColor: props.usage.instances.hoverBackgroundColor[0]
+    //     },
+    //     {
+    //       label: props.usage.instances.labels[1],
+    //       data: [props.usage.instances.data[1]],
+    //       backgroundColor: props.usage.instances.backgroundColor[1],
+    //       hoverBackgroundColor: props.usage.instances.hoverBackgroundColor[1]
+    //     },
+    //     {
+    //       label: props.usage.instances.labels[2],
+    //       data: [props.usage.instances.data[2]],
+    //       backgroundColor: props.usage.instances.backgroundColor[2],
+    //       hoverBackgroundColor: props.usage.instances.hoverBackgroundColor[2]
+    //     },
+    //   ]
+    // }
 
     var yAxisCPUData = {
       labels: ["CPU usage"],
@@ -202,6 +202,7 @@ function SciencePortalPlatformLoad(props) {
     barThickness: barThickness
   }
 
+  /*
   var horizontalStackedBarOptions = {
     indexAxis: "y",
     maintainAspectRatio: false,
@@ -231,6 +232,7 @@ function SciencePortalPlatformLoad(props) {
     borderRadius: 4,
     barThickness: barThickness
   }
+  */
 
   return (
     <>

@@ -26,6 +26,6 @@ RUN \
     . ${NVM_DIR}/nvm.sh \
     && gradle -i clean build test --no-daemon
 
-FROM images.opencadc.org/library/cadc-tomcat:1.4 AS production
+FROM images.opencadc.org/library/cadc-tomcat:1.5 AS production
 
 COPY --from=builder /science-portal/build/libs/science-portal.war /usr/share/tomcat/webapps/

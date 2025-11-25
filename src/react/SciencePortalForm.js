@@ -221,8 +221,7 @@ class SciencePortalForm extends React.Component {
     const imagesOfProject = this.state.selectedProject ? projectsOfType?.[this.state.selectedProject] : defaultImages
     const defaultImageName = this.state.fData?.selectedType ? DEFAULT_IMAGE_NAMES[this.state.fData.selectedType] : undefined
     const defaultImageId = defaultImageName ? imagesOfProject?.find(mObj => mObj.name === defaultImageName)?.id : imagesOfProject?.[0]?.id
-    // const supportsGPU = this.state.fData?.contextData?.availableGPU?.length > 0
-    const supportsGPU = false
+    const supportsGPU = this.state.fData?.contextData?.availableGPU?.length > 0
     const fixedColumnWidth = supportsGPU ? 4 : 6
     const canHaveFixed = HAS_FIXED.includes(this.state.fData?.selectedType)
       return (

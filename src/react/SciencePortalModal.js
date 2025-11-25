@@ -89,7 +89,7 @@ class SciencePortalModal extends React.Component {
 
             <div id="infoHome" className="sp-modal-footer-info-link">
               {showHome === true && <a href={canfarURL} className="account_access_info" title="CANFARHome" target="_blank">
-                CANFAR Home</a>}
+                Science Platform Home</a>}
             </div>
 
           </Modal.Body>
