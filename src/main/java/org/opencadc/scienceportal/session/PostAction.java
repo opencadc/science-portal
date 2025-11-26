@@ -146,6 +146,13 @@ public class PostAction extends SciencePortalAuthAction {
         return httpPost;
     }
 
+    /**
+     * Collects all parameters from the SyncInput into a Map, trimming whitespace. If the "gpus" parameter is present
+     * and set to "0", it is excluded.
+     *
+     * @param syncInput A SyncInput object containing parameters.
+     * @return Map of parameter names to their trimmed values. Never null.
+     */
     static Map<String, Object> collectPayload(final SyncInput syncInput) {
         return syncInput.getParameterNames().stream()
                 .filter(key ->
