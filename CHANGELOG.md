@@ -1,5 +1,13 @@
 # Science Portal User Interface
 
+## [1.2.5](https://github.com/opencadc/science-portal/compare/1.2.4...1.2.5) (2025-11-26)
+
+
+### Bug Fixes
+
+* comment update ([0c16428](https://github.com/opencadc/science-portal/commit/0c16428fb25322b2132e608ceead3d3df0262a06))
+* fix gpu input field ([3de24f7](https://github.com/opencadc/science-portal/commit/3de24f70a2c94fdf389401393e727c5e501c1027))
+
 ## [1.2.4](https://github.com/opencadc/science-portal/compare/1.2.3...1.2.4) (2025-11-25)
 
 
