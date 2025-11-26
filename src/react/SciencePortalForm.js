@@ -425,7 +425,7 @@ class SciencePortalForm extends React.Component {
                         return (<>
                       <CanfarRange
                           value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
-                          name="gpu"
+                          name="gpus"
                           onChange={this.handleGPUChange.bind(this)}
                           min={minGPU}
                           max={maxGPU}
@@ -442,7 +442,7 @@ class SciencePortalForm extends React.Component {
                       </div>
                       </>)})() : (
                           <Form.Select
-                              name="gpu"
+                              name="gpus"
                               className="sp-form-cursor"
                               value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
                               onChange={this.handleGPUChange.bind(this)}>

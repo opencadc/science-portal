@@ -85,7 +85,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import javax.security.auth.Subject;
@@ -125,13 +124,7 @@ public class PostAction extends SciencePortalAuthAction {
     }
 
     HttpPost createPostRequest(final URL apiURL) {
-        final Map<String, Object> payload = new HashMap<>();
-        payload.putAll(syncInput.getParameterNames().stream()
-                .collect(Collectors.toMap(
-                        key -> key,
-                        key -> syncInput.getParameter(key) == null
-                                ? ""
-                                : syncInput.getParameter(key).trim())));
+        final Map<String, Object> payload = PostAction.collectPayload(this.syncInput);
 
         final HttpPost httpPost = new HttpPost(apiURL, payload, false);
 
@@ -151,6 +144,24 @@ public class PostAction extends SciencePortalAuthAction {
         }
 
         return httpPost;
+    }
+
+    /**
+     * Collects all parameters from the SyncInput into a Map, trimming whitespace. If the "gpus" parameter is present
+     * and set to "0", it is excluded.
+     *
+     * @param syncInput A SyncInput object containing parameters.
+     * @return Map of parameter names to their trimmed values. Never null.
+     */
+    static Map<String, Object> collectPayload(final SyncInput syncInput) {
+        return syncInput.getParameterNames().stream()
+                .filter(key ->
+                        !key.equals("gpus") || !syncInput.getParameter(key).equals("0"))
+                .collect(Collectors.toMap(
+                        key -> key,
+                        key -> syncInput.getParameter(key) == null
+                                ? ""
+                                : syncInput.getParameter(key).trim()));
     }
 
     URL buildAPIURL() throws MalformedURLException {

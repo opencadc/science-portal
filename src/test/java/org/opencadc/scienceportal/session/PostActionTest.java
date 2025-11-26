@@ -145,4 +145,40 @@ public class PostActionTest {
 
         Mockito.verify(mockSyncInput, Mockito.times(1)).getPath();
     }
+
+    @Test
+    public void collectPayloadFilter() {
+        final Set<String> parameterNames = new HashSet<>();
+        parameterNames.add("param1");
+        parameterNames.add("gpus");
+
+        final SyncInput mockSyncInput = Mockito.mock(SyncInput.class);
+        Mockito.when(mockSyncInput.getParameterNames()).thenReturn(parameterNames);
+        Mockito.when(mockSyncInput.getParameter("param1")).thenReturn(" value1 ");
+        Mockito.when(mockSyncInput.getParameter("gpus")).thenReturn("0");
+
+        final Map<String, Object> payload = PostAction.collectPayload(mockSyncInput);
+        Assert.assertEquals("Wrong number of payload items", 1, payload.size());
+        Assert.assertTrue("Missing param1", payload.containsKey("param1"));
+        Assert.assertEquals("Wrong param1 value", "value1", payload.get("param1"));
+    }
+
+    @Test
+    public void collectPayloadPass() {
+        final Set<String> parameterNames = new HashSet<>();
+        parameterNames.add("param1");
+        parameterNames.add("gpus");
+
+        final SyncInput mockSyncInput = Mockito.mock(SyncInput.class);
+        Mockito.when(mockSyncInput.getParameterNames()).thenReturn(parameterNames);
+        Mockito.when(mockSyncInput.getParameter("param1")).thenReturn(" value1 ");
+        Mockito.when(mockSyncInput.getParameter("gpus")).thenReturn("2");
+
+        final Map<String, Object> payload = PostAction.collectPayload(mockSyncInput);
+        Assert.assertEquals("Wrong number of payload items", 2, payload.size());
+        Assert.assertTrue("Missing param1", payload.containsKey("param1"));
+        Assert.assertEquals("Wrong param1 value", "value1", payload.get("param1"));
+        Assert.assertTrue("Missing gpus", payload.containsKey("gpus"));
+        Assert.assertEquals("Wrong gpus value", "2", payload.get("gpus"));
+    }
 }
