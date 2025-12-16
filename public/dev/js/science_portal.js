@@ -48,7 +48,7 @@
 
     inputs.reactApp = _reactApp
 
-    _reactApp.setThemeName(inputs.themeName)
+    _reactApp.setTheme(inputs.theme)
     _reactApp.setHeaderURLs(inputs.headerURLs)
     if (inputs.storageXmlInfoUrl) {
       _reactApp.setStorageUrl(inputs.storageXmlInfoUrl)

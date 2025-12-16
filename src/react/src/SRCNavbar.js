@@ -11,7 +11,8 @@ class SRCNavbar extends React.Component {
       super(props)
       this.state = {
         isAuthenticated: props.isAuthenticated,
-        authenticatedUser: props.authenticatedUser
+        authenticatedUser: props.authenticatedUser,
+        themeConfig: props.themeConfig
       }
     }
 
@@ -30,17 +31,13 @@ class SRCNavbar extends React.Component {
     }
 
     render() {
-      var showBanner = false
-      if (typeof this.props.bannerText !== "undefined"
-        && this.props.bannerText !== "") {
-        showBanner = true
-      }
-
+      const showBanner = typeof this.props.bannerText !== "undefined" && this.props.bannerText !== ""
+      const logoURL = this.state.themeConfig.logoURL ? this.state.themeConfig.logoURL : "/science-portal/images/SRCNetLogo.png"
       return (
         <div className="canfar-header">
         <Navbar expand="md">
           <Container fluid>
-            <Navbar.Brand><img src="/science-portal/images/SRCNetLogo.png" style={{maxWidth: 256 + 'px'}}></img></Navbar.Brand>
+            <Navbar.Brand><img alt="SRCNet Logo" src={logoURL} style={{maxWidth: 256 + 'px'}}></img></Navbar.Brand>
             <Navbar.Toggle aria-controls="basic-navbar-nav" />
               {this.state.isAuthenticated === true &&
                 <span className="display-name" align="end">{this.state.authenticatedUser}</span>

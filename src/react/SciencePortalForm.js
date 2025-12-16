@@ -20,7 +20,6 @@ import {
     DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES,
     DEFAULT_RAM_NUMBER, DEFAULT_GPU_NUMBER, HAS_FIXED
 } from "./utilities/constants";
-import {startsWithNumber} from "./components/CanfarRange/utils";
 
 class SciencePortalForm extends React.Component {
 
@@ -232,7 +231,7 @@ class SciencePortalForm extends React.Component {
             <Row className="sp-form-row">
               <Col sm={4}>
                 <Form.Label className="sp-form-label" column="sm">type
-                  {this.renderPopover("Session Type","Select from the list of supported session types")}
+                  {this.renderPopover("Session Type","Choose a session type")}
                 </Form.Label>
               </Col>
               <Col sm={7}>
