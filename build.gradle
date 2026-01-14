@@ -14,7 +14,7 @@ plugins {
 }
 
 node {
-    version = '22.21.1'
+    version = '22.22.0'
 }
 
 repositories {
