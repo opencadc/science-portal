@@ -13,7 +13,8 @@ class CanfarLoginModal extends React.Component {
     super(props)
     this.state = {
       isOpen: props.isOpen,
-      modalURLs: props.modalURLs
+      modalURLs: props.modalURLs,
+      themeConfig: props.themeConfig
     }
   }
 

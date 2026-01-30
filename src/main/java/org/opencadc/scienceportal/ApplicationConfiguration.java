@@ -81,8 +81,8 @@ public class ApplicationConfiguration {
         return getStringValue(ConfigurationKey.BANNER_TEXT);
     }
 
-    public String getThemeName() {
-        return getStringValue(ConfigurationKey.THEME_NAME);
+    public Theme getTheme() {
+        return Theme.fromConfiguration(this.configuration);
     }
 
     public String getTokenCacheURLString() {
@@ -245,7 +245,6 @@ public class ApplicationConfiguration {
     }
 
     private enum ConfigurationKey {
-        THEME_NAME("org.opencadc.science-portal.themeName", true),
         TAB_LABELS("org.opencadc.science-portal.tabLabels", true),
         SESSIONS_STANDARD_ID("org.opencadc.science-portal.sessions.standard", true),
         SESSIONS_RESOURCE_ID("org.opencadc.science-portal.sessions.resourceID", true),
@@ -265,6 +264,36 @@ public class ApplicationConfiguration {
         ConfigurationKey(String propertyName, boolean required) {
             this.propertyName = propertyName;
             this.required = required;
+        }
+    }
+
+    /** Represents the configured Theme. */
+    public static class Theme {
+        static final String NAMESPACE = "org.opencadc.science-portal.theme";
+        static final String THEME_NAME = Theme.NAMESPACE + ".name";
+        static final String THEME_LOGO_URL = Theme.NAMESPACE + ".logoURL";
+
+        public final String name;
+        public final URI logo;
+
+        Theme(String name, URI logo) {
+            this.name = name;
+            this.logo = logo;
+        }
+
+        public String toJSONString() {
+            return new JSONObject()
+                    .put("name", this.name)
+                    .put("logoURL", this.logo)
+                    .toString();
+        }
+
+        public static Theme fromConfiguration(final Configuration configuration) {
+            final String configuredLogoURIString = configuration.getString(Theme.THEME_LOGO_URL, "");
+
+            return new Theme(
+                    configuration.getString(Theme.THEME_NAME),
+                    configuredLogoURIString.isEmpty() ? null : URI.create(configuredLogoURIString));
         }
     }
 

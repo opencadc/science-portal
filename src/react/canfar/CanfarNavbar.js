@@ -25,7 +25,8 @@ class CanfarNavbar extends React.Component {
       this.state = {
         isAuthenticated: props.isAuthenticated,
         authenticatedUser: props.authenticatedUser,
-        headerURLs: props.headerURLs
+        headerURLs: props.headerURLs,
+        themeConfig: props.themeConfig
       }
     }
 
@@ -57,18 +58,14 @@ class CanfarNavbar extends React.Component {
 
     render() {
       const baseURLCanfar = this.state.headerURLs.baseURLCanfar
-
-      var showBanner = false
-      if (typeof this.props.bannerText !== "undefined"
-        && this.props.bannerText !== "") {
-        showBanner = true
-      }
+      const showBanner = typeof this.props.bannerText !== "undefined" && this.props.bannerText !== ""
+      const logoURL = this.state.themeConfig.logoURL ? this.state.themeConfig.logoURL : "https://www.canfar.net/css/images/logo.png"
 
       return (
         <div className="canfar-header">
         <Navbar expand="md">
           <Container fluid>
-            <Navbar.Brand href={baseURLCanfar}><img src="https://www.canfar.net/css/images/logo.png"></img></Navbar.Brand>
+            <Navbar.Brand href={baseURLCanfar}><img alt="CANFAR Logo" src={logoURL} style={{maxWidth: 256 + 'px'}}></img></Navbar.Brand>
             <Navbar.Toggle aria-controls="basic-navbar-nav" />
             <Navbar.Collapse className="justify-content-end">
               <Nav className="justify-content-end flex-grow-1 pe-3">

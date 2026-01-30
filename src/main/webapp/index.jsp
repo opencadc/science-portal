@@ -8,12 +8,12 @@
   final ApplicationConfiguration configuration = new ApplicationConfiguration();
   final String sessionsResourceID = configuration.getResourceID();
   final String sessionsStandardID = configuration.getStandardID();
-  final String themeName = configuration.getThemeName();
   final String[] tabLabels = configuration.getTabLabels();
   String bannerText = configuration.getBannerMessage();
   String headerURLJSON = configuration.getHeaderURLs().toString();
   String storageXmlInfoUrl = configuration.getStorageXmlInfoUrl();
   final String experimentalJSON = configuration.getExperimentalFeatures().toJSONString();
+  final ApplicationConfiguration.Theme theme = configuration.getTheme();
 
   String defaultProjectName = configuration.getDefaultProjectName();
 
@@ -50,7 +50,7 @@
     <!-- Add Promises if missing/broken. -->
     <script type="application/javascript" src="${contextPath}/dist/js/es6-promise.auto.js"></script>
 
-    <% if ("canfar".equals(themeName)) { %>
+    <% if ("canfar".equals(theme.name)) { %>
     <!-- Found in canfar-root: tomcat(-canfar)/webapps/ROOT unless an absolute URL -->
     <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/cadc.registry-client.js"></script>
     <script type="text/javascript" src="https://www.canfar.net/cadcJS/javascript/org.opencadc.js"></script>
@@ -63,14 +63,10 @@
     <link  type="text/css" href="https://www.canfar.net/canfar/css/cadc.gdpr.cookie.css" rel="stylesheet" media="screen">
     <% } %>
 
-    <!--[if lt IE 9]>
-<!--        <script src="/html5shiv.googlecode.com/svn/trunk/html5.js"></script>-->
-    <![endif]-->
-
     <title>Science Portal</title>
   </head>
 
-  <body class="theme-<%= configuration.getThemeName() %>">
+  <body class="theme-<%= theme.name %>">
     <div class="container-fluid fill">
       <div class="row fill">
         <div role="main" class="col-sm-12 col-md-12 main fill">
@@ -117,7 +113,7 @@
           baseURL: window.location.origin,
           sessionsResourceID: '<%= sessionsResourceID %>',
           sessionsStandardID: '<%= sessionsStandardID %>',
-          themeName: '<%= themeName %>',
+          theme: JSON.parse('<%= theme.toJSONString() %>'),
           tabLabels: tabLabelArray,
           bannerText: '<%= bannerText %>',
           contentBase: "${contextPath}/dist",

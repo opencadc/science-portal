@@ -138,7 +138,7 @@ class SciencePortalApp extends React.Component {
       headerURLs: HEADER_URL_DEFAULTS,
       storageUrl: "",
       userInfo: {},
-      themeName: "canfar",
+      theme: { },
       tabLabels: ["Public", "Advanced"],
       fetchingStorageQuota: false
     };
@@ -213,8 +213,8 @@ class SciencePortalApp extends React.Component {
     this.setState({ storageUrl: verifiedURL });
   }
 
-  setThemeName(themeName) {
-    this.setState({ themeName: themeName });
+  setTheme(theme) {
+    this.setState({ theme: theme });
   }
 
   setDefaultProjectName(projectName) {
@@ -254,12 +254,13 @@ class SciencePortalApp extends React.Component {
 
     let navbar;
     let authModalImplementation;
-    if (this.state.themeName === "src") {
+    if (this.state.theme.name === "src") {
       navbar = (
         <SRCNavbar
           isAuthenticated={isAuthenticated}
           authenticatedUser={name}
           bannerText={this.state.bannerText}
+          themeConfig={this.state.theme}
         />
       );
 
@@ -268,6 +269,7 @@ class SciencePortalApp extends React.Component {
           isOpen={true}
           submitHandler={this.state.userInfo.loginHandler}
           errMsg={this.state.userInfo.errMsg}
+          themeConfig={this.state.theme}
         />
       );
     } else {
@@ -277,6 +279,7 @@ class SciencePortalApp extends React.Component {
           isAuthenticated={isAuthenticated}
           authenticatedUser={name}
           bannerText={this.state.bannerText}
+          themeConfig={this.state.theme}
         />
       );
 
@@ -286,6 +289,7 @@ class SciencePortalApp extends React.Component {
           modalURLs={this.state.headerURLs}
           submitHandler={this.state.userInfo.loginHandler}
           errMsg={this.state.userInfo.errMsg}
+          themeConfig={this.state.theme}
         />
       );
     }
