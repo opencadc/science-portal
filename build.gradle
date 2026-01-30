@@ -10,7 +10,7 @@ plugins {
     id 'idea'
     id 'jacoco'
     id 'checkstyle'
-    id 'org.jetbrains.dokka' version '1.6.0'
+    id 'org.jetbrains.dokka' version '2.1.0'
 }
 
 node {
@@ -33,12 +33,12 @@ dependencies {
     implementation 'org.opencadc:cadc-log:[1.1.5,)'
     implementation 'org.opencadc:cadc-registry:[1.9.0,2.0.0)'
     implementation 'org.opencadc:cadc-rest:[1.3.9,)'
-    implementation 'org.opencadc:cadc-util:[1.6,)'
-    implementation 'org.opencadc:cadc-web-token:[1.1.1,2.0.0)'
+    implementation 'org.opencadc:cadc-util:[1.12.9,2.0.0)'
+    implementation 'org.opencadc:cadc-web-token:1.2.0'
 
     runtimeOnly 'commons-io:commons-io:[2.17.0,3.0.0)'
     runtimeOnly 'javax.servlet.jsp.jstl:jstl-api:1.2'
-    runtimeOnly 'javax.servlet:jstl:1.2'
+    runtimeOnly 'jakarta.servlet.jsp.jstl:jakarta.servlet.jsp.jstl-api:1.2.7'
     runtimeOnly 'jstl:jstl:[1.0,)'
     runtimeOnly 'org.apache.taglibs:taglibs-standard-impl:1.2.5'
 
@@ -128,14 +128,9 @@ jacocoTestReport {
 }
 check.dependsOn jacocoTestReport
 
-// Create JavaDoc
-javadoc {
-    destinationDir = file("${buildDir}/docs/javadoc")
-}
-
 // Create Java Documentation using Dokka for Github Markdown and HTML
 tasks.dokkaGfm.configure {
-    outputDirectory.set(file("${buildDir}/docs/dokka/gfm"))
+    outputDirectory.set(layout.buildDirectory.dir("docs/dokka/gfm"))
     dokkaSourceSets {
         register("main") {
             sourceRoots.from(file("src/main/java"))
@@ -143,7 +138,7 @@ tasks.dokkaGfm.configure {
     }
 }
 tasks.dokkaHtml.configure {
-    outputDirectory.set(file("${buildDir}/docs/dokka/html"))
+    outputDirectory.set(layout.buildDirectory.dir("docs/dokka/html"))
     dokkaSourceSets {
         register("main") {
             sourceRoots.from(file("src/main/java"))

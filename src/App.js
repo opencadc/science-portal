@@ -430,7 +430,7 @@ class SciencePortalApp extends React.Component {
                           <span className="sp-header-button small">
                             <a
                               className="small"
-                              href="https://www.opencadc.org/canfar/latest/platform/guides/interactive-sessions/"
+                              href="https://www.opencadc.org/canfar/latest/platform/sessions/"
                             >
                               Help
                             </a>
