@@ -15,7 +15,7 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faQuestionCircle} from "@fortawesome/free-solid-svg-icons";
 
 // Utils
-import {getProjectImagesMap, getProjectNames} from "./utilities/utils";
+import {getProjectImagesMap, getProjectNames, filterImagesByRegistry} from "./utilities/utils";
 import {
     DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES,
     DEFAULT_RAM_NUMBER, DEFAULT_GPU_NUMBER, HAS_FIXED
@@ -39,6 +39,7 @@ class SciencePortalForm extends React.Component {
       selectedRAM: this.selectedRAM,
       selectedCores: this.selectedCores,
       selectedGPU: this.selectedGPU,
+      selectedRegistry: undefined,
       selectedProject: undefined,
       selectedImageId: undefined,
       resourceType: 'shared',
@@ -49,6 +50,7 @@ class SciencePortalForm extends React.Component {
     this.resetForm = this.resetForm.bind(this);
     this.renderPopover = this.renderPopover.bind(this);
     this.handleResourceTypeChange = this.handleResourceTypeChange.bind(this);
+    this.handleRegistryChange = this.handleRegistryChange.bind(this);
   }
 
   handleChange(event) {
@@ -133,6 +135,14 @@ class SciencePortalForm extends React.Component {
     });
   }
 
+  handleRegistryChange(event) {
+    this.setState({
+      selectedRegistry: event.target.value || undefined,
+      selectedProject: undefined,
+      selectedImageId: undefined
+    });
+  }
+
   resetForm(event) {
     event.stopPropagation();
 
@@ -140,6 +150,7 @@ class SciencePortalForm extends React.Component {
       selectedCores : this.props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER,
       selectedRAM : this.props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER,
       selectedGPU : this.props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER,
+      selectedRegistry: undefined,
       selectedProject: '',
       selectedImageId: '',
       resourceType: 'shared',
@@ -215,12 +226,43 @@ class SciencePortalForm extends React.Component {
   }
 
   render() {
-    const projectsOfType = getProjectImagesMap(this.state.fData?.imageList)
-    const availableProjects = getProjectNames(projectsOfType) || []
-    const defaultImages =  projectsOfType?.[this.state.fData?.defaultProjectName] || []
-    const imagesOfProject = this.state.selectedProject ? projectsOfType?.[this.state.selectedProject] : defaultImages
-    const defaultImageName = this.state.fData?.selectedType ? DEFAULT_IMAGE_NAMES[this.state.fData.selectedType] : undefined
-    const defaultImageId = defaultImageName ? imagesOfProject?.find(mObj => mObj.name === defaultImageName)?.id : imagesOfProject?.[0]?.id
+    // Registry logic
+    const repositoryHosts = this.state.fData?.repositoryHosts || [];
+    const hasMultipleRegistries = repositoryHosts.length > 1;
+    const hasSingleRegistry = repositoryHosts.length === 1;
+
+    // Determine effective registry
+    const effectiveRegistry = hasSingleRegistry
+        ? repositoryHosts[0]
+        : this.state.selectedRegistry;
+
+    // Filter images by selected registry
+    const registryFilteredImages = effectiveRegistry
+        ? filterImagesByRegistry(this.state.fData?.imageList, effectiveRegistry)
+        : [];
+
+    // Get projects from filtered images
+    const projectsOfType = getProjectImagesMap(registryFilteredImages);
+    const availableProjects = getProjectNames(projectsOfType) || [];
+
+    // Default project handling
+    const defaultProjectInRegistry = availableProjects.includes(this.state.fData?.defaultProjectName)
+        ? this.state.fData?.defaultProjectName
+        : availableProjects[0];
+
+    const defaultImages = projectsOfType?.[defaultProjectInRegistry] || [];
+    const imagesOfProject = this.state.selectedProject
+        ? projectsOfType?.[this.state.selectedProject]
+        : defaultImages;
+
+    // Default image selection
+    const defaultImageName = this.state.fData?.selectedType
+        ? DEFAULT_IMAGE_NAMES[this.state.fData.selectedType]
+        : undefined;
+    const defaultImageId = defaultImageName
+        ? imagesOfProject?.find(mObj => mObj.name === defaultImageName)?.id
+        : imagesOfProject?.[0]?.id;
+
     const supportsGPU = this.state.fData?.contextData?.availableGPU?.length > 0
     const fixedColumnWidth = supportsGPU ? 4 : 6
     const canHaveFixed = HAS_FIXED.includes(this.state.fData?.selectedType)
@@ -249,6 +291,37 @@ class SciencePortalForm extends React.Component {
                 </Form.Select>
               </Col>
             </Row>
+            {/* Image Registry Row */}
+            <Row className="sp-form-row">
+              <Col sm={4}>
+                <Form.Label className="sp-form-label" column="sm">image registry
+                  {this.renderPopover("Image Registry", "Select the image registry containing your container images.")}
+                </Form.Label>
+              </Col>
+              <Col sm={7}>
+                {hasMultipleRegistries ? (
+                  <Form.Select
+                    name="registry"
+                    className="sp-form-cursor"
+                    onChange={this.handleRegistryChange}
+                    value={this.state.selectedRegistry || ''}
+                  >
+                    <option className="sp-form" value="">Select registry</option>
+                    {repositoryHosts.map(host => (
+                      <option className="sp-form" key={host} value={host}>{host}</option>
+                    ))}
+                  </Form.Select>
+                ) : (
+                  <Form.Control
+                    type="text"
+                    disabled={true}
+                    value={repositoryHosts[0] || ''}
+                    name="registry"
+                    className="sp-form-input"
+                  />
+                )}
+              </Col>
+            </Row>
             <Row className="sp-form-row">
               <Col sm={4}>
                 <Form.Label className="sp-form-label" column="sm">project
@@ -259,8 +332,9 @@ class SciencePortalForm extends React.Component {
                 <Form.Select
                     name="project"
                     className="sp-form-cursor"
-                    onChange={(e) => this.setState({selectedProject: e.target.value || undefined})}
-                    value={this.state.selectedProject || this.state.fData?.defaultProjectName}
+                    disabled={!effectiveRegistry && hasMultipleRegistries}
+                    onChange={(e) => this.setState({selectedProject: e.target.value || undefined, selectedImageId: undefined})}
+                    value={this.state.selectedProject || defaultProjectInRegistry || ''}
                 >
                   <option className="sp-form" value="">Select project</option>
                   {availableProjects?.map(project => (
@@ -474,6 +548,14 @@ class SciencePortalForm extends React.Component {
               <Col className="sp-placeholder" sm={3}>
                 <Form.Label  className="sp-form-label" column="sm">type
                   {this.renderPopover("Session Type","Select from the list of supported session types")}
+                </Form.Label>
+              </Col>
+              {this.renderPlaceholder()}
+            </Row>
+            <Row className="sp-form-row">
+              <Col className="sp-placeholder" sm={3}>
+                <Form.Label  className="sp-form-label" column="sm">image registry
+                  {this.renderPopover("Image Registry","Select the image registry containing your container images.")}
                 </Form.Label>
               </Col>
               {this.renderPlaceholder()}

@@ -598,14 +598,19 @@ export default SciencePortalApp;
 
 // science-portal hook is "react-mountpoint", found in index.html for the public folder (local work)
 // and in index.jsp for the war file distribution
-const root = ReactDOM.createRoot(document.getElementById("react-mountpoint"));
+const mountPoint = document.getElementById("react-mountpoint");
 
-// ref= value here is setting the window.SciencePortalApp hook so the program
-// this is embedded in can inject data and listen to DOM events
-root.render(
-  <SciencePortalApp
-    ref={(SciencePortalApp) => {
-      window.SciencePortalApp = SciencePortalApp;
-    }}
-  />,
-);
+// Only render if mount point exists (skip during test imports)
+if (mountPoint) {
+  const root = ReactDOM.createRoot(mountPoint);
+
+  // ref= value here is setting the window.SciencePortalApp hook so the program
+  // this is embedded in can inject data and listen to DOM events
+  root.render(
+    <SciencePortalApp
+      ref={(SciencePortalApp) => {
+        window.SciencePortalApp = SciencePortalApp;
+      }}
+    />,
+  );
+}
