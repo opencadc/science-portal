@@ -1,5 +1,12 @@
 # Science Portal User Interface
 
+## [1.2.6](https://github.com/opencadc/science-portal/compare/1.2.5...1.2.6) (2026-01-30)
+
+
+### Bug Fixes
+
+* fix help link and use new token library ([b87a921](https://github.com/opencadc/science-portal/commit/b87a92178e933ce2ca451db34417359e86ac2dc4))
+
 ## [1.2.5](https://github.com/opencadc/science-portal/compare/1.2.4...1.2.5) (2025-11-26)
 
 
