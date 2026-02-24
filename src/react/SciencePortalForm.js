@@ -17,7 +17,7 @@ import {faQuestionCircle} from "@fortawesome/free-solid-svg-icons";
 // Utils
 import {getProjectImagesMap, getProjectNames, filterImagesByRegistry} from "./utilities/utils";
 import {
-    DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES,
+    DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES, DEFAULT_IMAGE_REGISTRY,
     DEFAULT_RAM_NUMBER, DEFAULT_GPU_NUMBER, HAS_FIXED
 } from "./utilities/constants";
 
@@ -212,10 +212,13 @@ class SciencePortalForm extends React.Component {
     const hasMultipleRegistries = repositoryHosts.length > 1;
     const hasSingleRegistry = repositoryHosts.length === 1;
 
-    // Determine effective registry
+    // Determine effective registry: prefer user selection, then default, then first in list
+    const defaultRegistry = repositoryHosts.includes(DEFAULT_IMAGE_REGISTRY)
+        ? DEFAULT_IMAGE_REGISTRY
+        : repositoryHosts[0];
     const effectiveRegistry = hasSingleRegistry
         ? repositoryHosts[0]
-        : this.state.selectedRegistry;
+        : (this.state.selectedRegistry || defaultRegistry);
 
     // Filter images by selected registry
     const registryFilteredImages = effectiveRegistry
@@ -298,9 +301,8 @@ class SciencePortalForm extends React.Component {
                     name="registry"
                     className="sp-form-cursor"
                     onChange={this.handleRegistryChange}
-                    value={this.state.selectedRegistry || ''}
+                    value={this.state.selectedRegistry || defaultRegistry || ''}
                   >
-                    <option className="sp-form" value="">Select registry</option>
                     {repositoryHosts.map(host => (
                       <option className="sp-form" key={host} value={host}>{host}</option>
                     ))}
