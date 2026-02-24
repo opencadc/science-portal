@@ -2,6 +2,7 @@
 export const DEFAULT_CORES_NUMBER = 1
 export const DEFAULT_RAM_NUMBER = 1
 export const DEFAULT_GPU_NUMBER = 0
+export const DEFAULT_IMAGE_REGISTRY = 'images.canfar.net'
 export const DEFAULT_NOTEBOOK_SKAHA_IMAGE = 'astroml:latest'
 export const DEFAULT_DESKTOP_SKAHA_IMAGE = 'desktop:latest'
 export const DEFAULT_FIREFLY_SKAHA_IMAGE = 'firefly:2025.2'
