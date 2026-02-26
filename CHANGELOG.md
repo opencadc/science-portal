@@ -1,5 +1,18 @@
 # Science Portal User Interface
 
+## [1.3.0](https://github.com/opencadc/science-portal/compare/1.2.6...1.3.0) (2026-02-26)
+
+
+### Features
+
+* add can src logo ([0b4d33b](https://github.com/opencadc/science-portal/commit/0b4d33b0af41636b29918c707892f9a397076f0a))
+* Refine image registry selection logic with a default. ([79f31b0](https://github.com/opencadc/science-portal/commit/79f31b0d2b325f5b860c0611b4ffd3b7601dd5e4))
+
+
+### Bug Fixes
+
+* theme logo url ([eff2092](https://github.com/opencadc/science-portal/commit/eff20929d15d79ad05aa6f3a1e94d76471b17281))
+
 ## [1.2.6](https://github.com/opencadc/science-portal/compare/1.2.5...1.2.6) (2026-01-30)
 
 
