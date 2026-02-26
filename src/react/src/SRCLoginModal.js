@@ -7,7 +7,8 @@ class SRCLoginModal extends React.Component {
   constructor(props) {
     super(props)
     this.state = {
-      isOpen: props.isOpen
+      isOpen: props.isOpen,
+      themeConfig: props.themeConfig
     }
   }
 

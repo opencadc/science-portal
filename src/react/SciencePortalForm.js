@@ -15,12 +15,11 @@ import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faQuestionCircle} from "@fortawesome/free-solid-svg-icons";
 
 // Utils
-import {getProjectImagesMap, getProjectNames} from "./utilities/utils";
+import {getProjectImagesMap, getProjectNames, filterImagesByRegistry} from "./utilities/utils";
 import {
-    DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES,
+    DEFAULT_CORES_NUMBER, DEFAULT_IMAGE_NAMES, DEFAULT_IMAGE_REGISTRY,
     DEFAULT_RAM_NUMBER, DEFAULT_GPU_NUMBER, HAS_FIXED
 } from "./utilities/constants";
-import {startsWithNumber} from "./components/CanfarRange/utils";
 
 class SciencePortalForm extends React.Component {
 
@@ -39,6 +38,7 @@ class SciencePortalForm extends React.Component {
       selectedRAM: this.selectedRAM,
       selectedCores: this.selectedCores,
       selectedGPU: this.selectedGPU,
+      selectedRegistry: undefined,
       selectedProject: undefined,
       selectedImageId: undefined,
       resourceType: 'shared',
@@ -49,6 +49,7 @@ class SciencePortalForm extends React.Component {
     this.resetForm = this.resetForm.bind(this);
     this.renderPopover = this.renderPopover.bind(this);
     this.handleResourceTypeChange = this.handleResourceTypeChange.bind(this);
+    this.handleRegistryChange = this.handleRegistryChange.bind(this);
   }
 
   handleChange(event) {
@@ -61,59 +62,41 @@ class SciencePortalForm extends React.Component {
   }
 
   handleRAMChange(event) {
-      if (this.state.fData.experimentalFeatures?.slider) {
-          const maybeNumber = +event?.target?.value || event
-          // Validate against min/max bounds instead of array membership
-          const ramOptions = this.state.fData?.contextData?.availableRAM || [1, 64];
-          const minRAM = ramOptions[0];
-          const maxRAM = ramOptions[ramOptions.length - 1];
-          if (maybeNumber && maybeNumber >= minRAM && maybeNumber <= maxRAM) {
-              this.setState({
-                  selectedRAM: maybeNumber
-              });
-          }
-      } else {
+      const maybeNumber = +event?.target?.value || event
+      // Validate against min/max bounds instead of array membership
+      const ramOptions = this.state.fData?.contextData?.availableRAM || [1, 64];
+      const minRAM = ramOptions[0];
+      const maxRAM = ramOptions[ramOptions.length - 1];
+      if (maybeNumber && maybeNumber >= minRAM && maybeNumber <= maxRAM) {
           this.setState({
-              selectedRAM: event.target.value
+              selectedRAM: maybeNumber
           });
       }
   }
     handleCoresChange(event) {
-      if (this.state.fData.experimentalFeatures?.slider) {
-          const maybeNumber = +event?.target?.value || event
-          // Validate against min/max bounds instead of array membership
-          const coresOptions = this.state.fData?.contextData?.availableCores || [1, 16];
-          const minCores = coresOptions[0];
-          const maxCores = coresOptions[coresOptions.length - 1];
-          if (maybeNumber && maybeNumber >= minCores && maybeNumber <= maxCores) {
-              this.setState({
-                  selectedCores: maybeNumber
-              });
-          }
-      } else {
-          this.setState({
-              selectedCores: event.target.value
-          });
-      }
+        const maybeNumber = +event?.target?.value || event
+        // Validate against min/max bounds instead of array membership
+        const coresOptions = this.state.fData?.contextData?.availableCores || [1, 16];
+        const minCores = coresOptions[0];
+        const maxCores = coresOptions[coresOptions.length - 1];
+        if (maybeNumber && maybeNumber >= minCores && maybeNumber <= maxCores) {
+            this.setState({
+                selectedCores: maybeNumber
+            });
+        }
     }
 
     handleGPUChange(event) {
-      if (this.state.fData.experimentalFeatures?.slider) {
-          const maybeNumber = +event?.target?.value || event
-          // Validate against min/max bounds instead of array membership
-          const gpuOptions = this.state.fData?.contextData?.availableGPU || [0, 4];
-          const minGPU = gpuOptions[0];
-          const maxGPU = gpuOptions[gpuOptions.length - 1];
-          if (maybeNumber >= minGPU && maybeNumber <= maxGPU) {
-              this.setState({
-                  selectedGPU: maybeNumber
-              });
-          }
-      } else {
-          this.setState({
-              selectedGPU: event.target.value
-          });
-      }
+        const maybeNumber = +event?.target?.value || event
+        // Validate against min/max bounds instead of array membership
+        const gpuOptions = this.state.fData?.contextData?.availableGPU || [0, 4];
+        const minGPU = gpuOptions[0];
+        const maxGPU = gpuOptions[gpuOptions.length - 1];
+        if (maybeNumber >= minGPU && maybeNumber <= maxGPU) {
+            this.setState({
+                selectedGPU: maybeNumber
+            });
+        }
     }
 
 
@@ -133,6 +116,14 @@ class SciencePortalForm extends React.Component {
     });
   }
 
+  handleRegistryChange(event) {
+    this.setState({
+      selectedRegistry: event.target.value || undefined,
+      selectedProject: undefined,
+      selectedImageId: undefined
+    });
+  }
+
   resetForm(event) {
     event.stopPropagation();
 
@@ -140,6 +131,7 @@ class SciencePortalForm extends React.Component {
       selectedCores : this.props.fData.contextData?.defaultCores || DEFAULT_CORES_NUMBER,
       selectedRAM : this.props.fData.contextData?.defaultRAM || DEFAULT_RAM_NUMBER,
       selectedGPU : this.props.fData.contextData?.defaultGPU || DEFAULT_GPU_NUMBER,
+      selectedRegistry: undefined,
       selectedProject: '',
       selectedImageId: '',
       resourceType: 'shared',
@@ -215,15 +207,62 @@ class SciencePortalForm extends React.Component {
   }
 
   render() {
-    const projectsOfType = getProjectImagesMap(this.state.fData?.imageList)
-    const availableProjects = getProjectNames(projectsOfType) || []
-    const defaultImages =  projectsOfType?.[this.state.fData?.defaultProjectName] || []
-    const imagesOfProject = this.state.selectedProject ? projectsOfType?.[this.state.selectedProject] : defaultImages
-    const defaultImageName = this.state.fData?.selectedType ? DEFAULT_IMAGE_NAMES[this.state.fData.selectedType] : undefined
-    const defaultImageId = defaultImageName ? imagesOfProject?.find(mObj => mObj.name === defaultImageName)?.id : imagesOfProject?.[0]?.id
+    // Registry logic
+    const repositoryHosts = this.state.fData?.repositoryHosts || [];
+    const hasMultipleRegistries = repositoryHosts.length > 1;
+    const hasSingleRegistry = repositoryHosts.length === 1;
+
+    // Determine effective registry: prefer user selection, then default, then first in list
+    const defaultRegistry = repositoryHosts.includes(DEFAULT_IMAGE_REGISTRY)
+        ? DEFAULT_IMAGE_REGISTRY
+        : repositoryHosts[0];
+    const effectiveRegistry = hasSingleRegistry
+        ? repositoryHosts[0]
+        : (this.state.selectedRegistry || defaultRegistry);
+
+    // Filter images by selected registry
+    const registryFilteredImages = effectiveRegistry
+        ? filterImagesByRegistry(this.state.fData?.imageList, effectiveRegistry)
+        : [];
+
+    // Get projects from filtered images
+    const projectsOfType = getProjectImagesMap(registryFilteredImages);
+    const availableProjects = getProjectNames(projectsOfType) || [];
+
+    // Default project handling
+    const defaultProjectInRegistry = availableProjects.includes(this.state.fData?.defaultProjectName)
+        ? this.state.fData?.defaultProjectName
+        : availableProjects[0];
+
+    const defaultImages = projectsOfType?.[defaultProjectInRegistry] || [];
+    const imagesOfProject = this.state.selectedProject
+        ? projectsOfType?.[this.state.selectedProject]
+        : defaultImages;
+
+    // Default image selection
+    const defaultImageName = this.state.fData?.selectedType
+        ? DEFAULT_IMAGE_NAMES[this.state.fData.selectedType]
+        : undefined;
+    const defaultImageId = defaultImageName
+        ? imagesOfProject?.find(mObj => mObj.name === defaultImageName)?.id
+        : imagesOfProject?.[0]?.id;
+
     const supportsGPU = this.state.fData?.contextData?.availableGPU?.length > 0
     const fixedColumnWidth = supportsGPU ? 4 : 6
     const canHaveFixed = HAS_FIXED.includes(this.state.fData?.selectedType)
+
+    const ramOptions = this.state.fData?.contextData?.availableRAM || [1, 64];
+    const minRAM = ramOptions[0];
+    const maxRAM = ramOptions[ramOptions.length - 1];
+
+    const coresOptions = this.state.fData?.contextData?.availableCores || [1, 16];
+    const minCores = coresOptions[0];
+    const maxCores = coresOptions[coresOptions.length - 1];
+
+    const gpuOptions = this.state.fData?.contextData?.availableGPU || [0, 4];
+    const minGPU = gpuOptions[0];
+    const maxGPU = gpuOptions[gpuOptions.length - 1];
+
       return (
       <>
         {Object.keys(this.state.fData || {}).length !== 0 && 
@@ -232,7 +271,7 @@ class SciencePortalForm extends React.Component {
             <Row className="sp-form-row">
               <Col sm={4}>
                 <Form.Label className="sp-form-label" column="sm">type
-                  {this.renderPopover("Session Type","Select from the list of supported session types")}
+                  {this.renderPopover("Session Type","Choose a session type")}
                 </Form.Label>
               </Col>
               <Col sm={7}>
@@ -249,6 +288,36 @@ class SciencePortalForm extends React.Component {
                 </Form.Select>
               </Col>
             </Row>
+            {/* Image Registry Row */}
+            <Row className="sp-form-row">
+              <Col sm={4}>
+                <Form.Label className="sp-form-label" column="sm">image registry
+                  {this.renderPopover("Image Registry", "Select the image registry containing your container images.")}
+                </Form.Label>
+              </Col>
+              <Col sm={7}>
+                {hasMultipleRegistries ? (
+                  <Form.Select
+                    name="registry"
+                    className="sp-form-cursor"
+                    onChange={this.handleRegistryChange}
+                    value={this.state.selectedRegistry || defaultRegistry || ''}
+                  >
+                    {repositoryHosts.map(host => (
+                      <option className="sp-form" key={host} value={host}>{host}</option>
+                    ))}
+                  </Form.Select>
+                ) : (
+                  <Form.Control
+                    type="text"
+                    disabled={true}
+                    value={repositoryHosts[0] || ''}
+                    name="registry"
+                    className="sp-form-input"
+                  />
+                )}
+              </Col>
+            </Row>
             <Row className="sp-form-row">
               <Col sm={4}>
                 <Form.Label className="sp-form-label" column="sm">project
@@ -259,8 +328,9 @@ class SciencePortalForm extends React.Component {
                 <Form.Select
                     name="project"
                     className="sp-form-cursor"
-                    onChange={(e) => this.setState({selectedProject: e.target.value || undefined})}
-                    value={this.state.selectedProject || this.state.fData?.defaultProjectName}
+                    disabled={!effectiveRegistry && hasMultipleRegistries}
+                    onChange={(e) => this.setState({selectedProject: e.target.value || undefined, selectedImageId: undefined})}
+                    value={this.state.selectedProject || defaultProjectInRegistry || ''}
                 >
                   <option className="sp-form" value="">Select project</option>
                   {availableProjects?.map(project => (
@@ -345,11 +415,6 @@ class SciencePortalForm extends React.Component {
                 <Row>
                   <Col sm={fixedColumnWidth}>
                     <Form.Label className="sp-form-sublabel">Memory (GB)</Form.Label>
-                      {this.state.fData.experimentalFeatures?.slider ? (() => {
-                        const ramOptions = this.state.fData?.contextData?.availableRAM || [1, 64];
-                        const minRAM = ramOptions[0];
-                        const maxRAM = ramOptions[ramOptions.length - 1];
-                        return (<>
                       <CanfarRange
                           value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
                           name="ram"
@@ -367,25 +432,9 @@ class SciencePortalForm extends React.Component {
                             label="Memory (GB)"
                         />
                       </div>
-                      </>)})() : (
-                          <Form.Select
-                              value={this.state.selectedRAM || this.state.fData?.contextData?.defaultRAM || DEFAULT_RAM_NUMBER}
-                              name="ram"
-                              className="sp-form-cursor"
-                              onChange={this.handleRAMChange.bind(this)}>
-                              {(this.state.fData?.contextData?.availableRAM || []).map(mapObj => (
-                                  <option key={mapObj} value={mapObj}>{mapObj}</option>
-                              ))}
-                          </Form.Select>
-                          )}
                   </Col>
                   <Col sm={fixedColumnWidth}>
                     <Form.Label className="sp-form-sublabel">CPU Cores</Form.Label>
-                      {this.state.fData.experimentalFeatures?.slider ? (() => {
-                        const coresOptions = this.state.fData?.contextData?.availableCores || [1, 16];
-                        const minCores = coresOptions[0];
-                        const maxCores = coresOptions[coresOptions.length - 1];
-                        return (<>
                       <CanfarRange
                           value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
                           name="cores"
@@ -403,26 +452,10 @@ class SciencePortalForm extends React.Component {
                             label="CPU Cores"
                         />
                       </div>
-                      </>)})() : (
-                          <Form.Select
-                              name="cores"
-                              className="sp-form-cursor"
-                              value={this.state.selectedCores || this.state.fData?.contextData?.defaultCores || DEFAULT_CORES_NUMBER}
-                              onChange={this.handleCoresChange.bind(this)}>
-                              {(this.state.fData?.contextData?.availableCores || []).map(mapObj => (
-                                  <option key={mapObj} value={mapObj}>{mapObj}</option>
-                              ))}
-                          </Form.Select>
-                          )}
                   </Col>
                   {supportsGPU ? (
                   <Col sm={4}>
                     <Form.Label className="sp-form-sublabel">GPU</Form.Label>
-                      {this.state.fData.experimentalFeatures?.slider ? (() => {
-                        const gpuOptions = this.state.fData?.contextData?.availableGPU || [0, 4];
-                        const minGPU = gpuOptions[0];
-                        const maxGPU = gpuOptions[gpuOptions.length - 1];
-                        return (<>
                       <CanfarRange
                           value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
                           name="gpus"
@@ -440,17 +473,6 @@ class SciencePortalForm extends React.Component {
                             label="GPU"
                         />
                       </div>
-                      </>)})() : (
-                          <Form.Select
-                              name="gpus"
-                              className="sp-form-cursor"
-                              value={this.state.selectedGPU || this.state.fData?.contextData?.defaultGPU || DEFAULT_GPU_NUMBER}
-                              onChange={this.handleGPUChange.bind(this)}>
-                              {(this.state.fData?.contextData?.availableGPU || [0]).map(mapObj => (
-                                  <option key={mapObj} value={mapObj}>{mapObj === 0 ? 'None' : mapObj}</option>
-                              ))}
-                          </Form.Select>
-                          )}
                   </Col>) : null}
                 </Row>
               </Col>
@@ -474,6 +496,14 @@ class SciencePortalForm extends React.Component {
               <Col className="sp-placeholder" sm={3}>
                 <Form.Label  className="sp-form-label" column="sm">type
                   {this.renderPopover("Session Type","Select from the list of supported session types")}
+                </Form.Label>
+              </Col>
+              {this.renderPlaceholder()}
+            </Row>
+            <Row className="sp-form-row">
+              <Col className="sp-placeholder" sm={3}>
+                <Form.Label  className="sp-form-label" column="sm">image registry
+                  {this.renderPopover("Image Registry","Select the image registry containing your container images.")}
                 </Form.Label>
               </Col>
               {this.renderPlaceholder()}

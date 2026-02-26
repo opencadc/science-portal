@@ -35,6 +35,27 @@ const getImageProject = (image) => {
     return parts?.[1];
 };
 
+const getImageRegistry = (image) => {
+    if (!image?.id) return undefined;
+    const parts = image.id.split('/');
+    return parts?.[0];
+};
+
+const filterImagesByRegistry = (images, registry) => {
+    if (!Array.isArray(images) || !registry) return [];
+    return images.filter(image => getImageRegistry(image) === registry);
+};
+
+const getUniqueRegistries = (images) => {
+    if (!Array.isArray(images)) return [];
+    const registries = new Set();
+    images.forEach(image => {
+        const registry = getImageRegistry(image);
+        if (registry) registries.add(registry);
+    });
+    return Array.from(registries).sort();
+};
+
 const getImageName = (image) => {
     if (!image?.id) return undefined;
     const parts = image.id.split('/');
@@ -123,7 +144,10 @@ const getProjectNames = (keyedProjects) => {
 module.exports = {
     getImagesByType,
     getImageProject,
+    getImageRegistry,
     getImagesNamesSorted,
     getProjectImagesMap,
-    getProjectNames
+    getProjectNames,
+    filterImagesByRegistry,
+    getUniqueRegistries
 };

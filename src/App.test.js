@@ -11,6 +11,9 @@ beforeEach(() => {
   container = document.createElement("div");
   container.setAttribute("id", "react-mountpoint");
   document.body.appendChild(container);
+
+  // Mock window.runStartupTasks used in componentDidMount
+  window.runStartupTasks = jest.fn();
 });
 
 afterEach(() => {
@@ -22,8 +25,8 @@ afterEach(() => {
 
 
 
-test('renders learn react link', () => {
+test('renders Science Portal header', () => {
   render(<SciencePortalApp />);
-  const linkElement = screen.getByText(/Science Portals/i);
-  expect(linkElement).toBeInTheDocument();
+  const headerElement = screen.getByText(/Science Portal/i);
+  expect(headerElement).toBeTruthy();
 });

@@ -1,4 +1,4 @@
-import { getImagesByType, getImageProject, getImagesNamesSorted, getProjectImagesMap, getProjectNames } from './utils';
+import { getImagesByType, getImageProject, getImageRegistry, getImagesNamesSorted, getProjectImagesMap, getProjectNames, filterImagesByRegistry, getUniqueRegistries } from './utils';
 import { imageResponse } from './testData';
 
 describe('Image List Processing Functions', () => {
@@ -345,5 +345,107 @@ describe('getProjectNames', () => {
     test('handles invalid inputs', () => {
         expect(getProjectNames(null)).toEqual([]);
         expect(getProjectNames(undefined)).toEqual([]);
+    });
+});
+
+describe('Registry Utility Functions', () => {
+    describe('getImageRegistry', () => {
+        test('extracts registry from valid image id', () => {
+            expect(getImageRegistry({id: 'images.canfar.net/skaha/carta:4.0'}))
+                .toBe('images.canfar.net');
+        });
+
+        test('handles various image id formats', () => {
+            const testCases = [
+                {id: 'images.canfar.net/project/name:1.0', expected: 'images.canfar.net'},
+                {id: 'images.opencadc.org/project/name:1.0', expected: 'images.opencadc.org'},
+                {id: 'project/name', expected: 'project'},
+                {id: 'single', expected: 'single'},
+                {id: '', expected: undefined}
+            ];
+
+            testCases.forEach(({id, expected}) => {
+                expect(getImageRegistry({id})).toBe(expected);
+            });
+        });
+
+        test('handles invalid inputs', () => {
+            expect(getImageRegistry(null)).toBeUndefined();
+            expect(getImageRegistry({})).toBeUndefined();
+            expect(getImageRegistry({id: null})).toBeUndefined();
+        });
+    });
+
+    describe('filterImagesByRegistry', () => {
+        const mixedImages = [
+            {id: 'images.canfar.net/skaha/notebook:1.0'},
+            {id: 'images.opencadc.org/project/tool:1.0'},
+            {id: 'images.canfar.net/canucs/analysis:2.0'}
+        ];
+
+        test('filters images by registry correctly', () => {
+            const result = filterImagesByRegistry(mixedImages, 'images.canfar.net');
+            expect(result).toHaveLength(2);
+            expect(result[0].id).toBe('images.canfar.net/skaha/notebook:1.0');
+            expect(result[1].id).toBe('images.canfar.net/canucs/analysis:2.0');
+        });
+
+        test('filters for different registry', () => {
+            const result = filterImagesByRegistry(mixedImages, 'images.opencadc.org');
+            expect(result).toHaveLength(1);
+            expect(result[0].id).toBe('images.opencadc.org/project/tool:1.0');
+        });
+
+        test('returns empty array for non-matching registry', () => {
+            const result = filterImagesByRegistry(mixedImages, 'nonexistent.registry.com');
+            expect(result).toEqual([]);
+        });
+
+        test('returns empty array for invalid inputs', () => {
+            expect(filterImagesByRegistry(null, 'images.canfar.net')).toEqual([]);
+            expect(filterImagesByRegistry(undefined, 'images.canfar.net')).toEqual([]);
+            expect(filterImagesByRegistry(mixedImages, null)).toEqual([]);
+            expect(filterImagesByRegistry(mixedImages, undefined)).toEqual([]);
+            expect(filterImagesByRegistry(mixedImages, '')).toEqual([]);
+        });
+    });
+
+    describe('getUniqueRegistries', () => {
+        test('returns sorted unique registries', () => {
+            const images = [
+                {id: 'images.canfar.net/skaha/notebook:1.0'},
+                {id: 'images.opencadc.org/project/tool:1.0'},
+                {id: 'images.canfar.net/canucs/analysis:2.0'}
+            ];
+            expect(getUniqueRegistries(images)).toEqual([
+                'images.canfar.net',
+                'images.opencadc.org'
+            ]);
+        });
+
+        test('handles single registry', () => {
+            const images = [
+                {id: 'images.canfar.net/skaha/notebook:1.0'},
+                {id: 'images.canfar.net/canucs/analysis:2.0'}
+            ];
+            expect(getUniqueRegistries(images)).toEqual(['images.canfar.net']);
+        });
+
+        test('handles empty inputs', () => {
+            expect(getUniqueRegistries(null)).toEqual([]);
+            expect(getUniqueRegistries(undefined)).toEqual([]);
+            expect(getUniqueRegistries([])).toEqual([]);
+        });
+
+        test('handles images without valid ids', () => {
+            const images = [
+                {id: 'images.canfar.net/skaha/notebook:1.0'},
+                {notId: 'something'},
+                null,
+                undefined,
+                {}
+            ];
+            expect(getUniqueRegistries(images)).toEqual(['images.canfar.net']);
+        });
     });
 });
