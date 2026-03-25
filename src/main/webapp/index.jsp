@@ -131,8 +131,8 @@
       window.runStartupTasks() on completion. --%>
     <script src="${contextPath}/dist/react-app.js?v=${buildVersion}"></script>
 
-    <%-- Atlassian Statuspage: incident / maintenance banner (disable for src theme) --%>
-    <% if (!"src".equals(theme.name)) { %>
+    <%-- Atlassian Statuspage: incident / maintenance banner (CANFAR theme only) --%>
+    <% if ("canfar".equals(theme.name)) { %>
       <script src="https://canfar.statuspage.io/embed/script.js"></script>
     <% } %>
 
