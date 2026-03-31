@@ -1,4 +1,4 @@
-import { getImagesByType, getImageProject, getImageRegistry, getImagesNamesSorted, getProjectImagesMap, getProjectNames, filterImagesByRegistry, getUniqueRegistries } from './utils';
+import { getImagesByType, getImageProject, getImageRegistry, getImagesNamesSorted, getProjectImagesMap, getProjectNames, filterImagesByRegistry, getUniqueRegistries, getSessionIdleStatus } from './utils';
 import { imageResponse } from './testData';
 
 describe('Image List Processing Functions', () => {
@@ -447,5 +447,86 @@ describe('Registry Utility Functions', () => {
             ];
             expect(getUniqueRegistries(images)).toEqual(['images.canfar.net']);
         });
+    });
+});
+
+describe('getSessionIdleStatus', () => {
+    const hoursThreshold = 8;
+    const cpuThreshold = 0.5;
+
+    // Helper to create a startTime N hours ago
+    const hoursAgo = (h) => new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
+
+    test('returns true for running session older than threshold with low CPU', () => {
+        const session = { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: "0.1" };
+        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(true);
+    });
+
+    test('returns false for running session younger than threshold', () => {
+        const session = { status: "Running", startTime: hoursAgo(2), cpuCoresInUse: "0.1" };
+        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(false);
+    });
+
+    test('returns false for running session with high CPU usage', () => {
+        const session = { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: "2.5" };
+        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(false);
+    });
+
+    test('returns false for non-Running sessions', () => {
+        expect(getSessionIdleStatus(
+            { status: "Pending", startTime: hoursAgo(100), cpuCoresInUse: "0" },
+            hoursThreshold, cpuThreshold
+        )).toBe(false);
+
+        expect(getSessionIdleStatus(
+            { status: "Terminating", startTime: hoursAgo(100), cpuCoresInUse: "0" },
+            hoursThreshold, cpuThreshold
+        )).toBe(false);
+    });
+
+    test('treats null/undefined cpuCoresInUse as 0 (idle)', () => {
+        expect(getSessionIdleStatus(
+            { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: null },
+            hoursThreshold, cpuThreshold
+        )).toBe(true);
+
+        expect(getSessionIdleStatus(
+            { status: "Running", startTime: hoursAgo(10) },
+            hoursThreshold, cpuThreshold
+        )).toBe(true);
+    });
+
+    test('handles cpuCoresInUse as number', () => {
+        expect(getSessionIdleStatus(
+            { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: 0.3 },
+            hoursThreshold, cpuThreshold
+        )).toBe(true);
+
+        expect(getSessionIdleStatus(
+            { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: 1.0 },
+            hoursThreshold, cpuThreshold
+        )).toBe(false);
+    });
+
+    test('returns false for CPU exactly at threshold', () => {
+        const session = { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: "0.5" };
+        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(false);
+    });
+
+    test('returns false for null/undefined session', () => {
+        expect(getSessionIdleStatus(null, hoursThreshold, cpuThreshold)).toBe(false);
+        expect(getSessionIdleStatus(undefined, hoursThreshold, cpuThreshold)).toBe(false);
+    });
+
+    test('returns false when startTime is missing', () => {
+        const session = { status: "Running", cpuCoresInUse: "0.1" };
+        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(false);
+    });
+
+    test('respects different threshold values', () => {
+        const session = { status: "Running", startTime: hoursAgo(50), cpuCoresInUse: "0.3" };
+        expect(getSessionIdleStatus(session, 48, 0.5)).toBe(true);
+        expect(getSessionIdleStatus(session, 72, 0.5)).toBe(false);
+        expect(getSessionIdleStatus(session, 48, 0.1)).toBe(false);
     });
 });
