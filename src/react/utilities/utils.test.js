@@ -451,7 +451,7 @@ describe('Registry Utility Functions', () => {
 });
 
 describe('getSessionIdleStatus', () => {
-    const hoursThreshold = 8;
+    const hoursThreshold = 48;
     const cpuThreshold = 0.5;
 
     // Helper to create a startTime N hours ago

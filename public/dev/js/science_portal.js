@@ -24,7 +24,7 @@
 
   // Idle session detection thresholds
   const IDLE_CPU_THRESHOLD = 0.5
-  const IDLE_HOURS_THRESHOLD = 8
+  const IDLE_HOURS_THRESHOLD = 48
   const IDLE_SESSION_MESSAGE = "This session is idle. Please consider closing to release resources and reduce energy consumption."
 
   /**
