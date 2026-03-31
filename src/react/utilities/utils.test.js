@@ -451,82 +451,84 @@ describe('Registry Utility Functions', () => {
 });
 
 describe('getSessionIdleStatus', () => {
-    const hoursThreshold = 48;
-    const cpuThreshold = 0.5;
+    const HOURS_THRESHOLD = 48;
+    const CPU_THRESHOLD = 0.5;
+    const OVER_THRESHOLD_HOURS = 72;
+    const UNDER_THRESHOLD_HOURS = 24;
 
     // Helper to create a startTime N hours ago
     const hoursAgo = (h) => new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
 
     test('returns true for running session older than threshold with low CPU', () => {
-        const session = { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: "0.1" };
-        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(true);
+        const session = { status: "Running", startTime: hoursAgo(OVER_THRESHOLD_HOURS), cpuCoresInUse: "0.1" };
+        expect(getSessionIdleStatus(session, HOURS_THRESHOLD, CPU_THRESHOLD)).toBe(true);
     });
 
     test('returns false for running session younger than threshold', () => {
-        const session = { status: "Running", startTime: hoursAgo(2), cpuCoresInUse: "0.1" };
-        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(false);
+        const session = { status: "Running", startTime: hoursAgo(UNDER_THRESHOLD_HOURS), cpuCoresInUse: "0.1" };
+        expect(getSessionIdleStatus(session, HOURS_THRESHOLD, CPU_THRESHOLD)).toBe(false);
     });
 
     test('returns false for running session with high CPU usage', () => {
-        const session = { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: "2.5" };
-        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(false);
+        const session = { status: "Running", startTime: hoursAgo(OVER_THRESHOLD_HOURS), cpuCoresInUse: "2.5" };
+        expect(getSessionIdleStatus(session, HOURS_THRESHOLD, CPU_THRESHOLD)).toBe(false);
     });
 
     test('returns false for non-Running sessions', () => {
         expect(getSessionIdleStatus(
-            { status: "Pending", startTime: hoursAgo(100), cpuCoresInUse: "0" },
-            hoursThreshold, cpuThreshold
+            { status: "Pending", startTime: hoursAgo(OVER_THRESHOLD_HOURS), cpuCoresInUse: "0" },
+            HOURS_THRESHOLD, CPU_THRESHOLD
         )).toBe(false);
 
         expect(getSessionIdleStatus(
-            { status: "Terminating", startTime: hoursAgo(100), cpuCoresInUse: "0" },
-            hoursThreshold, cpuThreshold
+            { status: "Terminating", startTime: hoursAgo(OVER_THRESHOLD_HOURS), cpuCoresInUse: "0" },
+            HOURS_THRESHOLD, CPU_THRESHOLD
         )).toBe(false);
     });
 
     test('treats null/undefined cpuCoresInUse as 0 (idle)', () => {
         expect(getSessionIdleStatus(
-            { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: null },
-            hoursThreshold, cpuThreshold
+            { status: "Running", startTime: hoursAgo(OVER_THRESHOLD_HOURS), cpuCoresInUse: null },
+            HOURS_THRESHOLD, CPU_THRESHOLD
         )).toBe(true);
 
         expect(getSessionIdleStatus(
-            { status: "Running", startTime: hoursAgo(10) },
-            hoursThreshold, cpuThreshold
+            { status: "Running", startTime: hoursAgo(OVER_THRESHOLD_HOURS) },
+            HOURS_THRESHOLD, CPU_THRESHOLD
         )).toBe(true);
     });
 
     test('handles cpuCoresInUse as number', () => {
         expect(getSessionIdleStatus(
-            { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: 0.3 },
-            hoursThreshold, cpuThreshold
+            { status: "Running", startTime: hoursAgo(OVER_THRESHOLD_HOURS), cpuCoresInUse: 0.3 },
+            HOURS_THRESHOLD, CPU_THRESHOLD
         )).toBe(true);
 
         expect(getSessionIdleStatus(
-            { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: 1.0 },
-            hoursThreshold, cpuThreshold
+            { status: "Running", startTime: hoursAgo(OVER_THRESHOLD_HOURS), cpuCoresInUse: 1.0 },
+            HOURS_THRESHOLD, CPU_THRESHOLD
         )).toBe(false);
     });
 
     test('returns false for CPU exactly at threshold', () => {
-        const session = { status: "Running", startTime: hoursAgo(10), cpuCoresInUse: "0.5" };
-        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(false);
+        const session = { status: "Running", startTime: hoursAgo(OVER_THRESHOLD_HOURS), cpuCoresInUse: "0.5" };
+        expect(getSessionIdleStatus(session, HOURS_THRESHOLD, CPU_THRESHOLD)).toBe(false);
     });
 
     test('returns false for null/undefined session', () => {
-        expect(getSessionIdleStatus(null, hoursThreshold, cpuThreshold)).toBe(false);
-        expect(getSessionIdleStatus(undefined, hoursThreshold, cpuThreshold)).toBe(false);
+        expect(getSessionIdleStatus(null, HOURS_THRESHOLD, CPU_THRESHOLD)).toBe(false);
+        expect(getSessionIdleStatus(undefined, HOURS_THRESHOLD, CPU_THRESHOLD)).toBe(false);
     });
 
     test('returns false when startTime is missing', () => {
         const session = { status: "Running", cpuCoresInUse: "0.1" };
-        expect(getSessionIdleStatus(session, hoursThreshold, cpuThreshold)).toBe(false);
+        expect(getSessionIdleStatus(session, HOURS_THRESHOLD, CPU_THRESHOLD)).toBe(false);
     });
 
     test('respects different threshold values', () => {
-        const session = { status: "Running", startTime: hoursAgo(50), cpuCoresInUse: "0.3" };
-        expect(getSessionIdleStatus(session, 48, 0.5)).toBe(true);
-        expect(getSessionIdleStatus(session, 72, 0.5)).toBe(false);
-        expect(getSessionIdleStatus(session, 48, 0.1)).toBe(false);
+        const session = { status: "Running", startTime: hoursAgo(OVER_THRESHOLD_HOURS), cpuCoresInUse: "0.3" };
+        expect(getSessionIdleStatus(session, HOURS_THRESHOLD, CPU_THRESHOLD)).toBe(true);
+        expect(getSessionIdleStatus(session, OVER_THRESHOLD_HOURS + 1, CPU_THRESHOLD)).toBe(false);
+        expect(getSessionIdleStatus(session, HOURS_THRESHOLD, 0.1)).toBe(false);
     });
 });
