@@ -22,6 +22,11 @@
     }
   })
 
+  // Idle session detection thresholds
+  const IDLE_CPU_THRESHOLD = 0.5
+  const IDLE_HOURS_THRESHOLD = 48
+  const IDLE_SESSION_MESSAGE = "This session is idle. Please consider closing to release resources and reduce energy consumption."
+
   /**
    * Controller for Science Portal UI. Contains event management backbone for the form, session list
    * and error handling. Behaviour of page is controlled from here, including showing and hiding
@@ -289,6 +294,19 @@
             }
           }
 
+          // Check idle status for running sessions
+          let isIdle = false
+          if (this.status === "Running" && this.startTime) {
+            const startDate = new Date(this.startTime)
+            const now = new Date()
+            const hoursElapsed = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60)
+            let cpuUsage = parseFloat(this.cpuCoresInUse)
+            if (isNaN(cpuUsage)) { cpuUsage = 0 }
+            if (hoursElapsed > IDLE_HOURS_THRESHOLD && cpuUsage < IDLE_CPU_THRESHOLD) {
+              isIdle = true
+            }
+          }
+
           const nextSessionItem = {
             "id" : this.id,
             "name" : this.name,
@@ -312,7 +330,9 @@
             "renewHandler": handleRenewSession,
             "viewLogsURL": portalSessions.getViewLogsURL(this.id ),
             "viewEventsURL" : portalSessions.getViewEventsURL(this.id),
-            "isFixedResources": this.isFixedResources
+            "isFixedResources": this.isFixedResources,
+            "isIdle": isIdle,
+            "idleMessage": isIdle ? IDLE_SESSION_MESSAGE : ""
           }
 
           // Add to the list

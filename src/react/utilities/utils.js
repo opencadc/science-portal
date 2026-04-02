@@ -141,6 +141,28 @@ const getProjectNames = (keyedProjects) => {
     );
 };
 
+/**
+ * Determines if a session should be flagged as idle based on age and CPU usage.
+ * @param {object} session - Session data with status, startTime, cpuCoresInUse
+ * @param {number} hoursThreshold - Minimum hours running to be considered idle
+ * @param {number} cpuThreshold - Maximum CPU cores in use to be considered idle
+ * @returns {boolean} true if session is idle
+ */
+const getSessionIdleStatus = (session, hoursThreshold, cpuThreshold) => {
+    if (!session || session.status !== "Running" || !session.startTime) {
+        return false
+    }
+
+    const startDate = new Date(session.startTime)
+    const now = new Date()
+    const hoursElapsed = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60)
+
+    let cpuUsage = parseFloat(session.cpuCoresInUse)
+    if (isNaN(cpuUsage)) { cpuUsage = 0 }
+
+    return hoursElapsed > hoursThreshold && cpuUsage < cpuThreshold
+};
+
 module.exports = {
     getImagesByType,
     getImageProject,
@@ -149,5 +171,6 @@ module.exports = {
     getProjectImagesMap,
     getProjectNames,
     filterImagesByRegistry,
-    getUniqueRegistries
+    getUniqueRegistries,
+    getSessionIdleStatus
 };
