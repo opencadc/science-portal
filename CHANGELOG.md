@@ -1,5 +1,12 @@
 # Science Portal User Interface
 
+## [1.4.0](https://github.com/opencadc/science-portal/compare/1.3.0...1.4.0) (2026-04-02)
+
+
+### Features
+
+* decorate sessions with over use ([90287b3](https://github.com/opencadc/science-portal/commit/90287b306a9652cbd27d91fd8c95a27790904d69))
+
 ## [1.3.0](https://github.com/opencadc/science-portal/compare/1.2.6...1.3.0) (2026-02-26)
 
 
