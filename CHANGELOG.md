@@ -1,5 +1,12 @@
 # Science Portal User Interface
 
+## [1.5.0](https://github.com/opencadc/science-portal/compare/1.4.0...1.5.0) (2026-04-24)
+
+
+### Features
+
+* disable platform load ([38bae2e](https://github.com/opencadc/science-portal/commit/38bae2e5e5175995fbd3fe8148887f16b5bcfa0d))
+
 ## [1.4.0](https://github.com/opencadc/science-portal/compare/1.3.0...1.4.0) (2026-04-02)
 
 
