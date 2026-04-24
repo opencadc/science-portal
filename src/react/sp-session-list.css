@@ -142,6 +142,47 @@ span.sp-usage-title-placeholder {
   color: #bcbcbc;
 }
 
+/* Platform Load widget — disabled state overlay (CADC-15555) */
+div.sp-usage-overlay-wrapper {
+  position: relative;
+}
+
+div.sp-usage-charts-blurred {
+  filter: blur(4px);
+  -webkit-filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.85;
+}
+
+div.sp-usage-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  background-color: rgba(255, 255, 255, 0.72);
+  border-radius: 4px;
+  z-index: 5;
+}
+
+svg.sp-usage-overlay-icon {
+  color: #b58900;
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+div.sp-usage-overlay-text {
+  font-size: 16px;
+  line-height: 1.4;
+  color: #333;
+  font-weight: 500;
+  max-width: 90%;
+}
+
 .sp-form-button {
   margin-right: 5px;
   background-image: linear-gradient(to bottom,#337ab7 0,#265a88 100%);

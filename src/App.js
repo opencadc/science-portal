@@ -499,6 +499,7 @@ class SciencePortalApp extends React.Component {
                       <Col>
                         <div className="sp-title sp-panel-heading">
                           Platform Load
+                          {/* Refresh button disabled while platform load fetching is paused — CADC-15555
                           <span className="sp-header-button">
                             <OverlayTrigger
                               key="refresh-statistics-overlay-tooltip"
@@ -522,7 +523,9 @@ class SciencePortalApp extends React.Component {
                               </Button>
                             </OverlayTrigger>
                           </span>
+                          */}
                         </div>
+                        {/* Progress bars and alert disabled while platform load fetching is paused — CADC-15555
                         {this.state.pageState.spPlatformUsage.progressBar
                           .animated === true && (
                           <ProgressBar
@@ -561,6 +564,7 @@ class SciencePortalApp extends React.Component {
                             }{" "}
                           </Alert>
                         )}
+                        */}
                       </Col>
                     </Row>
                     <SciencePortalPlatformLoad

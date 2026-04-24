@@ -119,7 +119,8 @@
     function attachListeners() {
       // Button/page click listeners
       $(".sp-session-reload").click(checkForSessions)
-      $(".sp-e-usage-reload").click(handlePlatformUsageLoad)
+      // Refresh disabled while platform load fetching is paused — CADC-15555
+      // $(".sp-e-usage-reload").click(handlePlatformUsageLoad)
 
       // Data Flow/javascript object listeners
       // portalCore listeners
@@ -139,8 +140,8 @@
         // Get portalForm to start collecting form data
         portalForm.getFormData()
 
-        // Get platform Usage information
-        portalSessions.loadPlatformUsage()
+        // Get platform Usage information — disabled, see CADC-15555
+        // portalSessions.loadPlatformUsage()
 
         // Start loading session lists
         checkForSessions()
@@ -231,6 +232,7 @@
       }
     }
 
+    /* Disabled while platform load fetching is paused — CADC-15555
     function handlePlatformUsageLoad() {
       // Leave the list as is, and update the progress bar to show something is happening.
       // portalCore.setModal(_reactApp,"Statistics Check", "Fetching platform usage", true, false, false)
@@ -238,6 +240,7 @@
       portalCore.setPageState(portalCore.pageSections.usage, "primary", true, "")
       portalSessions.loadPlatformUsage(_selfPortalApp.handlePlatformUsage)
     }
+    */
 
     function handleSessionActionError(_e, request) {
       portalCore.setAjaxFail(portalCore.pageSections.sessionList, request)
