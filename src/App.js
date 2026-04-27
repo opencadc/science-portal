@@ -140,8 +140,7 @@ class SciencePortalApp extends React.Component {
       userInfo: {},
       theme: { },
       tabLabels: ["Public", "Advanced"],
-      fetchingStorageQuota: false,
-      dismissedIdleAlerts: new Set()
+      fetchingStorageQuota: false
     };
   }
 
@@ -154,14 +153,6 @@ class SciencePortalApp extends React.Component {
 
   updateSessionList(sessionDataObj) {
     this.setState({ sessionData: sessionDataObj });
-  }
-
-  handleDismissIdleAlert(sessionId) {
-    this.setState(prevState => {
-      const updated = new Set(prevState.dismissedIdleAlerts)
-      updated.add(sessionId)
-      return { dismissedIdleAlerts: updated }
-    })
   }
 
   updateModal(sModalData) {
@@ -396,12 +387,7 @@ class SciencePortalApp extends React.Component {
                 <>
                   {this.state.sessionData.sessData.map((mapObj) => (
                     <Col key={mapObj.id} className="sp-card-container">
-                      <SessionItem
-                        listType="list"
-                        sessData={mapObj}
-                        isIdleDismissed={this.state.dismissedIdleAlerts.has(mapObj.id)}
-                        onDismissIdle={() => this.handleDismissIdleAlert(mapObj.id)}
-                      />
+                      <SessionItem listType="list" sessData={mapObj} />
                     </Col>
                   ))}
                 </>
