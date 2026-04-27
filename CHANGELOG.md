@@ -1,5 +1,13 @@
 # Science Portal User Interface
 
+## [1.6.0](https://github.com/opencadc/science-portal/compare/1.5.0...1.6.0) (2026-04-27)
+
+
+### Features
+
+* remove card decorations from d8592c8c87b2196a2a6bb6de51d0cad62632acdc ([53b71b6](https://github.com/opencadc/science-portal/commit/53b71b6cabbed72f920cca5e8b57049c4c92a2dc))
+* remove card decorations from d8592c8c87b2196a2a6bb6de51d0cad62632acdc ([4120187](https://github.com/opencadc/science-portal/commit/4120187a06ea1f04829a74187418a63f82a4e0b8))
+
 ## [1.5.0](https://github.com/opencadc/science-portal/compare/1.4.0...1.5.0) (2026-04-24)
 
 
