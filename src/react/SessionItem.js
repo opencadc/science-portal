@@ -9,7 +9,6 @@ import { faTrashAlt } from '@fortawesome/free-solid-svg-icons/faTrashAlt'
 import { faClock } from '@fortawesome/free-solid-svg-icons'
 import { faFlag } from '@fortawesome/free-solid-svg-icons'
 import { faFileLines } from '@fortawesome/free-solid-svg-icons'
-import { faTriangleExclamation } from '@fortawesome/free-solid-svg-icons'
 
 import './css/index.css';
 import './sp-session-list.css';
@@ -35,10 +34,6 @@ function SessionItem(props) {
   if (props.listType === "list") {
     if (props.sessData.status === "Running") {
       bgClass = "success"
-      if (props.sessData.isIdle === true) {
-        bgClass = "warning"
-        uberCSS = "sp-idle-card"
-      }
     } else if (props.sessData.status === "Pending") {
       // Set CSS and control for pending state, to block
       // cursor events and show progress cursor when
@@ -74,19 +69,6 @@ function SessionItem(props) {
       {props.listType === "list" &&
       <Card className={uberCSS}>
         <Card.Body className={cardCSS}>
-          {props.sessData.isIdle === true &&
-            <div className="sp-idle-triangle">
-              <OverlayTrigger
-                placement="right"
-                overlay={
-                  <Tooltip className="sp-idle-tooltip">
-                    {props.sessData.idleMessage}
-                  </Tooltip>
-                }>
-                <FontAwesomeIcon icon={faTriangleExclamation} className="sp-idle-triangle-icon"/>
-              </OverlayTrigger>
-            </div>
-          }
           <div className={connectCSS}
             onClick={props.sessData.connectHandler}
             data-connecturl={props.sessData.connectURL}>
@@ -172,12 +154,6 @@ function SessionItem(props) {
           {/*  End of the connectCSS area, used for event handling */}
           </div>
         </Card.Body>
-        {props.sessData.isIdle === true && props.isIdleDismissed !== true &&
-          <div className="sp-idle-banner">
-            <span className="sp-idle-banner-text">{props.sessData.idleMessage}</span>
-            <span className="sp-idle-banner-close" onClick={props.onDismissIdle}>&times;</span>
-          </div>
-        }
         <Card.Footer>
           <Row><Col>
             <div className="sp-card-button">

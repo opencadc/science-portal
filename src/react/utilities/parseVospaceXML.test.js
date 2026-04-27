@@ -1,7 +1,7 @@
 import { parseVospaceXML } from "./parseVospaceXML";
 import fs from "fs";
 import path from "path";
-import { DOMParser } from "@xmldom/xmldom";
+import { DOMParser } from "xmldom";
 
 test('parseVospaceXML parses storage XML correctly', () => {
     const xmlString = fs.readFileSync(path.join(__dirname, "mockFile.xml"), "utf8");
