@@ -207,6 +207,12 @@ docker-compose up --build
 
 Example compose files that wire OIDC env vars include [docker-compose.oidc.example.yml](./docker-compose.oidc.example.yml).
 
+#### CI/CD (GitHub Actions)
+
+The workflow [`.github/workflows/ci-build.yml`](./.github/workflows/ci-build.yml) builds the Docker image on every push to `main` (and on manual dispatch) without uploading it. Publishing a **[GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)** triggers a build that pushes two tags to **[Harbor](https://goharbor.io/)**: the release tag (for example `1.2.3`) and `latest`.
+
+Repository **Actions variables**: `HARBOR_REGISTRY` (hostname only), `HARBOR_REPOSITORY` (registry project/image path). **Secrets**: `HARBOR_USERNAME`, `HARBOR_PASSWORD` (Harbor robot token or equivalent).
+
 ### Deploying with OIDC (OpenID Connect)
 
 Use OIDC mode when **`NEXT_USE_CANFAR=false`** and **`NEXT_PUBLIC_USE_CANFAR=false`**. Supply **`AUTH_SECRET`** and set **`NEXTAUTH_URL`** to the public URL visitors use for this deployment (scheme, host, and non-default port if any). Behind a reverse proxy that terminates TLS, set **`AUTH_TRUST_HOST=true`** (or **`AUTH_URL`**) so redirects and cookie security match HTTPS; align this with `.env.example` comments.
