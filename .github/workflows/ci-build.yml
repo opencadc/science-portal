@@ -1,18 +1,22 @@
 # Builds the Docker image on every push to `main` (and manual runs) without publishing.
-# When a GitHub Release is published: push the image to Harbor (`:tag` + `:latest`),
-# patch the Helm chart defaults to that image, package the chart, and push it as an OCI artifact
-# to the same Harbor hostname.
+# When a GitHub Release is published: push the image to Harbor Repository (`:tag` + `:latest`),
+# Cosign-sign the image digest (Fulcio/GitHub Actions keyless OIDC); patch Helm chart defaults;
+# upload the packaged `.tgz` via Harbor ChartMuseum-compatible HTTP API so charts appear under
+# the project **Helm Charts** tab (not OCI/`oci://`).
 #
 # Configure in the repo:
-# - Variables (Settings → Secrets and variables → Actions → Variables):
-#   - HARBOR_REGISTRY — hostname only, e.g. `harbor.example.org`
-#   - HARBOR_REPOSITORY — image path inside the registry, e.g. `myproject/science-portal`
-#   - HARBOR_HELM_OCI_REPOSITORY (optional) — Harbor **project name** used in
-#       `helm push … oci://${HARBOR_REGISTRY}/<project>`. Defaults to the first segment of
-#       `HARBOR_REPOSITORY` when unset (Harbor convention: Docker repo `platform/foo` ⇒ project `platform`).
+# - Variables:
+#   - HARBOR_REGISTRY — registry hostname used for Docker (and default API base HTTPS host).
+#   - HARBOR_REPOSITORY — Docker image path, e.g. `myproject/science-portal`.
+#   - HARBOR_HELM_PROJECT (optional) — Harbor **project name** for classic Helm Charts upload.
+#   - HARBOR_HELM_OCI_REPOSITORY (deprecated alias) — if set and HARBOR_HELM_PROJECT is empty,
+#       used as the same Harbor project override (backwards compatibility).
+#   - HARBOR_API_BASE (optional) — full base URL for Harbor if not `https://<HARBOR_REGISTRY>`
+#       (e.g. `https://harbor.example.com` or `https://example.com/harbor` with no trailing slash).
 # - Secrets:
-#   - HARBOR_USERNAME
-#   - HARBOR_PASSWORD — password or Harbor robot-account token
+#   - HARBOR_USERNAME, HARBOR_PASSWORD — must allow registry push + Chart upload permissions.
+#
+# Org note: id-token permission is for Fulcio/GitHub Actions keyless image signing only.
 
 name: Science Portal CI and Harbor releases
 
@@ -27,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   build-docker:
@@ -58,6 +63,28 @@ jobs:
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
 
+      - name: Resolve Harbor Helm chart project (classic Chart repo)
+        id: harbor_helm
+        if: github.event_name == 'release'
+        env:
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+          HELM_PROJECT_PRIMARY: ${{ vars.HARBOR_HELM_PROJECT }}
+          HELM_LEGACY: ${{ vars.HARBOR_HELM_OCI_REPOSITORY }}
+        run: |
+          if [ -n "${HELM_PROJECT_PRIMARY:-}" ]; then
+            echo "helm_project=${HELM_PROJECT_PRIMARY}" >> "${GITHUB_OUTPUT}"
+          elif [ -n "${HELM_LEGACY:-}" ]; then
+            echo "helm_project=${HELM_LEGACY}" >> "${GITHUB_OUTPUT}"
+          else
+            case "${HARBOR_REPOSITORY}" in
+              */*) echo "helm_project=${HARBOR_REPOSITORY%%/*}" >> "${GITHUB_OUTPUT}" ;;
+              *)
+                echo "::error::HARBOR_REPOSITORY must be project/name (contain '/') or set HARBOR_HELM_PROJECT."
+                exit 1
+                ;;
+            esac
+          fi
+
       - name: Log in to Harbor (Docker)
         if: github.event_name == 'release'
         uses: docker/login-action@v3
@@ -66,7 +93,12 @@ jobs:
           username: ${{ secrets.HARBOR_USERNAME }}
           password: ${{ secrets.HARBOR_PASSWORD }}
 
+      - name: Install Cosign (release / keyless)
+        if: github.event_name == 'release'
+        uses: sigstore/cosign-installer@v4
+
       - name: Build Docker image
+        id: build_push
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -74,10 +106,24 @@ jobs:
           push: ${{ steps.meta.outputs.push == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           platforms: linux/amd64,linux/arm64
-          # Explicit build-args: next.config basePath is fixed at image build time.
-          # If Dockerfile defaults change, update this workflow to match CI expectations.
           build-args: |
             NEXT_PUBLIC_BASE_PATH=/science-portal
+
+      - name: Cosign sign container image (digest, keyless)
+        if: github.event_name == 'release'
+        env:
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          DIG="${{ steps.build_push.outputs.digest }}"
+          if [ -z "${DIG}" ]; then
+            echo "::error::Docker build-push did not produce a digest output (cannot Cosign)."
+            exit 1
+          fi
+          IMG="${HARBOR_REGISTRY}/${HARBOR_REPOSITORY}"
+          printf 'Cosign-signing container: %s@%s\n' "${IMG}" "${DIG}"
+          cosign sign --yes "${IMG}@${DIG}"
 
       - name: Install Helm (release)
         if: github.event_name == 'release'
@@ -112,42 +158,43 @@ jobs:
           fi
           echo "package=${pkgs[0]}" >> "${GITHUB_OUTPUT}"
 
-      - name: Log in to Harbor (Helm OCI)
-        if: github.event_name == 'release'
-        env:
-          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
-          HELM_PW: ${{ secrets.HARBOR_PASSWORD }}
-          HELM_USER: ${{ secrets.HARBOR_USERNAME }}
-        run: |
-          set -euo pipefail
-          printf '%s\n' "${HELM_PW}" | helm registry login "${HARBOR_REGISTRY}" \
-            --username "${HELM_USER}" \
-            --password-stdin
-
-      - name: Push Helm chart to Harbor OCI registry (release)
+      - name: Upload Helm chart to Harbor (Helm Charts tab / ChartMuseum API)
         if: github.event_name == 'release'
         env:
           PACKAGE: ${{ steps.helm_pack.outputs.package }}
           HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
-          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
-          OCI_OVERRIDE: ${{ vars.HARBOR_HELM_OCI_REPOSITORY }}
+          HARBOR_API_BASE_IN: ${{ vars.HARBOR_API_BASE }}
+          CHART_PROJECT: ${{ steps.harbor_helm.outputs.helm_project }}
+          HARBOR_USER: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASS: ${{ secrets.HARBOR_PASSWORD }}
         run: |
           set -euo pipefail
           if [ -z "${PACKAGE}" ] || [ ! -f "${PACKAGE}" ]; then
             echo "::error::Missing packaged chart (expected PACKAGE path from previous step)."
             exit 1
           fi
-          if [ -n "${OCI_OVERRIDE}" ]; then
-            oci_project="${OCI_OVERRIDE}"
-          else
-            case "${HARBOR_REPOSITORY}" in
-              */*) oci_project="${HARBOR_REPOSITORY%%/*}" ;;
-              *)
-                echo "::error::HARBOR_REPOSITORY must be project/name (contain '/') or set HARBOR_HELM_OCI_REPOSITORY for Helm OCI."
-                exit 1
-                ;;
-            esac
+          if [ -z "${CHART_PROJECT}" ]; then
+            echo "::error::Could not resolve Harbor project for Helm chart upload."
+            exit 1
           fi
-          oci_ref="oci://${HARBOR_REGISTRY}/${oci_project}"
-          printf 'Pushing %s → %s\n' "${PACKAGE}" "${oci_ref}"
-          helm push "${PACKAGE}" "${oci_ref}"
+
+          BASE="${HARBOR_API_BASE_IN:-}"
+          BASE="${BASE%/}"
+          if [ -z "${BASE}" ]; then
+            BASE="https://${HARBOR_REGISTRY}"
+          fi
+
+          URL="${BASE}/api/chartrepo/${CHART_PROJECT}/charts"
+          printf 'POST chart → %s (project=%s)\n' "${URL}" "${CHART_PROJECT}"
+
+          prov_args=()
+          if [ -f "${PACKAGE}.prov" ]; then
+            printf 'Including provenance %s.prov\n' "${PACKAGE}"
+            prov_args+=( -F "prov=@${PACKAGE}.prov" )
+          fi
+
+          curl --fail-with-body -sS \
+            --user "${HARBOR_USER}:${HARBOR_PASS}" \
+            -X POST "${URL}" \
+            -F "chart=@${PACKAGE};type=application/x-compressed-tar" \
+            "${prov_args[@]}"
