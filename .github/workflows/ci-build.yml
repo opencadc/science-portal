@@ -1,16 +1,20 @@
 # Builds the Docker image on every push to `main` (and manual runs) without publishing.
-# When a GitHub Release is published, logs into Harbor and pushes the image using the tags
-# from that release plus `latest`.
+# When a GitHub Release is published: push the image to Harbor (`:tag` + `:latest`),
+# patch the Helm chart defaults to that image, package the chart, and push it as an OCI artifact
+# to the same Harbor hostname.
 #
 # Configure in the repo:
 # - Variables (Settings → Secrets and variables → Actions → Variables):
 #   - HARBOR_REGISTRY — hostname only, e.g. `harbor.example.org`
 #   - HARBOR_REPOSITORY — image path inside the registry, e.g. `myproject/science-portal`
+#   - HARBOR_HELM_OCI_REPOSITORY (optional) — Harbor **project name** used in
+#       `helm push … oci://${HARBOR_REGISTRY}/<project>`. Defaults to the first segment of
+#       `HARBOR_REPOSITORY` when unset (Harbor convention: Docker repo `platform/foo` ⇒ project `platform`).
 # - Secrets:
 #   - HARBOR_USERNAME
 #   - HARBOR_PASSWORD — password or Harbor robot-account token
 
-name: Build Docker image for the Science Portal Next.js
+name: Science Portal CI and Harbor releases
 
 on:
   push:
@@ -54,7 +58,7 @@ jobs:
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
 
-      - name: Log in to Harbor
+      - name: Log in to Harbor (Docker)
         if: github.event_name == 'release'
         uses: docker/login-action@v3
         with:
@@ -69,7 +73,81 @@ jobs:
           file: Dockerfile
           push: ${{ steps.meta.outputs.push == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/amd64,linux/arm64
           # Explicit build-args: next.config basePath is fixed at image build time.
           # If Dockerfile defaults change, update this workflow to match CI expectations.
           build-args: |
             NEXT_PUBLIC_BASE_PATH=/science-portal
+
+      - name: Install Helm (release)
+        if: github.event_name == 'release'
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.20.2
+
+      - name: Bump Helm Chart.yaml + defaults for this release
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+        run: python3 .github/scripts/patch-helm-release.py
+
+      - name: Helm lint (release)
+        if: github.event_name == 'release'
+        run: helm lint ./helm
+
+      - name: Package Helm chart (release)
+        if: github.event_name == 'release'
+        id: helm_pack
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          helm package ./helm --destination dist
+          shopt -s nullglob
+          pkgs=(dist/science-portal-*.tgz)
+          if [ "${#pkgs[@]}" -ne 1 ]; then
+            printf 'Expected exactly one packaged chart under dist/, found: [%s]\n' "${pkgs[*]-}"
+            exit 1
+          fi
+          echo "package=${pkgs[0]}" >> "${GITHUB_OUTPUT}"
+
+      - name: Log in to Harbor (Helm OCI)
+        if: github.event_name == 'release'
+        env:
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HELM_PW: ${{ secrets.HARBOR_PASSWORD }}
+          HELM_USER: ${{ secrets.HARBOR_USERNAME }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "${HELM_PW}" | helm registry login "${HARBOR_REGISTRY}" \
+            --username "${HELM_USER}" \
+            --password-stdin
+
+      - name: Push Helm chart to Harbor OCI registry (release)
+        if: github.event_name == 'release'
+        env:
+          PACKAGE: ${{ steps.helm_pack.outputs.package }}
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+          OCI_OVERRIDE: ${{ vars.HARBOR_HELM_OCI_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PACKAGE}" ] || [ ! -f "${PACKAGE}" ]; then
+            echo "::error::Missing packaged chart (expected PACKAGE path from previous step)."
+            exit 1
+          fi
+          if [ -n "${OCI_OVERRIDE}" ]; then
+            oci_project="${OCI_OVERRIDE}"
+          else
+            case "${HARBOR_REPOSITORY}" in
+              */*) oci_project="${HARBOR_REPOSITORY%%/*}" ;;
+              *)
+                echo "::error::HARBOR_REPOSITORY must be project/name (contain '/') or set HARBOR_HELM_OCI_REPOSITORY for Helm OCI."
+                exit 1
+                ;;
+            esac
+          fi
+          oci_ref="oci://${HARBOR_REGISTRY}/${oci_project}"
+          printf 'Pushing %s → %s\n' "${PACKAGE}" "${oci_ref}"
+          helm push "${PACKAGE}" "${oci_ref}"

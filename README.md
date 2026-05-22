@@ -209,9 +209,28 @@ Example compose files that wire OIDC env vars include [docker-compose.oidc.examp
 
 #### CI/CD (GitHub Actions)
 
-The workflow [`.github/workflows/ci-build.yml`](./.github/workflows/ci-build.yml) builds the Docker image on every push to `main` (and on manual dispatch) without uploading it. Publishing a **[GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)** triggers a build that pushes two tags to **[Harbor](https://goharbor.io/)**: the release tag (for example `1.2.3`) and `latest`.
+The workflow [`.github/workflows/ci-build.yml`](./.github/workflows/ci-build.yml) builds the Docker image on every push to `main` (and on manual dispatch) without uploading it.
 
-Repository **Actions variables**: `HARBOR_REGISTRY` (hostname only), `HARBOR_REPOSITORY` (registry project/image path). **Secrets**: `HARBOR_USERNAME`, `HARBOR_PASSWORD` (Harbor robot token or equivalent).
+Publishing a **[GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)** does the following in order:
+
+1. Pushes the container image to **[Harbor](https://goharbor.io/)** with two tags (the Git release tag, e.g. `2.1.3`, plus `latest`).
+2. Sets **`helm/Chart.yaml`** `version` and **`appVersion`** to that same release tag semantically (bare SemVer, no `v` prefix).
+3. Points **`helm/values.yaml`** default **`image.repository`** / **`image.tag`** at the Harbor image pushed in step 1 (`HARBOR_REGISTRY` + `HARBOR_REPOSITORY`).
+4. Runs **`helm lint`**, packages the chart, and **`helm push … oci://`** to Harbor (same hostname; see below).
+
+Packaging applies only inside the Actions runner—it does **not** commit Helm file updates back to the branch. Maintain `helm/` in git separately if you want the repo defaults to mirror each release.
+
+**Actions variables**, under *Settings → Secrets and variables → Actions*:
+
+| Name | Meaning |
+|------|--------|
+| `HARBOR_REGISTRY` | Hostname only, e.g. `harbor.example.org` |
+| `HARBOR_REPOSITORY` | Image path inside the registry, e.g. `platform/science-portal` |
+| `HARBOR_HELM_OCI_REPOSITORY` _(optional)_ | Harbor **project** segment in `helm push … oci://${HARBOR_REGISTRY}/\<project>`; if unset, the job uses the substring before the first **`/`** in `HARBOR_REPOSITORY` |
+
+**Secrets:** `HARBOR_USERNAME`, `HARBOR_PASSWORD` (Harbor robot account or equivalent).
+
+Patching logic lives in [.github/scripts/patch-helm-release.py](.github/scripts/patch-helm-release.py). Use **bare SemVer** Git release tags (for example **`2.1.3`** or **`2.0.0-rc.1`**); they become **`Chart.yaml` `version`**, **`appVersion`**, and **`values.yaml` `image.tag`**, so `version` must stay valid for `helm package`.
 
 ### Deploying with OIDC (OpenID Connect)
 
