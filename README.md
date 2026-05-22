@@ -214,7 +214,7 @@ The workflow [`.github/workflows/ci-build.yml`](./.github/workflows/ci-build.yml
 Publishing a **[GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)** does the following in order:
 
 1. Pushes the container image to **[Harbor](https://goharbor.io/)** with two tags (the Git release tag, e.g. `2.1.3`, plus `latest`). It appears under the project **Repositories** UI.
-2. Signs that image (**`cosign sign`**) against the pushed **manifest digest**, using Fulcio/GitHub Actions **OIDC keyless** (Cosign signatures attach beside the artifact in the registry).
+2. Signs that image (**`cosign sign`** with **`registry-referrers-mode`** defaulting to **`legacy`**) against the pushed **manifest digest**, using Fulcio/GitHub Actions **OIDC keyless**. **Legacy** avoids the distribution **`/referrers/…`** API, which older registries (including some Harbor setups) reject with `UNAUTHORIZED` / **un‑recognized request**. Set Actions variable **`COSIGN_REGISTRY_REFERRERS_MODE`** to **`oci-1-1`** if your registry fully supports [OCI Referrers](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-references) and Harbor is new enough that you want referrer-based attachments.
 3. Sets **`helm/Chart.yaml`** `version` and **`appVersion`** to that same release tag semantically (bare SemVer, no `v` prefix).
 4. Points **`helm/values.yaml`** default **`image.repository`** / **`image.tag`** at the Harbor image (`HARBOR_REGISTRY` + `HARBOR_REPOSITORY`).
 5. Runs **`helm lint`**, packages the chart tarball, then **HTTP POST**s it to **`/api/chartrepo/{project}/charts`** (multipart `chart=@…`, optional `prov=@….prov` beside the tarball) so it appears under the Harbor project **Helm Charts** tab—same pathway as uploading through the UI. This does **not** use **`helm push`** or **`oci://`**.
@@ -231,9 +231,10 @@ Packaging applies only inside the Actions runner—it does **not** commit Helm f
 | `HARBOR_REPOSITORY` | Docker repository path inside the registry, e.g. `platform/science-portal` |
 | `HARBOR_HELM_PROJECT` _(optional)_ | Harbor **project name** used for classic chart upload (`POST /api/chartrepo/<project>/charts`). If unset, **`HARBOR_HELM_OCI_REPOSITORY`** may still supply it |
 | `HARBOR_HELM_OCI_REPOSITORY` _(optional, deprecated alias)_ | Legacy name — same semantics as **`HARBOR_HELM_PROJECT`** when the latter is unset; otherwise ignored |
-| `HARBOR_API_BASE` _(optional)_ | Full Harbor URL if the REST API lives elsewhere than **`https://<HARBOR_REGISTRY>`** (no trailing slash; use when Harbor is exposed under a path prefix or different ingress host)
+| `HARBOR_API_BASE` _(optional)_ | Full Harbor URL if the REST API lives elsewhere than **`https://<HARBOR_REGISTRY>`** (no trailing slash; use when Harbor is exposed under a path prefix or different ingress host) |
+| `COSIGN_REGISTRY_REFERRERS_MODE` _(optional)_ | Cosign **`--registry-referrers-mode`**: unset ⇒ **`legacy`** (for registries that do not serve **`GET /v2/.../referrers/...`**); set **`oci-1-1`** when your Harbor/registry supports [OCI Referrers](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-references) |
 
-**Secrets:** `HARBOR_USERNAME`, `HARBOR_PASSWORD` (must allow Docker push plus permission to upload charts to the Harbor project).
+**Secrets:** `HARBOR_USERNAME`, `HARBOR_PASSWORD` — Docker push plus chart upload permission; also passed to **`cosign sign`** so Cosign pushes the signature with the same registry credentials (`docker/login-action` remains required for **`build-push`**).
 
 **Consumers:** Charts from this path are fetched with Helm’s **`chartrepo`** index, for example **`helm repo add`** against **`https://<host>/chartrepo/<project>`** (see Harbor’s Helm chart docs for your Harbor version).
 

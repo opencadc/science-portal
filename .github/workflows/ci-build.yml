@@ -13,6 +13,8 @@
 #       used as the same Harbor project override (backwards compatibility).
 #   - HARBOR_API_BASE (optional) — full base URL for Harbor if not `https://<HARBOR_REGISTRY>`
 #       (e.g. `https://harbor.example.com` or `https://example.com/harbor` with no trailing slash).
+#   - COSIGN_REGISTRY_REFERRERS_MODE (optional) — `legacy` (default when unset) or `oci-1-1`.
+#       Older Harbor / distributions may not implement GET /v2/.../referrers — use legacy.
 # - Secrets:
 #   - HARBOR_USERNAME, HARBOR_PASSWORD — must allow registry push + Chart upload permissions.
 #
@@ -114,6 +116,9 @@ jobs:
         env:
           HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
           HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+          COSIGN_REGISTRY_REFERRERS_MODE: ${{ vars.COSIGN_REGISTRY_REFERRERS_MODE }}
+          REGISTRY_USER: ${{ secrets.HARBOR_USERNAME }}
+          REGISTRY_PASS: ${{ secrets.HARBOR_PASSWORD }}
         run: |
           set -euo pipefail
           DIG="${{ steps.build_push.outputs.digest }}"
@@ -121,9 +126,14 @@ jobs:
             echo "::error::Docker build-push did not produce a digest output (cannot Cosign)."
             exit 1
           fi
+          REFERRERS="${COSIGN_REGISTRY_REFERRERS_MODE:-legacy}"
           IMG="${HARBOR_REGISTRY}/${HARBOR_REPOSITORY}"
-          printf 'Cosign-signing container: %s@%s\n' "${IMG}" "${DIG}"
-          cosign sign --yes "${IMG}@${DIG}"
+          printf 'Cosign-signing container: %s@%s (registry-referrers-mode=%s)\n' "${IMG}" "${DIG}" "${REFERRERS}"
+          cosign sign --yes \
+            --registry-referrers-mode="${REFERRERS}" \
+            --registry-username "${REGISTRY_USER}" \
+            --registry-password "${REGISTRY_PASS}" \
+            "${IMG}@${DIG}"
 
       - name: Install Helm (release)
         if: github.event_name == 'release'
