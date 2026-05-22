@@ -1,52 +1,28 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Box, CircularProgress, Typography } from '@mui/material';
-import { saveToken } from '@/lib/auth/token-storage';
 
 /**
  * OIDC Callback Page
  *
- * This page handles the callback from the OIDC provider after authentication.
- * NextAuth handles the token exchange, then we extract the token and store it in localStorage.
+ * Legacy passive redirect. With NextAuth, the real OAuth callback is handled
+ * at `/api/auth/callback/oidc` (route handler) — that's the redirect URI to
+ * register with the IdP. This page only ever runs if an older deployment
+ * still has `/oidc-callback` registered, in which case NextAuth's exchange
+ * was never triggered and the session won't exist. We just bounce the user
+ * home and let SessionProvider re-evaluate.
  */
 export default function OIDCCallbackPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
-  const [tokenSaved, setTokenSaved] = useState(false);
+  const { status } = useSession();
 
   useEffect(() => {
-    // Wait for NextAuth session to be ready
-    if (status === 'loading') {
-      return;
-    }
-
-    // If authenticated and we have an access token, save it to localStorage
-    if (status === 'authenticated' && session?.accessToken && !tokenSaved) {
-      console.log('\n' + '💾'.repeat(40));
-      console.log('💾 OIDC Callback - Saving token to localStorage');
-      console.log('💾'.repeat(40));
-      console.log('📋 FULL TOKEN BEING SAVED:');
-      console.log(session.accessToken);
-      console.log('\n📋 Token length:', session.accessToken.length);
-      console.log('📋 First 100 chars:', session.accessToken.substring(0, 100));
-      console.log('💾'.repeat(40) + '\n');
-
-      saveToken(session.accessToken);
-      setTokenSaved(true);
-
-      // Redirect to dashboard after saving token
-      setTimeout(() => {
-        router.push('/');
-      }, 500);
-    } else if (status === 'unauthenticated') {
-      // Authentication failed, redirect back to login
-      console.error('❌ Authentication failed in OIDC callback');
-      router.push('/');
-    }
-  }, [status, session, tokenSaved, router]);
+    if (status === 'loading') return;
+    router.push('/');
+  }, [status, router]);
 
   return (
     <Box

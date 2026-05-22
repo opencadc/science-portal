@@ -53,17 +53,6 @@ export function useAuthStatus(options?: Omit<UseQueryOptions<AuthStatus>, 'query
   const { data: session, status } = useSession();
   const { useCanfar: isCanfar } = usePublicRuntimeConfig();
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const correctMode = isCanfar ? 'CANFAR' : 'OIDC';
-    const storageMode = localStorage.getItem('AUTH_MODE');
-    if (storageMode !== correctMode) {
-      localStorage.setItem('AUTH_MODE', correctMode);
-    }
-  }, [isCanfar]);
-
   // For CANFAR mode, use existing auth status check
   const canfarAuthStatus = useQuery({
     queryKey: authKeys.status(),
@@ -75,26 +64,6 @@ export function useAuthStatus(options?: Omit<UseQueryOptions<AuthStatus>, 'query
     retry: 1,
     ...options,
   });
-
-  // For OIDC mode, use NextAuth session directly (no React Query wrapper)
-  // This ensures immediate updates when session state changes
-  useEffect(() => {
-    if (!isCanfar && status === 'authenticated' && session?.accessToken) {
-      // Store the access token in localStorage for API calls
-      // Using dynamic import to avoid circular dependency issues
-      import('@/lib/auth/token-storage').then(({ saveToken }) => {
-        saveToken(session.accessToken as string);
-      });
-    }
-  }, [isCanfar, status, session?.accessToken]);
-
-  useEffect(() => {
-    if (!isCanfar && status === 'unauthenticated') {
-      import('@/lib/auth/token-storage').then(({ clearAuth }) => {
-        clearAuth();
-      });
-    }
-  }, [isCanfar, status]);
 
   // In OIDC mode, directly return NextAuth session state (no React Query)
   if (!isCanfar) {

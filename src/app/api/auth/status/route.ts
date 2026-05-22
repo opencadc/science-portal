@@ -105,66 +105,30 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
 
   logger.logRequest(request);
 
-  // Check if using OIDC mode
-  const isOIDC = process.env.NEXT_USE_CANFAR !== 'true';
-  if (isOIDC) {
-    // In OIDC mode, decode the JWT token to get user info
-    // instead of calling external whoami endpoint
-
-    // First, try to get token from Authorization header (for client requests)
-    let token = request.headers.get('authorization')?.replace('Bearer ', '');
-
-    // If no header, get token from NextAuth session (for server-side requests)
-    if (!token) {
-      logger.info('No Authorization header, checking NextAuth session');
-      const { auth } = await import('@/auth');
-      const session = await auth();
-
-      if (session?.accessToken) {
-        token = session.accessToken;
-        logger.info('Using token from NextAuth session');
-      }
-    }
-
-    if (!token) {
-      logger.info('No token found - user not authenticated');
+  // OIDC mode: clients read auth state via `useSession()` against NextAuth's
+  // built-in `/api/auth/session`. This route is CANFAR-only in practice;
+  // we keep the endpoint reachable in OIDC mode for any external caller by
+  // deriving the status from the NextAuth session directly (no JWT decode).
+  if (process.env.NEXT_USE_CANFAR !== 'true') {
+    const { auth } = await import('@/auth');
+    const session = await auth();
+    if (!session?.user || session.error === 'RefreshAccessTokenError') {
       return successResponse<AuthStatus>({ authenticated: false });
     }
-
-    try {
-      // Decode JWT to extract user info (without verification - the SRC API will verify it)
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        logger.logError(HTTP_STATUS.BAD_REQUEST, 'Invalid JWT token format');
-        return successResponse<AuthStatus>({ authenticated: false });
-      }
-
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-
-      // Extract user info from JWT claims
-      const user: User = {
-        username: payload.preferred_username || payload.sub || 'user',
-        email: payload.email || undefined,
-        displayName: payload.name || payload.preferred_username || undefined,
-        firstName: payload.given_name || undefined,
-        lastName: payload.family_name || undefined,
-      };
-
-      logger.info('OIDC user authenticated from JWT token', {
-        username: user.username,
-      });
-
-      const result: AuthStatus = {
-        authenticated: true,
-        user,
-      };
-
-      logger.logSuccess(HTTP_STATUS.OK, result);
-      return successResponse<AuthStatus>(result);
-    } catch (error) {
-      logger.logError(HTTP_STATUS.INTERNAL_SERVER_ERROR, 'Failed to decode JWT token', error);
-      return successResponse<AuthStatus>({ authenticated: false });
-    }
+    const sessionUser = session.user;
+    const result: AuthStatus = {
+      authenticated: true,
+      user: {
+        username:
+          sessionUser.username || sessionUser.email?.split('@')[0] || sessionUser.name || 'user',
+        email: sessionUser.email || undefined,
+        displayName: sessionUser.name || undefined,
+        firstName: sessionUser.firstName || undefined,
+        lastName: sessionUser.lastName || undefined,
+      },
+    };
+    logger.logSuccess(HTTP_STATUS.OK, result);
+    return successResponse<AuthStatus>(result);
   }
 
   // CANFAR mode: Forward Authorization header to CANFAR whoami

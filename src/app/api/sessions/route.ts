@@ -46,8 +46,11 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   };
   console.log('📨 Session GET route - final headers:', finalHeaders);
 
+  // `view=interactive` excludes headless batch jobs. Skaha source:
+  // skaha/src/main/java/org/opencadc/skaha/session/GetAction.java —
+  // SESSION_VIEW_INTERACTIVE branch.
   const response = await fetchExternalApi(
-    `${serverApiConfig.skaha.baseUrl}/v1/session`,
+    `${serverApiConfig.skaha.baseUrl}/v1/session?view=interactive`,
     {
       method: 'GET',
       headers: finalHeaders,
@@ -56,8 +59,13 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   );
 
   if (!response.ok) {
-    logger.logError(response.status, `Failed to fetch sessions: ${response.statusText}`);
-    return errorResponse('Failed to fetch sessions', response.status);
+    const errorText = await response.text().catch(() => '');
+    logger.logError(
+      response.status,
+      `Failed to fetch sessions: ${response.statusText}`,
+      errorText,
+    );
+    return errorResponse('Failed to fetch sessions', response.status, errorText);
   }
 
   const sessions: SkahaSessionResponse[] = await response.json();
