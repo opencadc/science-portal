@@ -112,6 +112,15 @@ const getStatusColor = (status: SessionStatus): 'success' | 'warning' | 'error' 
 };
 
 /**
+ * Skaha reports a session as `Failed` once its lifetime elapses; from the
+ * user's perspective the session simply expired (it didn't crash). Surface
+ * that distinction in the chip label.
+ */
+const getStatusLabel = (status: SessionStatus): string => {
+  return status === 'Failed' ? 'Expired' : status;
+};
+
+/**
  * Split a full container image path into project and image name.
  * Example: "images.canfar.net/skaha/firefly:2025.2" -> { project: "skaha", image: "firefly:2025.2" }
  */
@@ -445,7 +454,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
             <Stack spacing={1} mb={theme.spacing(2)}>
               <Box display="flex" justifyContent="flex-end">
                 <Chip
-                  label={status}
+                  label={getStatusLabel(status)}
                   color={getStatusColor(status)}
                   size="small"
                   sx={{

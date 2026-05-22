@@ -1,69 +1,55 @@
 /**
  * Session API Route
  *
- * Mode-aware session endpoint that works with both:
- * - CANFAR mode: Custom auth with CANFAR whoami
- * - OIDC mode: Delegates to NextAuth's built-in session handling
+ * Mode-aware session endpoint:
+ * - OIDC mode: delegates to NextAuth's built-in handler so `session.error`
+ *   and the real `expires` propagate to the client unchanged. Required for
+ *   OIDCRefreshErrorRecovery to fire when refresh tokens die. Both GET (the
+ *   regular session read used by SessionProvider) and POST (used by
+ *   `useSession().update()` — see OIDCFetch401Listener) must delegate.
+ * - CANFAR mode: custom whoami-backed session shaped like NextAuth's. Only
+ *   GET; POST is meaningless here.
  */
 
-import { NextRequest } from 'next/server';
-import { auth } from '@/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { handlers } from '@/auth';
 import {
-  withErrorHandling,
   successResponse,
   fetchExternalApi,
   forwardCookies,
+  errorResponse,
+  methodNotAllowed,
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
+import { HTTP_STATUS } from '@/app/api/lib/http-constants';
 
-/**
- * GET /api/auth/session
- * Returns the current session status in NextAuth format
- */
-export const GET = withErrorHandling(async (request: NextRequest) => {
-  const isOIDC = process.env.NEXT_USE_CANFAR !== 'true';
+function isOIDCMode(): boolean {
+  return process.env.NEXT_USE_CANFAR !== 'true';
+}
 
-  if (isOIDC) {
-    // In OIDC mode, use NextAuth session
-    const session = await auth();
-
-    if (!session || !session.user) {
-      return successResponse(null);
-    }
-
-    // Return session with access token for client
-    return successResponse({
-      user: session.user,
-      accessToken: session.accessToken,
-      expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    });
+export async function GET(request: NextRequest) {
+  if (isOIDCMode()) {
+    return handlers.GET(request);
   }
 
-  // CANFAR mode: Use custom auth with cookies
   try {
     const cookies = forwardCookies(request);
 
-    // Call CANFAR whoami endpoint
     const response = await fetchExternalApi(
       `${serverApiConfig.login.baseUrl}/whoami`,
       {
         method: 'GET',
-        headers: {
-          ...cookies,
-          Accept: 'application/json',
-        },
+        headers: { ...cookies, Accept: 'application/json' },
       },
       serverApiConfig.login.timeout,
     );
 
     if (!response.ok) {
-      // User not authenticated
       return successResponse(null);
     }
 
     const user = await response.json();
 
-    // Return session in NextAuth format
     return successResponse({
       user: {
         name: user.displayName || user.username,
@@ -72,8 +58,17 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       },
       expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
-  } catch {
-    // Return null session on error (not authenticated)
-    return successResponse(null);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('timeout')) {
+      return errorResponse('Request timeout', HTTP_STATUS.GATEWAY_TIMEOUT, error.message);
+    }
+    return successResponse(null) as NextResponse;
   }
-});
+}
+
+export async function POST(request: NextRequest) {
+  if (isOIDCMode()) {
+    return handlers.POST(request);
+  }
+  return methodNotAllowed(['GET']);
+}

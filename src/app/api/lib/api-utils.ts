@@ -226,6 +226,13 @@ export async function forwardAuthHeader(clientRequest: NextRequest): Promise<Hea
     const { auth } = await import('@/auth');
     const session = await auth();
 
+    // If the most recent refresh attempt failed, the access token in session is
+    // stale; forwarding it would just cause upstream 401s. Send nothing and let
+    // the client-side OIDCRefreshErrorRecovery sign the user out.
+    if (session?.error === 'RefreshAccessTokenError') {
+      return {};
+    }
+
     if (session?.accessToken) {
       return { Authorization: `Bearer ${session.accessToken}` };
     }
