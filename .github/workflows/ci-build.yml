@@ -111,6 +111,12 @@ jobs:
           build-args: |
             NEXT_PUBLIC_BASE_PATH=/science-portal
 
+      - name: Install Cosign
+        id: install-cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: 'v2.4.1'
+
       - name: Cosign sign container image (digest, keyless)
         if: github.event_name == 'release'
         env:
@@ -129,11 +135,8 @@ jobs:
           REFERRERS="${COSIGN_REGISTRY_REFERRERS_MODE:-legacy}"
           IMG="${HARBOR_REGISTRY}/${HARBOR_REPOSITORY}"
           printf 'Cosign-signing container: %s@%s (registry-referrers-mode=%s)\n' "${IMG}" "${DIG}" "${REFERRERS}"
-          cosign sign --yes \
-            --registry-referrers-mode="${REFERRERS}" \
-            --registry-username "${REGISTRY_USER}" \
-            --registry-password "${REGISTRY_PASS}" \
-            "${IMG}@${DIG}"
+          cosign version
+          cosign sign --yes "${IMG}@${DIG}" --upload
 
       - name: Install Helm (release)
         if: github.event_name == 'release'
