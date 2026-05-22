@@ -39,20 +39,22 @@ export function removeToken(): void {
 }
 
 /**
- * Check if token exists
- */
-export function hasToken(): boolean {
-  return getToken() !== null;
-}
-
-/**
- * Get Authorization header value
+ * Get Authorization header value.
  *
- * Returns Bearer token from localStorage for both OIDC and CANFAR modes
+ * CANFAR mode: returns Bearer from localStorage (sessionStorage fallback used
+ * in local dev where .canfar.net cookies can't reach localhost).
  *
- * @returns Object with Authorization header or empty object if no token
+ * OIDC mode: returns `{}` deliberately. The BFF reads the access token from
+ * the NextAuth cookie server-side via `await auth()`; attaching a Bearer
+ * client-side is redundant and dangerous — localStorage is not synchronously
+ * updated when NextAuth rotates the access token, so a client-attached Bearer
+ * is racy and can be a stale token while the server-side session has the
+ * fresh one. Stay out of the BFF's way.
  */
 export function getAuthHeader(): Record<string, string> {
+  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_USE_CANFAR !== 'true') {
+    return {};
+  }
   const token = getToken();
   if (token) {
     return {
@@ -112,11 +114,4 @@ export function getCredentials(): {
 export function removeCredentials(): void {
   if (typeof window === 'undefined') return;
   sessionStorage.removeItem(CREDENTIALS_KEY);
-}
-
-/**
- * Check if credentials exist
- */
-export function hasCredentials(): boolean {
-  return getCredentials() !== null;
 }

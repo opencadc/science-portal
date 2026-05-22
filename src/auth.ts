@@ -60,7 +60,7 @@ interface OIDCProfile {
 const trustHostFromEnv =
   getProcessEnv('AUTH_TRUST_HOST') === 'true' ? ({ trustHost: true } as const) : {};
 
-export const authConfig: NextAuthConfig = {
+const authConfig: NextAuthConfig = {
   ...trustHostFromEnv,
   /**
    * Must stay `/api/auth`: Next.js strips `basePath` before Auth.js sees `pathname`
@@ -133,49 +133,133 @@ export const authConfig: NextAuthConfig = {
 };
 
 /**
- * Refresh the access token using the refresh token
+ * Refresh the access token using the refresh token.
+ *
+ * Concurrent calls for the same refresh_token are deduped via an in-flight
+ * map: SKA-IAM rotates refresh tokens on use, so two parallel POSTs with
+ * the same refresh_token cause the second to fail with `invalid_grant` and
+ * flip the session into a fake error state. The map serializes them.
+ *
+ * INFRA NOTE for multi-instance deployments:
+ * This map is per-process and sufficient for replicaCount=1 (the current
+ * keel-deploy config for staging-src and src.canfar.net portals — see
+ * cadc-ccda-infra/keel-deploy:helm/values/src.canfar.net/science-portal/).
+ * If scaled to >1 instance, concurrent requests landing on different pods
+ * bypass the lock and race on the IdP, evicting users on every rotation.
+ * The fix is sticky sessions on the NextAuth cookie at whichever layer
+ * load-balances Next (Traefik ingress today, or the edge haproxy):
+ *
+ *   # Traefik (IngressRoute) — stickiness on the cookie
+ *   spec:
+ *     services:
+ *       - kind: Service
+ *         name: science-portal
+ *         sticky:
+ *           cookie:
+ *             name: __Secure-authjs.session-token
+ *
+ *   # Or haproxy backend
+ *   stick-table type string len 64 size 200k expire 2h
+ *   stick on req.cook(__Secure-authjs.session-token),sha1
+ *
+ * On any failure we clear `accessToken` / `accessTokenExpires` so that
+ * downstream consumers cannot accidentally forward a stale token to upstream.
+ * `session.error === 'RefreshAccessTokenError'` is the recovery signal the
+ * client listens for in OIDCRefreshErrorRecovery.
  */
+const refreshInFlight = new Map<string, Promise<TokenWithRefresh>>();
+
+/**
+ * Terminal refresh failure: refresh token is invalid/expired/revoked.
+ * Sets the error flag so OIDCRefreshErrorRecovery signs the user out.
+ */
+function terminalRefreshFailure(token: TokenWithRefresh): TokenWithRefresh {
+  return {
+    ...token,
+    accessToken: undefined,
+    accessTokenExpires: undefined,
+    error: 'RefreshAccessTokenError',
+  };
+}
+
+/**
+ * Transient refresh failure: IdP down, network blip, 5xx. Clear the access
+ * token (so nothing forwards a stale value) but leave the refresh token in
+ * place and DO NOT set the error flag, so the user isn't signed out. The
+ * next JWT callback invocation will retry.
+ */
+function transientRefreshFailure(token: TokenWithRefresh): TokenWithRefresh {
+  return {
+    ...token,
+    accessToken: undefined,
+    accessTokenExpires: undefined,
+    error: undefined,
+  };
+}
+
 async function refreshAccessToken(token: TokenWithRefresh): Promise<TokenWithRefresh> {
+  const refreshToken = token.refreshToken;
+  if (!refreshToken) {
+    console.error('Refresh aborted: no refresh token in session');
+    return terminalRefreshFailure(token);
+  }
+
+  const existing = refreshInFlight.get(refreshToken);
+  if (existing) return existing;
+
+  const inflight = doRefreshAccessToken(token, refreshToken).finally(() => {
+    refreshInFlight.delete(refreshToken);
+  });
+  refreshInFlight.set(refreshToken, inflight);
+  return inflight;
+}
+
+async function doRefreshAccessToken(
+  token: TokenWithRefresh,
+  refreshToken: string,
+): Promise<TokenWithRefresh> {
   try {
     const oidcConfig = getOIDCConfig();
     const url = getOidcIssuerPathUrl(oidcConfig.issuer, 'token');
 
-    if (!token.refreshToken) {
-      throw new Error('No refresh token available');
-    }
-
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         client_id: oidcConfig.clientId,
         client_secret: oidcConfig.clientSecret,
         grant_type: 'refresh_token',
-        refresh_token: token.refreshToken,
+        refresh_token: refreshToken,
       }),
     });
 
-    const refreshedTokens = await response.json();
+    const refreshedTokens = await response.json().catch(() => ({}));
 
-    if (!response.ok) {
-      throw refreshedTokens;
+    if (response.ok) {
+      return {
+        ...token,
+        accessToken: refreshedTokens.access_token,
+        accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
+        refreshToken: refreshedTokens.refresh_token ?? refreshToken,
+        error: undefined,
+      };
     }
 
-    return {
-      ...token,
-      accessToken: refreshedTokens.access_token,
-      accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
-      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
-      error: undefined,
-    };
+    // 4xx: IdP rejected the refresh token. Terminal — sign the user out.
+    // Common case: `invalid_grant` (token expired, revoked, or already
+    // rotated by a parallel request before the mutex was added).
+    if (response.status >= 400 && response.status < 500) {
+      console.error('Refresh terminally rejected:', response.status, refreshedTokens);
+      return terminalRefreshFailure(token);
+    }
+
+    // 5xx: IdP transient failure. Keep the refresh token, retry next time.
+    console.error('Refresh transiently failed:', response.status, refreshedTokens);
+    return transientRefreshFailure(token);
   } catch (error) {
-    console.error('Error refreshing access token:', error);
-    return {
-      ...token,
-      error: 'RefreshAccessTokenError',
-    };
+    // Network error / fetch threw. Transient — keep the refresh token.
+    console.error('Refresh network error (transient):', error);
+    return transientRefreshFailure(token);
   }
 }
 
