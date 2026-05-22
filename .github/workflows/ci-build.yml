@@ -95,7 +95,7 @@ jobs:
 
       - name: Install Cosign (release / keyless)
         if: github.event_name == 'release'
-        uses: sigstore/cosign-installer@v4
+        uses: sigstore/cosign-installer@v4.1.2
 
       - name: Build Docker image
         id: build_push
