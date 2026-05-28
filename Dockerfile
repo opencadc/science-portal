@@ -71,7 +71,7 @@ RUN apk add --no-cache curl dumb-init
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN adduser --system --uid 1001 -G nodejs nextjs
 
 # Copy public assets
 COPY --from=builder /app/public ./public
