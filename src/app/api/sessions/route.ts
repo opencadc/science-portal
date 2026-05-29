@@ -115,7 +115,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   formData.append('image', body.containerImage);
 
   // Add type if provided (for non-headless sessions)
-  if (body.sessionType && body.sessionType !== 'headless') {
+  if (body.sessionType && body.sessionType !== 'headless' && body.sessionType !== 'desktop-app') {
     formData.append('type', body.sessionType);
   }
 

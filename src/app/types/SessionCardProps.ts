@@ -4,6 +4,7 @@ export type SessionType =
   | 'notebook'
   | 'desktop'
   | 'headless'
+  | 'desktop-app'
   | 'carta'
   | 'contributed'
   | 'firefly'

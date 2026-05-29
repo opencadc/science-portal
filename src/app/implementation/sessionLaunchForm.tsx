@@ -200,7 +200,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     // Count only interactive sessions — headless are batch jobs with their own quota.
     // Used both for the naming counter (notebook1, notebook2…) and the launch cap.
     const activeSessionsCount = useMemo(
-      () => activeSessions.filter((s) => s.sessionType !== 'headless').length,
+      () => activeSessions.filter((s) => s.sessionType !== 'headless' && s.sessionType !== 'desktop-app').length,
       [activeSessions],
     );
     const isAtSessionLimit = activeSessionsCount >= MAX_INTERACTIVE_SESSIONS;

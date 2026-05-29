@@ -29,6 +29,7 @@ const parseAsSessionType = parseAsStringEnum<SessionType>([
   'notebook',
   'desktop',
   'headless',
+  'desktop-app',
   'carta',
 ]);
 

@@ -182,7 +182,7 @@ export default function SciencePortalPage() {
   // NOTE: We do NOT include isOperating here - it's passed separately to avoid recreating the array
   const activeSessions: SessionCardProps[] = useMemo(() => {
     return sessions
-      .filter((session: Session) => session.sessionType !== 'headless')
+      .filter((session: Session) => session.sessionType !== 'headless' && session.sessionType !== 'desktop-app')
       .map((session: Session) => ({
       id: session.id,
       sessionId: session.sessionId,
