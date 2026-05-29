@@ -188,11 +188,12 @@ function transformSkahaSession(skahaSession: SkahaSessionResponse): Session {
 }
 
 /**
- * Get all active sessions for the current user
+ * Get all active sessions for the current user.
+ * `view=interactive` excludes headless batch and Desktop Application jobs.
  */
 export async function getSessions(): Promise<Session[]> {
   const authHeaders = getAuthHeader();
-  const response = await fetch(sessionsApiRoot(), {
+  const response = await fetch(`${sessionsApiRoot()}?view=interactive`, {
     method: 'GET',
     headers: { Accept: 'application/json', ...authHeaders },
     credentials: 'include',
