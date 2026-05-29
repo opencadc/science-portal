@@ -204,7 +204,7 @@ export async function getSessions(): Promise<Session[]> {
   }
 
   const skahaResponse: SkahaSessionResponse[] = await response.json();
-  return skahaResponse.map(transformSkahaSession);
+  return skahaResponse.map(transformSkahaSession).filter((s) => s.sessionType !== 'headless' && s.sessionType !== 'desktop');
 }
 
 /**
