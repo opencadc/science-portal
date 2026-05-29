@@ -73,7 +73,7 @@ export function useSessions(
     refetchInterval: (query) => {
       const data = query.state.data;
       const hasTransitional = data?.some(
-        (s) => s.sessionType !== 'headless' && s.status === 'Pending',
+        (s) => s.sessionType !== 'headless' && s.sessionType !== 'desktop-app' && s.status === 'Pending',
       );
       return hasTransitional ? 10000 : false;
     },
