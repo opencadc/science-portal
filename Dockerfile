@@ -70,8 +70,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN apk add --no-cache curl dumb-init
 
 # Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 -G nodejs nextjs
+RUN addgroup --system nextjs
+RUN adduser --system -G nextjs -G node nextjs
 
 # Copy public assets
 COPY --from=builder /app/public ./public
