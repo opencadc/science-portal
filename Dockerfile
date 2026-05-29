@@ -61,6 +61,10 @@ RUN npm run build
 # Stage 3: Runner
 # Production image, copy all the files and run next
 FROM node:22-alpine AS runner
+
+ARG NEXT_PUBLIC_BASE_PATH=/science-portal
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
+
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -88,8 +92,6 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-# Must match NEXT_PUBLIC_BASE_PATH used at build (next.config basePath).
-ENV NEXT_PUBLIC_BASE_PATH=/science-portal
 
 # Health check for container orchestration (basePath from runner ENV)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
