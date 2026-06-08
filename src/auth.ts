@@ -1,6 +1,8 @@
 import NextAuth from 'next-auth';
 import type { NextAuthConfig } from 'next-auth';
+import { clockTolerance } from 'oauth4webapi';
 import { getOIDCConfig, getOidcIssuerPathUrl, isOIDCAuth } from '@/lib/config/auth-config';
+import { authPagesFromAppBasePath, getNormalizedAppBasePath } from '@/lib/config/auth-base-path';
 import { getProcessEnv } from '@/lib/config/safe-process-env';
 
 /**
@@ -26,6 +28,24 @@ interface TokenWithRefresh {
  * Documented in `.env.example` and `helm/DEPLOYMENT-MODES.md`.
  */
 const DEFAULT_ACCESS_TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
+
+/**
+ * oauth4webapi default is 30s. SKA IAM (and other IdPs) can issue id_tokens whose
+ * `nbf` is slightly ahead of the portal pod clock; raise tolerance when needed.
+ * Override with server env `NEXT_OIDC_CLOCK_TOLERANCE_SECONDS` (non-negative integer).
+ */
+const DEFAULT_OIDC_CLOCK_TOLERANCE_SECONDS = 60;
+
+function getOidcClockToleranceSeconds(): number {
+  const raw = getProcessEnv('NEXT_OIDC_CLOCK_TOLERANCE_SECONDS');
+  if (raw) {
+    const n = parseInt(raw, 10);
+    if (!Number.isNaN(n) && n >= 0) {
+      return n;
+    }
+  }
+  return DEFAULT_OIDC_CLOCK_TOLERANCE_SECONDS;
+}
 
 function getAccessTokenRefreshMarginMs(): number {
   const raw = getProcessEnv('NEXT_OIDC_ACCESS_TOKEN_REFRESH_MARGIN_MS');
@@ -79,9 +99,7 @@ const authConfig: NextAuthConfig = {
       ? true
       : undefined,
   providers: [],
-  pages: {
-    signIn: `/`,
-  },
+  pages: authPagesFromAppBasePath(getNormalizedAppBasePath()),
   callbacks: {
     authorized({ request: { nextUrl } }) {
       const isOnDashboard = nextUrl.pathname.startsWith('/');
@@ -289,6 +307,9 @@ function initializeAuth() {
             },
           },
           checks: ['state', 'pkce'],
+          client: {
+            [clockTolerance]: getOidcClockToleranceSeconds(),
+          },
           profile(profile: OIDCProfile) {
             return {
               id: profile.sub,

@@ -1,10 +1,6 @@
 import type { NextRequest } from 'next/server';
 
-import { getProcessEnv } from '@/lib/config/safe-process-env';
-
-function getNormalizedAppBasePath(): string {
-  return (getProcessEnv('NEXT_PUBLIC_BASE_PATH') || '').replace(/\/$/, '');
-}
+import { getNormalizedAppBasePath } from '@/lib/config/auth-base-path';
 
 /**
  * Auth.js redirect responses often use `Location: https://host/api/auth/...` or
@@ -108,13 +104,64 @@ export async function patchAuthProvidersResponse(
 }
 
 /**
+ * Auth.js may return `{ url: "https://host/api/auth/..." }` when the client sends
+ * `X-Auth-Return-Redirect`. Same basePath omission as Location headers.
+ */
+export async function patchAuthJsonUrlResponse(
+  request: NextRequest,
+  response: Response,
+): Promise<Response> {
+  const appBase = getNormalizedAppBasePath();
+  if (!appBase) {
+    return response;
+  }
+
+  const ct = response.headers.get('content-type') || '';
+  if (!ct.includes('application/json')) {
+    return response;
+  }
+
+  const text = await response.text();
+  let data: { url?: string };
+  try {
+    data = JSON.parse(text) as { url?: string };
+  } catch {
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    return new Response(text, { status: response.status, statusText: response.statusText, headers });
+  }
+
+  if (typeof data.url !== 'string') {
+    const headers = new Headers(response.headers);
+    headers.delete('content-length');
+    return new Response(text, { status: response.status, statusText: response.statusText, headers });
+  }
+
+  const origin = request.nextUrl.origin;
+  const wrongPrefix = `${origin}/api/auth`;
+  const rightPrefix = `${origin}${appBase}/api/auth`;
+  if (data.url.startsWith(wrongPrefix) && !data.url.startsWith(rightPrefix)) {
+    data.url = rightPrefix + data.url.slice(wrongPrefix.length);
+  }
+
+  const headers = new Headers(response.headers);
+  headers.delete('content-length');
+  return new Response(JSON.stringify(data), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+/**
  * Apply all Auth.js response patches for apps deployed with Next.js `basePath`:
- * redirect `Location` headers, then `/api/auth/providers` JSON body.
+ * redirect `Location` headers, JSON `{ url }` bodies, then `/api/auth/providers` JSON.
  */
 export async function patchNextAuthResponse(
   request: NextRequest,
   response: Response,
 ): Promise<Response> {
   const withLocation = patchAuthRedirectLocation(request, response);
-  return patchAuthProvidersResponse(request, withLocation);
+  const withJsonUrl = await patchAuthJsonUrlResponse(request, withLocation);
+  return patchAuthProvidersResponse(request, withJsonUrl);
 }
