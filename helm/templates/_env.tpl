@@ -153,6 +153,10 @@ skipNames: map of env var names already set in .Values.env (those win; chart ski
 - name: NEXT_PUBLIC_OIDC_SCOPE
   value: {{ $o.scope | quote }}
 {{- end }}
+{{- if and (hasKey $o "clockToleranceSeconds") (ne (toString $o.clockToleranceSeconds) "") (not (hasKey $skip "NEXT_OIDC_CLOCK_TOLERANCE_SECONDS")) }}
+- name: NEXT_OIDC_CLOCK_TOLERANCE_SECONDS
+  value: {{ $o.clockToleranceSeconds | toString | quote }}
+{{- end }}
 {{- if and $o.clientSecret.existingSecret $o.clientSecret.secretKey (not (hasKey $skip "NEXT_OIDC_CLIENT_SECRET")) }}
 - name: NEXT_OIDC_CLIENT_SECRET
   valueFrom:

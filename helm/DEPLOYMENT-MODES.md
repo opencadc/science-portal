@@ -467,6 +467,38 @@ kubectl logs -n science-portal -l app.kubernetes.io/name=science-portal -f | gre
 ❌ redirect_uri_mismatch
 ❌ Invalid redirect URI
 ❌ Unauthorized redirect_uri
+❌ unexpected JWT "nbf" (not before) claim value
+```
+
+### OIDC JWT clock tolerance (optional)
+
+**Most deployments do not need to configure this.** Leave `app.oidc.clockToleranceSeconds` unset and the application uses its built-in default (60 seconds).
+
+During the OAuth callback, the portal validates the IdP’s `id_token`. That JWT includes an **`nbf` (not before)** claim: the earliest Unix time at which the token is considered valid. Validation compares `nbf` to the portal pod’s clock. If SKA IAM (or another IdP) is even slightly ahead of the pod — or sets `nbf` a few seconds in the future — the check fails and Auth.js redirects to `/api/auth/error` even though the user logged in successfully at the IdP.
+
+**`app.oidc.clockToleranceSeconds`** maps to `NEXT_OIDC_CLOCK_TOLERANCE_SECONDS` and widens the allowed clock skew (in seconds) for `nbf` and `exp` checks. Example:
+
+```yaml
+app:
+  oidc:
+    enabled: true
+    uri: "https://ska-iam.stfc.ac.uk/"
+    # ... clientId, callbackUri, redirectUri, scope ...
+    clockToleranceSeconds: 120  # only if logs show nbf errors after NTP is verified
+```
+
+**Recommended order if you see `nbf` errors:**
+
+1. Confirm node and pod time sync (NTP/chrony) — that is the proper fix.
+2. Redeploy with a current image (defaults already allow 60s skew).
+3. If errors persist, set `clockToleranceSeconds` (e.g. `120`) in Helm values or override via raw `env`.
+
+You can also override with raw `env` (same merge rules as other vars):
+
+```yaml
+env:
+  - name: NEXT_OIDC_CLOCK_TOLERANCE_SECONDS
+    value: "120"
 ```
 
 ### Multiple Environments

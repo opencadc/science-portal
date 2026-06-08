@@ -83,6 +83,8 @@ app:
     callbackUri: ""
     redirectUri: ""
     scope: ""
+    # -- Optional JWT clock tolerance in seconds (`NEXT_OIDC_CLOCK_TOLERANCE_SECONDS`). When unset, the app default (60) applies. Most deployments do not need this. During OIDC login the portal validates the IdP `id_token`; if the token's `nbf` (not before) timestamp is even slightly ahead of the pod clock, validation fails with "unexpected JWT nbf claim value". This setting widens the allowed skew (in seconds) between the portal and IdP clocks. Prefer fixing NTP on nodes/pods first; raise only if that error persists.
+    clockToleranceSeconds: ""
     clientSecret:
       existingSecret: ""
       secretKey: ""
