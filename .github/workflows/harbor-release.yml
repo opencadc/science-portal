@@ -71,7 +71,15 @@ jobs:
           REL="${RELEASE_TAG}"
 
           echo "Promoting ${SRC_IMAGE} -> ${REG}/${REPO}:${REL}"
-          docker pull "${SRC_IMAGE}"
+          # Ensure the CI build pushed the expected SHA-tagged image before
+          # we attempt to promote it. This makes the dependency on the CI
+          # workflow (ci-build.yml) explicit and produces a clearer error
+          # message when the image is missing.
+          if ! docker pull "${SRC_IMAGE}"; then
+            echo "::error::Required image ${SRC_IMAGE} does not exist in Harbor." >&2
+            echo "Make sure the CI build (ci-build.yml) has built and pushed this commit (SHA=${SHA}) before publishing this release." >&2
+            exit 1
+          fi
           docker tag "${SRC_IMAGE}" "${REG}/${REPO}:${REL}"
           docker push "${REG}/${REPO}:${REL}"
 
