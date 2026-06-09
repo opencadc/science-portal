@@ -104,10 +104,26 @@ jobs:
             exit 1
           fi
 
+          # Select referrers mode explicitly for cosign (3.x), defaulting to a
+          # Harbor-friendly mode that does not require the `/referrers` API.
+          #
+          # Supported values (cosign 3.0.6):
+          #   - legacy              → tag-based / non-OCI-referrers
+          #   - oci-1-1-fallback    → try referrers, fall back on failure
+          #   - oci-1-1             → strict referrers API (NOT for this Harbor)
+          #
+          # We default to `legacy` here and allow overriding via the
+          # COSIGN_REGISTRY_REFERRERS_MODE GitHub variable.
           REFERRERS="${COSIGN_REGISTRY_REFERRERS_MODE:-legacy}"
           printf 'Cosign-signing container: %s (digest=%s, registry-referrers-mode=%s)\n' "${IMG}" "${DIG}" "${REFERRERS}"
           cosign version
-          cosign sign --yes "${DIG}" --upload
+
+          # Force cosign to honour the chosen mode. This prevents cosign 3.0.6
+          # from attempting `/v2/.../referrers/...` against Harbor, which
+          # currently only supports classic Docker/ChartMuseum APIs.
+          cosign sign --yes --upload \
+            --registry-referrers-mode="${REFERRERS}" \
+            "${DIG}"
 
       - name: Install Helm
         uses: azure/setup-helm@v4
