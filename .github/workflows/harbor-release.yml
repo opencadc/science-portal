@@ -1,3 +1,8 @@
+# On any published GitHub Release (prerelease or final): promote the `:sha-<git-sha>` image
+# built by ci-build.yml on `main` to the release tag, Cosign-sign it, patch the Helm chart
+# defaults for that tag, package, and upload to Harbor. Final releases also move `:latest`;
+# prereleases do not.
+
 name: Science Portal Harbor release (promote, sign, and package Helm)
 
 on:
@@ -77,7 +82,7 @@ jobs:
           # message when the image is missing.
           if ! docker pull "${SRC_IMAGE}"; then
             echo "::error::Required image ${SRC_IMAGE} does not exist in Harbor." >&2
-            echo "Make sure the CI build (ci-build.yml) has built and pushed this commit (SHA=${SHA}) before publishing this release." >&2
+            echo "Make sure ci-build.yml has pushed :sha-${SHA} for this commit (merge to main) before publishing this release." >&2
             exit 1
           fi
           docker tag "${SRC_IMAGE}" "${REG}/${REPO}:${REL}"
