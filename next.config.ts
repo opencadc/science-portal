@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
     ENABLE_QUERY_DEVTOOLS: process.env.NEXT_PUBLIC_ENABLE_QUERY_DEVTOOLS || 'false',
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
   },
+  // Disable keep-alive to prevent DNS caching issues.  This is especially important for
+  // the SKAHA API, which is used by the Science Portal to get the list of sessions, as
+  // when the SKAHA service is restarted, the DNS record for the SKAHA API is cached for a
+  // period of time, and the Science Portal will continue to use the old DNS record, which
+  // will cause the Science Portal to fail with a 404.
+  httpAgentOptions: {
+    keepAlive: false,
+  },
 };
 
 export default nextConfig;
