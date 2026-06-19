@@ -82,7 +82,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       onReset,
       onSessionTypeChange,
       imagesByType = {},
-      repositoryHosts = ['images-rc.canfar.net'],
+      repositoryHosts = [],
       memoryOptions,
       coreOptions,
       gpuOptions,
@@ -144,7 +144,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         const rh = repositoryHosts.filter((host) => host && typeof host === 'string');
         // Always default to the first available registry so dependent fields
         // (project, image) can populate immediately.
-        return rh[0] || 'images-rc.canfar.net';
+        return rh[0] || '';
       })(),
       image: '',
       repositoryAuthUsername: '',
@@ -422,7 +422,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
           if (rh.length > 1) {
             return '';
           }
-          return rh[0] || 'images-rc.canfar.net';
+          return rh[0] || '';
         })(),
         image: '',
         repositoryAuthUsername: '',
@@ -1048,18 +1048,13 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                             fullWidth
                             size="sm"
                           >
-                            {repositoryHosts.filter((host) => host && typeof host === 'string')
-                              .length > 0 ? (
-                              repositoryHosts
-                                .filter((host) => host && typeof host === 'string')
-                                .map((host) => (
-                                  <MenuItem key={host} value={host}>
-                                    {host}
-                                  </MenuItem>
-                                ))
-                            ) : (
-                              <MenuItem value="images-rc.canfar.net">images-rc.canfar.net</MenuItem>
-                            )}
+                            {repositoryHosts
+                              .filter((host) => host && typeof host === 'string')
+                              .map((host) => (
+                                <MenuItem key={host} value={host}>
+                                  {host}
+                                </MenuItem>
+                              ))}
                           </Select>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 5 }}>
