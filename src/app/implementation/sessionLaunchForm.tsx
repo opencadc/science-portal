@@ -82,7 +82,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       onReset,
       onSessionTypeChange,
       imagesByType = {},
-      repositoryHosts = ['images-rc.canfar.net'],
+      repositoryHosts = [],
       memoryOptions,
       coreOptions,
       gpuOptions,
@@ -144,7 +144,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         const rh = repositoryHosts.filter((host) => host && typeof host === 'string');
         // Always default to the first available registry so dependent fields
         // (project, image) can populate immediately.
-        return rh[0] || 'images-rc.canfar.net';
+        return rh[0] || '';
       })(),
       image: '',
       repositoryAuthUsername: '',
@@ -422,7 +422,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
           if (rh.length > 1) {
             return '';
           }
-          return rh[0] || 'images-rc.canfar.net';
+          return rh[0] || '';
         })(),
         image: '',
         repositoryAuthUsername: '',
@@ -1037,7 +1037,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                             value={
                               formData.repositoryHost ||
                               repositoryHosts.find((h) => h && typeof h === 'string') ||
-                              'images-rc.canfar.net'
+                              ''
                             }
                             onChange={
                               handleSelectChange('repositoryHost') as React.ComponentProps<
@@ -1058,7 +1058,6 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                                   </MenuItem>
                                 ))
                             ) : (
-                              <MenuItem value="images-rc.canfar.net">images-rc.canfar.net</MenuItem>
                             )}
                           </Select>
                         </Grid>
