@@ -1037,7 +1037,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                             value={
                               formData.repositoryHost ||
                               repositoryHosts.find((h) => h && typeof h === 'string') ||
-                              ''
+                              'images-rc.canfar.net'
                             }
                             onChange={
                               handleSelectChange('repositoryHost') as React.ComponentProps<
@@ -1048,17 +1048,13 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                             fullWidth
                             size="sm"
                           >
-                            {repositoryHosts.filter((host) => host && typeof host === 'string')
-                              .length > 0 ? (
-                              repositoryHosts
-                                .filter((host) => host && typeof host === 'string')
-                                .map((host) => (
-                                  <MenuItem key={host} value={host}>
-                                    {host}
-                                  </MenuItem>
-                                ))
-                            ) : (
-                            )}
+                            {repositoryHosts
+                              .filter((host) => host && typeof host === 'string')
+                              .map((host) => (
+                                <MenuItem key={host} value={host}>
+                                  {host}
+                                </MenuItem>
+                              ))}
                           </Select>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 5 }}>
