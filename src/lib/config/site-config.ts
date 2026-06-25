@@ -12,6 +12,7 @@ export const OPEN_SOURCE_URL = 'https://github.com/opencadc';
 // Support
 export const SUPPORT_EMAIL = 'mailto:support@canfar.net';
 export const DISCORD_URL = 'https://discord.gg/vcCQ8QBvBa';
+export const STATUS_PAGE_URL = 'https://canfar.statuspage.io/';
 
 // Services (defaults; override at runtime with NEXT_PUBLIC_SERVICE_*_URL in public runtime config)
 export const STORAGE_MANAGEMENT_URL = 'https://www.canfar.net/storage/list';
@@ -27,8 +28,32 @@ export const UPDATE_PROFILE_URL =
   'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/auth/update.html';
 export const RESET_PASSWORD_URL =
   'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/auth/resetPassword.html';
+export const REQUEST_ACCOUNT_URL =
+  'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/auth/request.html';
 export const CERTIFICATE_BASE_URL =
   'https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cred/generate?daysValid=30';
+
+// =============================================================================
+// CANFAR access service (CANFAR mode only)
+// =============================================================================
+// The access service is colocated with canfar.net and owns the .canfar.net
+// SSO cookie. Used by the portal for redirect-based login/logout so the
+// service can issue Set-Cookie on the parent domain — that's what enables
+// single-sign-on with other canfar.net apps.
+//
+// Production portal deployments live on `*.canfar.net`, so we default to the
+// portal's own origin at runtime; the fallback below is used in local dev
+// (where the portal is on localhost and can't issue `.canfar.net` cookies
+// itself, so we still bounce off the real canfar.net access service).
+//
+// SRC / OIDC mode does not use this — logout there goes through NextAuth's
+// signOut(), which talks to SKA IAM's end-session endpoint as configured.
+
+/** Suffix used to recognise a CANFAR-hosted origin at runtime. */
+export const CANFAR_DOMAIN_SUFFIX = 'canfar.net';
+export const CANFAR_ACCESS_HOST_FALLBACK = `https://www.${CANFAR_DOMAIN_SUFFIX}`;
+export const ACCESS_LOGIN_PATH = '/access/login';
+export const ACCESS_LOGOUT_PATH = '/access/logout';
 
 /**
  * Generate a certificate URL with HTTP Basic Auth credentials

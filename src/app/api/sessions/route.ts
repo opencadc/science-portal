@@ -46,8 +46,11 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   };
   console.log('📨 Session GET route - final headers:', finalHeaders);
 
+  // `view=interactive` excludes headless batch jobs. Skaha source:
+  // skaha/src/main/java/org/opencadc/skaha/session/GetAction.java —
+  // SESSION_VIEW_INTERACTIVE branch.
   const response = await fetchExternalApi(
-    `${serverApiConfig.skaha.baseUrl}/v1/session`,
+    `${serverApiConfig.skaha.baseUrl}/v1/session?view=interactive`,
     {
       method: 'GET',
       headers: finalHeaders,
@@ -56,12 +59,24 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   );
 
   if (!response.ok) {
-    logger.logError(response.status, `Failed to fetch sessions: ${response.statusText}`);
-    return errorResponse('Failed to fetch sessions', response.status);
+    const errorText = await response.text().catch(() => '');
+    logger.logError(
+      response.status,
+      `Failed to fetch sessions: ${response.statusText}`,
+      errorText,
+    );
+    return errorResponse('Failed to fetch sessions', response.status, errorText);
   }
 
-  const sessions: SkahaSessionResponse[] = await response.json();
-  logger.info(`Retrieved ${sessions.length} session(s)`);
+  // Skaha marks a session `Failed` once its lifetime elapses (an expired
+  // session). These linger in the list for some time after they stop being
+  // useful; drop them so the active-sessions widget only shows sessions
+  // the user can actually interact with.
+  const all: SkahaSessionResponse[] = await response.json();
+  const sessions = all.filter((s) => s.status !== 'Failed');
+  logger.info(
+    `Retrieved ${all.length} interactive session(s), ${sessions.length} after dropping expired`,
+  );
   logger.logSuccess(HTTP_STATUS.OK, { count: sessions.length });
   return successResponse(sessions);
 });
@@ -100,7 +115,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   formData.append('image', body.containerImage);
 
   // Add type if provided (for non-headless sessions)
-  if (body.sessionType && body.sessionType !== 'headless') {
+  if (body.sessionType && body.sessionType !== 'headless' && body.sessionType !== 'desktop-app') {
     formData.append('type', body.sessionType);
   }
 

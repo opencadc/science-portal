@@ -18,6 +18,7 @@ export type SessionType =
   | 'notebook'
   | 'desktop'
   | 'headless'
+  | 'desktop-app'
   | 'carta'
   | 'contributed'
   | 'firefly'
@@ -188,11 +189,12 @@ function transformSkahaSession(skahaSession: SkahaSessionResponse): Session {
 }
 
 /**
- * Get all active sessions for the current user
+ * Get all active sessions for the current user.
+ * `view=interactive` excludes headless batch and Desktop Application jobs.
  */
 export async function getSessions(): Promise<Session[]> {
   const authHeaders = getAuthHeader();
-  const response = await fetch(sessionsApiRoot(), {
+  const response = await fetch(`${sessionsApiRoot()}?view=interactive`, {
     method: 'GET',
     headers: { Accept: 'application/json', ...authHeaders },
     credentials: 'include',
@@ -300,24 +302,6 @@ export async function deleteSession(sessionId: string): Promise<void> {
   if (!response.ok) {
     throw new Error(`Failed to delete session ${sessionId}: ${response.status}`);
   }
-}
-
-/**
- * Get platform load statistics
- */
-export async function getPlatformLoad(): Promise<PlatformLoad> {
-  const authHeaders = getAuthHeader();
-  const response = await fetch(`${sessionsApiRoot()}/platform-load`, {
-    method: 'GET',
-    headers: { Accept: 'application/json', ...authHeaders },
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch platform load: ${response.status}`);
-  }
-
-  return response.json();
 }
 
 /**

@@ -30,7 +30,7 @@ All endpoints require authentication with CANFAR, and authorization to access Sk
 
 ### OIDC Configuration
 
-The Science Portal UI is configurable to work with an OpenID Connect provider. See the `oidc` settings in the [org.opencadc.science-portal.properties](./org.opencadc.science-portal.properties) file.
+Science Portal supports OpenID Connect in the Next.js app (NextAuth). For registering URIs at your identity provider and for environment variables, see **[Deploying with OIDC](#deploying-with-oidc-openid-connect)** under Deployment below and [.env.example](.env.example). Older servlet-based deployments may still document `oidc` settings in [org.opencadc.science-portal.properties](./org.opencadc.science-portal.properties).
 
 ## User Workflows
 
@@ -123,8 +123,11 @@ Configure the following environment variables in `.env.local`:
 | `NEXT_PUBLIC_LOGIN_API` | Authentication API endpoint |
 | `NEXT_PUBLIC_SKAHA_API` | Session/compute API endpoint |
 | `NEXT_PUBLIC_API_TIMEOUT` | API request timeout (default: 30000ms) |
+| `NEXT_PUBLIC_SRCNET_LOGO_URL` | Optional. SRCNet header logo image URL or path (OIDC mode). When unset, defaults to `{NEXT_PUBLIC_BASE_PATH}/SRCNetLogo.png` |
 | `AUTH_SECRET` | NextAuth secret key |
 | `NEXT_USE_CANFAR` | Toggle between CANFAR/OIDC auth mode |
+
+When **`NEXT_USE_CANFAR=false`** (and matching `NEXT_PUBLIC_USE_CANFAR`), also configure OIDC issuer, client, `NEXTAUTH_URL`, **`NEXT_OIDC_REDIRECT_URI` / `NEXT_PUBLIC_OIDC_REDIRECT_URI`**, and **`NEXT_OIDC_CALLBACK_URI` / `NEXT_PUBLIC_OIDC_CALLBACK_URI`**—see [.env.example](.env.example). Full deployment notes including IdP redirect registration are under [Deploying with OIDC](#deploying-with-oidc-openid-connect).
 
 ### Development
 
@@ -194,13 +197,80 @@ docker run --rm \
   science-portal
 ```
 
-Adjust the three API URLs for your environment. For **OIDC** mode, set `NEXT_USE_CANFAR=false` and supply the OIDC-related variables from `.env.example` instead of the CANFAR URLs above.
+Adjust the three API URLs for your environment. For **OIDC** mode, follow [Deploying with OIDC](#deploying-with-oidc-openid-connect) below instead of the CANFAR URLs above.
 
 You can also use Docker Compose:
 
 ```bash
 docker-compose up --build
 ```
+
+Example compose files that wire OIDC env vars include [docker-compose.oidc.example.yml](./docker-compose.oidc.example.yml).
+
+#### CI/CD (GitHub Actions)
+
+The workflow [`.github/workflows/ci-build.yml`](./.github/workflows/ci-build.yml) builds the Docker image on every push to `main` (and on manual dispatch) without uploading it.
+
+Publishing a **[GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)** does the following in order:
+
+1. Pushes the container image to **[Harbor](https://goharbor.io/)** with two tags (the Git release tag, e.g. `2.1.3`, plus `latest`). It appears under the project **Repositories** UI.
+2. Signs that image (**`cosign sign`** with **`registry-referrers-mode`** defaulting to **`legacy`**) against the pushed **manifest digest**, using Fulcio/GitHub Actions **OIDC keyless**. **Legacy** avoids the distribution **`/referrers/…`** API, which older registries (including some Harbor setups) reject with `UNAUTHORIZED` / **un‑recognized request**. Set Actions variable **`COSIGN_REGISTRY_REFERRERS_MODE`** to **`oci-1-1`** if your registry fully supports [OCI Referrers](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-references) and Harbor is new enough that you want referrer-based attachments.
+3. Sets **`helm/Chart.yaml`** `version` and **`appVersion`** to that same release tag semantically (bare SemVer, no `v` prefix).
+4. Points **`helm/values.yaml`** default **`image.repository`** / **`image.tag`** at the Harbor image (`HARBOR_REGISTRY` + `HARBOR_REPOSITORY`).
+5. Runs **`helm lint`**, packages the chart tarball, then **HTTP POST**s it to **`/api/chartrepo/{project}/charts`** (multipart `chart=@…`, optional `prov=@….prov` beside the tarball) so it appears under the Harbor project **Helm Charts** tab—same pathway as uploading through the UI. This does **not** use **`helm push`** or **`oci://`**.
+
+The workflow declares **`permissions: id-token: write`** so GitHub can mint an OIDC token for keyless Sigstore certificates **for the container image only**. Organizations or forks can block that policy; runners must reach the public Rekor/Fulcio endpoints unless you customize Cosign offline behavior.
+
+Packaging applies only inside the Actions runner—it does **not** commit Helm file updates back to the branch. Maintain `helm/` in git separately if you want the repo defaults to mirror each release.
+
+**Actions variables**, under *Settings → Secrets and variables → Actions*:
+
+| Name | Meaning |
+|------|--------|
+| `HARBOR_REGISTRY` | Registry hostname (`docker login` host), default HTTPS base **`https://${HARBOR_REGISTRY}`** for Harbor’s Chart API unless overridden |
+| `HARBOR_REPOSITORY` | Docker repository path inside the registry, e.g. `platform/science-portal` |
+| `HARBOR_HELM_PROJECT` _(optional)_ | Harbor **project name** used for classic chart upload (`POST /api/chartrepo/<project>/charts`). If unset, **`HARBOR_HELM_OCI_REPOSITORY`** may still supply it |
+| `HARBOR_HELM_OCI_REPOSITORY` _(optional, deprecated alias)_ | Legacy name — same semantics as **`HARBOR_HELM_PROJECT`** when the latter is unset; otherwise ignored |
+| `HARBOR_API_BASE` _(optional)_ | Full Harbor URL if the REST API lives elsewhere than **`https://<HARBOR_REGISTRY>`** (no trailing slash; use when Harbor is exposed under a path prefix or different ingress host) |
+| `COSIGN_REGISTRY_REFERRERS_MODE` _(optional)_ | Cosign **`--registry-referrers-mode`**: unset ⇒ **`legacy`** (for registries that do not serve **`GET /v2/.../referrers/...`**); set **`oci-1-1`** when your Harbor/registry supports [OCI Referrers](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-references) |
+
+**Secrets:** `HARBOR_USERNAME`, `HARBOR_PASSWORD` — Docker push plus chart upload permission; also passed to **`cosign sign`** so Cosign pushes the signature with the same registry credentials (`docker/login-action` remains required for **`build-push`**).
+
+**Consumers:** Charts from this path are fetched with Helm’s **`chartrepo`** index, for example **`helm repo add`** against **`https://<host>/chartrepo/<project>`** (see Harbor’s Helm chart docs for your Harbor version).
+
+Patching logic lives in [.github/scripts/patch-helm-release.py](.github/scripts/patch-helm-release.py). Use **bare SemVer** Git release tags (for example **`2.1.3`** or **`2.0.0-rc.1`**); they become **`Chart.yaml` `version`**, **`appVersion`**, and **`values.yaml` `image.tag`**, so `version` must stay valid for `helm package`.
+
+### Deploying with OIDC (OpenID Connect)
+
+Use OIDC mode when **`NEXT_USE_CANFAR=false`** and **`NEXT_PUBLIC_USE_CANFAR=false`**. Supply **`AUTH_SECRET`** and set **`NEXTAUTH_URL`** to the public URL visitors use for this deployment (scheme, host, and non-default port if any). Behind a reverse proxy that terminates TLS, set **`AUTH_TRUST_HOST=true`** (or **`AUTH_URL`**) so redirects and cookie security match HTTPS; align this with `.env.example` comments.
+
+Define your IdP (**`NEXT_OIDC_URI`**, **`NEXT_OIDC_CLIENT_ID`**, **`NEXT_OIDC_CLIENT_SECRET`**, **`NEXT_OIDC_SCOPE`**) plus the mirrored **`NEXT_PUBLIC_OIDC_*`** values for client-side discovery. OIDC-backed deployments normally use **`SRC_SKAHA_API`** / **`SRC_CAVERN_API`** instead of CANFAR `LOGIN_API`/`SKAHA_API`—see [.env.example](.env.example).
+
+#### Callback and redirect URIs
+
+Naming in this codebase:
+
+- **Redirect URI** (`NEXT_OIDC_REDIRECT_URI` / `NEXT_PUBLIC_OIDC_REDIRECT_URI`) — OAuth 2 authorization-code **`redirect_uri`**. Sent to the IdP and handled by Auth.js / NextAuth at **`/api/auth/callback/oidc`**. This value **must exactly match** an allowed redirect URI in your IdP registration (often called “Redirect URIs”, “Valid redirect URIs”, or callback URLs).
+
+- **Callback URI** (`NEXT_OIDC_CALLBACK_URI` / `NEXT_PUBLIC_OIDC_CALLBACK_URI`) — The portal’s **public landing URL** for this build (usually the UI root). It is required in configuration and must match how users reach the app; register it too if your IdP asks for origins, post-login URLs, or CORS/Web origins separately.
+
+Express both using your public **origin** (no trailing path beyond what you need for the host) plus **`NEXT_PUBLIC_BASE_PATH`** (empty for root deployments, otherwise e.g. `/science-portal`):
+
+| Concept | Typical URL |
+| --------|---------------|
+| **Register with IdP as OAuth redirect** | `{ORIGIN}{BASE}/api/auth/callback/oidc` |
+| **Set redirect env vars to** | same as the row above |
+| **Set callback env vars to** | `{ORIGIN}{BASE}` (portal entry; optionally with a trailing `/` consistent with how you expose the app) |
+
+Here `{ORIGIN}` is whatever you effectively use as the site URL (e.g. `https://www.canfar.net` or `http://localhost:3000`), and **`{BASE}`** is **`NEXT_PUBLIC_BASE_PATH`** with no duplicate slashes when concatenating.
+
+**Examples:**
+
+- Production-style host with base path: `ORIGIN=https://www.canfar.net`, `BASE=/science-portal` → register and set **`https://www.canfar.net/science-portal/api/auth/callback/oidc`**; set callback env vars to **`https://www.canfar.net/science-portal`**.
+
+- **`npm run dev`** on port `3000` with no base path: register **`http://localhost:3000/api/auth/callback/oidc`**; set callback vars to **`http://localhost:3000/`** (see [.env.example](.env.example) for the exact defaults your team prefers).
+
+Never omit **`{BASE}`** from the OAuth path when **`NEXT_PUBLIC_BASE_PATH`** is set; browsers invoke NextAuth at **`{BASE}/api/auth/*`**.
 
 ### Kubernetes
 
@@ -216,7 +286,7 @@ For deployment mode details (CANFAR vs OIDC), refer to [DEPLOYMENT-MODES.md](./h
 ## Documentation
 
 - [Development Guide](./DEVELOPMENT_GUIDE.md) - Local development setup and testing
-- [Helm Deployment](./helm/README.md) - Kubernetes deployment with Helm
+- [Helm Deployment](https://www.opencadc.org/deployments/helm/science-platform/science-portal/) - Kubernetes deployment with Helm
 - [Kubernetes Guide](./helm/KUBERNETES-DEPLOYMENT-GUIDE.md) - Complete K8s deployment instructions
 
 ## Scripts

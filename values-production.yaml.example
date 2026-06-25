@@ -56,6 +56,11 @@ ingress:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/rate-limit: "100"
+    # NOTE: this example uses nginx ingress for completeness. The CADC
+    # deployment (cadc-ccda-infra/keel-deploy) uses Traefik in-cluster
+    # behind an edge haproxy. Sticky-session requirement applies only at
+    # replicaCount > 1 in OIDC mode — see src/auth.ts above
+    # `refreshInFlight` for the snippet at the chosen LB layer.
     # Optional: OAuth2 proxy for additional auth
     # nginx.ingress.kubernetes.io/auth-url: "https://oauth2.example.com/oauth2/auth"
     # nginx.ingress.kubernetes.io/auth-signin: "https://oauth2.example.com/oauth2/start?rd=$escaped_request_uri"

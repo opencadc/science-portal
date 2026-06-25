@@ -4,7 +4,6 @@
  * Provides hooks for fetching, creating, and managing Skaha sessions.
  */
 
-import { useEffect, useRef, useCallback } from 'react';
 import {
   useQuery,
   useMutation,
@@ -65,7 +64,20 @@ export function useSessions(
       }
       return failureCount < 3;
     },
-    // No auto-refresh - only manual refresh and on user actions (delete, launch, extend)
+    // Refetch only while an *interactive* session is in a transitional state
+    // (Pending). Headless batch jobs can sit Pending for hours and would
+    // otherwise keep the loop alive forever. NOTE: don't use `connectUrl` as
+    // part of the transitional check — Skaha sets it as soon as the route is
+    // allocated, well before the pod is actually Running, so Pending sessions
+    // routinely have a connectUrl already. Status is the only reliable signal.
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const hasTransitional = data?.some(
+        (s) => s.sessionType !== 'headless' && s.sessionType !== 'desktop-app' && s.status === 'Pending',
+      );
+      return hasTransitional ? 10000 : false;
+    },
+    refetchIntervalInBackground: false,
     ...options,
   });
 }
@@ -252,95 +264,3 @@ export function useRenewSession(
   });
 }
 
-/**
- * Poll a specific session until its status changes to Running or Failed
- * Used after launching a new session
- *
- * @example
- * ```tsx
- * const { startPolling, stopPolling } = useSessionPolling('session-123', {
- *   onStatusChange: (session) => console.log('Status changed:', session.status),
- *   onComplete: () => console.log('Polling complete'),
- * });
- *
- * startPolling();
- * ```
- */
-export function useSessionPolling(
-  sessionId: string | null,
-  options?: {
-    interval?: number;
-    onStatusChange?: (session: Session) => void;
-    onComplete?: () => void;
-    onError?: (error: Error) => void;
-  },
-) {
-  const queryClient = useQueryClient();
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { interval = 30000, onStatusChange, onComplete, onError } = options || {};
-
-  // Memoize callbacks to prevent recreating on every render
-  const onStatusChangeRef = useRef(onStatusChange);
-  const onCompleteRef = useRef(onComplete);
-  const onErrorRef = useRef(onError);
-
-  // Update refs when callbacks change
-  useEffect(() => {
-    onStatusChangeRef.current = onStatusChange;
-    onCompleteRef.current = onComplete;
-    onErrorRef.current = onError;
-  }, [onStatusChange, onComplete, onError]);
-
-  const stopPolling = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, []);
-
-  const pollSession = useCallback(async () => {
-    if (!sessionId) return;
-
-    try {
-      const session = await getSession(sessionId);
-
-      // Update the session in the list
-      const currentSessions = queryClient.getQueryData<Session[]>(sessionKeys.list()) || [];
-      const updatedSessions = currentSessions.map((s) => (s.id === sessionId ? session : s));
-      queryClient.setQueryData(sessionKeys.list(), updatedSessions);
-
-      // Notify callback
-      onStatusChangeRef.current?.(session);
-
-      // Stop polling if status is Running or Failed
-      if (session.status === 'Running' || session.status === 'Failed') {
-        stopPolling();
-        onCompleteRef.current?.();
-      }
-    } catch (error) {
-      console.error('Error polling session:', error);
-      onErrorRef.current?.(error as Error);
-
-      // On error, fall back to full sessions refetch
-      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
-      stopPolling();
-    }
-  }, [sessionId, queryClient, stopPolling]);
-
-  const startPolling = useCallback(() => {
-    if (!sessionId) return;
-
-    // Wait 30 seconds before first poll (session needs time to start)
-    // Then poll at regular intervals
-    intervalRef.current = setInterval(pollSession, interval);
-  }, [sessionId, pollSession, interval]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopPolling();
-    };
-  }, [stopPolling]);
-
-  return { startPolling, stopPolling };
-}

@@ -12,6 +12,7 @@ import type { Theme } from '@mui/material/styles';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import LoginIcon from '@mui/icons-material/Login';
 import '@/app/theme/createTheme'; // Import for theme type augmentation
 import { AppBarProps } from '@/app/types/AppBarProps';
 import { Toolbar } from '@/app/components/Toolbar/Toolbar';
@@ -205,19 +206,10 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
     // Handle account button click - either open menu or call custom handler
     const handleAccountButtonClick = useCallback(
       (event: React.MouseEvent<HTMLElement>) => {
-        console.log('AppBar button clicked:', {
-          menuItemsLength: menuItems.length,
-          firstItemLabel: menuItems[0]?.label,
-          hasCustomHandler: !!onAccountButtonClick,
-        });
-
         // If there are actual menu items (not just dummy), open the menu
         if (menuItems.length > 0 && menuItems[0].label !== '') {
-          console.log('Opening menu dropdown');
           handleMenuOpen(event);
         } else if (onAccountButtonClick) {
-          // Otherwise call custom click handler
-          console.log('Calling custom click handler');
           onAccountButtonClick();
         }
       },
@@ -312,8 +304,8 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
         {/* Navigation Links */}
         <Box sx={{ flex: 1, overflow: 'auto' }}>
           <List sx={{ pt: 2 }}>
-            {links.map((link, index) => (
-              <ListItem key={index} sx={{ flexDirection: 'column', alignItems: 'stretch' }}>
+            {links.map((link) => (
+              <ListItem key={link.label} sx={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 {link.menuItems && link.menuItems.length > 0 ? (
                   <Box>
                     <Typography
@@ -389,42 +381,104 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
           </List>
         </Box>
 
-        {/* Menu Items at Bottom */}
-        {menuItems.length > 0 && (
-          <Box sx={{ borderTop: `1px solid ${theme.palette.divider}` }}>
-            <List>
-              {menuItems.map((item, index) => (
-                <ListItem key={index}>
-                  {item.divider && index > 0 && <Divider />}
-                  <Link
-                    href={item.href}
-                    onClick={() => {
-                      handleMobileDrawerClose();
-                      item.onClick?.();
-                    }}
-                    variant="inherit"
-                    underline="none"
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      px: 2,
-                      py: 1.5,
-                      color: theme.palette.text.primary,
-                      width: '100%',
-                      '&:hover': {
-                        backgroundColor: theme.palette.action.hover,
-                      },
-                    }}
-                  >
-                    {item.icon && (
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>{item.icon}</Box>
-                    )}
-                    {item.label}
-                  </Link>
-                </ListItem>
-              ))}
-            </List>
+        {/* Menu Items at Bottom.
+            Unauthenticated state arrives as a single dummy item with an empty
+            label (sentinel from AppBarWithAuth) — surface a real "Login" entry
+            here so mobile/tablet users can sign in. */}
+        {(() => {
+          const hasRealMenu = menuItems.length > 0 && menuItems[0].label !== '';
+          const showLoginEntry =
+            !hasRealMenu && !!onAccountButtonClick && !accountActionDisabled;
+          if (!hasRealMenu && !showLoginEntry) return null;
+          return (
+            <Box sx={{ borderTop: `1px solid ${theme.palette.divider}` }}>
+              <List>
+                {hasRealMenu &&
+                  menuItems.map((item, index) => (
+                    <ListItem key={item.label}>
+                      {item.divider && index > 0 && <Divider />}
+                      <Link
+                        href={item.href}
+                        onClick={() => {
+                          handleMobileDrawerClose();
+                          item.onClick?.();
+                        }}
+                        variant="inherit"
+                        underline="none"
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          px: 2,
+                          py: 1.5,
+                          color: theme.palette.text.primary,
+                          width: '100%',
+                          '&:hover': {
+                            backgroundColor: theme.palette.action.hover,
+                          },
+                        }}
+                      >
+                        {item.icon && (
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>{item.icon}</Box>
+                        )}
+                        {item.label}
+                      </Link>
+                    </ListItem>
+                  ))}
+                {showLoginEntry && (
+                  <ListItem key="__login__">
+                    <MuiBox
+                      component="button"
+                      type="button"
+                      onClick={() => {
+                        handleMobileDrawerClose();
+                        onAccountButtonClick?.();
+                      }}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
+                        px: 2,
+                        py: 1.5,
+                        width: '100%',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: theme.palette.text.primary,
+                        fontFamily: theme.typography.fontFamily,
+                        fontSize: theme.typography.body1.fontSize,
+                        fontWeight: theme.typography.fontWeightMedium,
+                        textAlign: 'left',
+                        '&:hover': {
+                          backgroundColor: theme.palette.action.hover,
+                        },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <LoginIcon fontSize="small" />
+                      </Box>
+                      Login
+                    </MuiBox>
+                  </ListItem>
+                )}
+              </List>
+            </Box>
+          );
+        })()}
+
+        {/* Custom account-button slot (theme toggle on this app) lives at the
+            bottom of the mobile drawer instead of the appbar's right edge. */}
+        {accountButton && (
+          <Box
+            sx={{
+              borderTop: `1px solid ${theme.palette.divider}`,
+              px: 2,
+              py: 2,
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+          >
+            {accountButton}
           </Box>
         )}
       </Box>
@@ -553,7 +607,7 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                     }}
                   >
                     {links.map((link, index) => (
-                      <Box key={index} sx={{ position: 'relative' }}>
+                      <Box key={link.label} sx={{ position: 'relative' }}>
                         {link.menuItems && link.menuItems.length > 0 ? (
                           // Dropdown link
                           <>
@@ -703,6 +757,7 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'center',
                       gap: theme.spacing(1),
                       background: 'none',
                       border: `1px solid ${theme.palette.divider}`,
@@ -810,7 +865,56 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                   }}
                 />
               )}
-              {accountButton}
+              {/* Theme toggle (or any custom accountButton) is desktop-only.
+                  On mobile, the right side is reserved for a prominent Login
+                  CTA when the user is unauthenticated; otherwise it's empty
+                  (the drawer carries the user's account actions). */}
+              {!isMobile && accountButton}
+              {isMobile &&
+                !(menuItems.length > 0 && menuItems[0].label !== '') &&
+                onAccountButtonClick && (
+                  <MuiBox
+                    component="button"
+                    type="button"
+                    disabled={accountActionDisabled}
+                    onClick={onAccountButtonClick}
+                    aria-label="Login"
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      alignSelf: 'center',
+                      gap: theme.spacing(1),
+                      px: theme.spacing(2),
+                      py: theme.spacing(1),
+                      backgroundColor: theme.palette.primary.main,
+                      color: theme.palette.primary.contrastText,
+                      border: 'none',
+                      borderRadius: theme.customBorderRadius?.md || theme.shape.borderRadius,
+                      fontFamily: theme.typography.fontFamily,
+                      fontSize: theme.typography.body2.fontSize,
+                      fontWeight: theme.typography.fontWeightMedium,
+                      cursor: 'pointer',
+                      minHeight: 40,
+                      transition: theme.transitions.create(
+                        ['background-color', 'opacity'],
+                        { duration: theme.transitions.duration.short },
+                      ),
+                      '&:hover': { backgroundColor: theme.palette.primary.dark },
+                      '&:focus-visible': {
+                        outline: `2px solid ${theme.palette.primary.dark}`,
+                        outlineOffset: theme.spacing(0.25),
+                      },
+                      '&:disabled': {
+                        opacity: theme.palette.action.disabledOpacity,
+                        cursor: 'not-allowed',
+                      },
+                    }}
+                  >
+                    <LoginIcon fontSize="small" />
+                    Login
+                  </MuiBox>
+                )}
             </Box>
           </Toolbar>
         </MuiAppBar>

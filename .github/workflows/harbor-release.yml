@@ -1,0 +1,347 @@
+# GitHub Release publishing to Harbor:
+#   - Prerelease: build and push the image (`:RELEASE_TAG` + `:sha-<git-sha>`), Cosign-sign,
+#     patch/package/upload the Helm chart.
+#   - Final release: promote `:sha-<git-sha>` (from a prior prerelease build) to the release
+#     tag and `:latest` (no rebuild), Cosign-sign, patch/package/upload the Helm chart.
+
+name: Science Portal Harbor release (build or promote, sign, and package Helm)
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  prerelease-publish:
+    if: github.event.release.prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Resolve Harbor Helm chart project (classic Chart repo)
+        id: harbor_helm
+        env:
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+          HELM_PROJECT_PRIMARY: ${{ vars.HARBOR_HELM_PROJECT }}
+          HELM_LEGACY: ${{ vars.HARBOR_HELM_OCI_REPOSITORY }}
+        run: |
+          if [ -n "${HELM_PROJECT_PRIMARY:-}" ]; then
+            echo "helm_project=${HELM_PROJECT_PRIMARY}" >> "${GITHUB_OUTPUT}"
+          elif [ -n "${HELM_LEGACY:-}" ]; then
+            echo "helm_project=${HELM_LEGACY}" >> "${GITHUB_OUTPUT}"
+          else
+            case "${HARBOR_REPOSITORY}" in
+              */*) echo "helm_project=${HARBOR_REPOSITORY%%/*}" >> "${GITHUB_OUTPUT}" ;;
+              *)
+                echo "::error::HARBOR_REPOSITORY must be project/name (contain '/') or set HARBOR_HELM_PROJECT."
+                exit 1
+                ;;
+            esac
+          fi
+
+      - name: Log in to Harbor (Docker)
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve release commit SHA
+        id: rel
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name }}"
+          git fetch --tags --force
+          SHA=$(git rev-list -n 1 "$TAG")
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve prerelease image tags
+        id: meta
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          COMMIT_SHA: ${{ steps.rel.outputs.sha }}
+        run: |
+          set -euo pipefail
+          REG='${{ vars.HARBOR_REGISTRY }}'
+          REPO='${{ vars.HARBOR_REPOSITORY }}'
+          {
+            echo 'tags<<__TAGS__'
+            echo "${REG}/${REPO}:${RELEASE_TAG}"
+            echo "${REG}/${REPO}:sha-${COMMIT_SHA}"
+            echo __TAGS__
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Docker image (prerelease)
+        id: build_push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          platforms: linux/amd64
+          build-args: |
+            NEXT_PUBLIC_BASE_PATH=/science-portal
+
+      - name: Install Cosign (for keyless signing)
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Cosign sign container image (digest, keyless)
+        env:
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          DIG="${{ steps.build_push.outputs.digest }}"
+          if [ -z "${DIG}" ]; then
+            echo "::error::Docker build-push did not produce a digest output (cannot Cosign)."
+            exit 1
+          fi
+          IMG="${HARBOR_REGISTRY}/${HARBOR_REPOSITORY}"
+          printf 'Cosign-signing container: %s@%s\n' "${IMG}" "${DIG}"
+          cosign version
+          cosign sign --yes "${IMG}@${DIG}" --upload
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.20.2
+
+      - name: Bump Helm Chart.yaml + defaults for this release
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+        run: python3 .github/scripts/patch-helm-release.py
+
+      - name: Helm lint
+        run: helm lint ./helm
+
+      - name: Package Helm chart
+        id: helm_pack
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          helm package ./helm --destination dist
+          shopt -s nullglob
+          pkgs=(dist/science-portal-*.tgz)
+          if [ "${#pkgs[@]}" -ne 1 ]; then
+            printf 'Expected exactly one packaged chart under dist/, found: [%s]\n' "${pkgs[*]-}"
+            exit 1
+          fi
+          echo "package=${pkgs[0]}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload Helm chart to Harbor (Helm Charts tab / ChartMuseum API)
+        env:
+          PACKAGE: ${{ steps.helm_pack.outputs.package }}
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_API_BASE_IN: ${{ vars.HARBOR_API_BASE }}
+          CHART_PROJECT: ${{ steps.harbor_helm.outputs.helm_project }}
+          HARBOR_USER: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASS: ${{ secrets.HARBOR_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PACKAGE}" ] || [ ! -f "${PACKAGE}" ]; then
+            echo "::error::Missing packaged chart (expected PACKAGE path from previous step)."
+            exit 1
+          fi
+          if [ -z "${CHART_PROJECT}" ]; then
+            echo "::error::Could not resolve Harbor project for Helm chart upload."
+            exit 1
+          fi
+
+          BASE="${HARBOR_API_BASE_IN:-}"
+          BASE="${BASE%/}"
+          if [ -z "${BASE}" ]; then
+            BASE="https://${HARBOR_REGISTRY}"
+          fi
+
+          URL="${BASE}/api/chartrepo/${CHART_PROJECT}/charts"
+          printf 'POST chart → %s (project=%s)\n' "${URL}" "${CHART_PROJECT}"
+
+          prov_args=()
+          if [ -f "${PACKAGE}.prov" ]; then
+            printf 'Including provenance %s.prov\n' "${PACKAGE}"
+            prov_args+=( -F "prov=@${PACKAGE}.prov" )
+          fi
+
+          curl --fail-with-body -sS \
+            --user "${HARBOR_USER}:${HARBOR_PASS}" \
+            -X POST "${URL}" \
+            -F "chart=@${PACKAGE};type=application/x-compressed-tar" \
+            "${prov_args[@]}"
+
+  final-release:
+    if: github.event.release.prerelease != true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Resolve Harbor Helm chart project (classic Chart repo)
+        id: harbor_helm
+        env:
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+          HELM_PROJECT_PRIMARY: ${{ vars.HARBOR_HELM_PROJECT }}
+          HELM_LEGACY: ${{ vars.HARBOR_HELM_OCI_REPOSITORY }}
+        run: |
+          if [ -n "${HELM_PROJECT_PRIMARY:-}" ]; then
+            echo "helm_project=${HELM_PROJECT_PRIMARY}" >> "${GITHUB_OUTPUT}"
+          elif [ -n "${HELM_LEGACY:-}" ]; then
+            echo "helm_project=${HELM_LEGACY}" >> "${GITHUB_OUTPUT}"
+          else
+            case "${HARBOR_REPOSITORY}" in
+              */*) echo "helm_project=${HARBOR_REPOSITORY%%/*}" >> "${GITHUB_OUTPUT}" ;;
+              *)
+                echo "::error::HARBOR_REPOSITORY must be project/name (contain '/') or set HARBOR_HELM_PROJECT."
+                exit 1
+                ;;
+            esac
+          fi
+
+      - name: Log in to Harbor (Docker)
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Install Cosign (for keyless signing)
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: 'v2.4.1'
+
+      - name: Resolve release commit SHA
+        id: rel
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.release.tag_name }}"
+          git fetch --tags --force
+          SHA=$(git rev-list -n 1 "$TAG")
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Retag and push release image
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          SHA="${{ steps.rel.outputs.sha }}"
+          REG="${HARBOR_REGISTRY}"
+          REPO="${HARBOR_REPOSITORY}"
+          SRC_IMAGE="${REG}/${REPO}:sha-${SHA}"
+          REL="${RELEASE_TAG}"
+
+          echo "Promoting ${SRC_IMAGE} -> ${REG}/${REPO}:${REL}"
+          if ! docker pull "${SRC_IMAGE}"; then
+            echo "::error::Required image ${SRC_IMAGE} does not exist in Harbor." >&2
+            echo "Publish a prerelease for this commit first; prerelease builds push :sha-${SHA} to Harbor." >&2
+            exit 1
+          fi
+          docker tag "${SRC_IMAGE}" "${REG}/${REPO}:${REL}"
+          docker push "${REG}/${REPO}:${REL}"
+
+          echo "Tagging ${REG}/${REPO}:latest for final release ${REL}"
+          docker tag "${SRC_IMAGE}" "${REG}/${REPO}:latest"
+          docker push "${REG}/${REPO}:latest"
+
+      - name: Cosign sign container image (digest, keyless)
+        env:
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          REG="${HARBOR_REGISTRY}"
+          REPO="${HARBOR_REPOSITORY}"
+          IMG="${REG}/${REPO}:${RELEASE_TAG}"
+
+          DIG=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMG}" || true)
+          if [ -z "${DIG}" ]; then
+            echo "::error::Could not resolve RepoDigests for ${IMG}"
+            exit 1
+          fi
+
+          printf 'Cosign-signing container: %s (digest=%s)\n' "${IMG}" "${DIG}"
+          cosign version
+          cosign sign --yes "${DIG}" --upload
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.20.2
+
+      - name: Bump Helm Chart.yaml + defaults for this release
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+        run: python3 .github/scripts/patch-helm-release.py
+
+      - name: Helm lint
+        run: helm lint ./helm
+
+      - name: Package Helm chart
+        id: helm_pack
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          helm package ./helm --destination dist
+          shopt -s nullglob
+          pkgs=(dist/science-portal-*.tgz)
+          if [ "${#pkgs[@]}" -ne 1 ]; then
+            printf 'Expected exactly one packaged chart under dist/, found: [%s]\n' "${pkgs[*]-}"
+            exit 1
+          fi
+          echo "package=${pkgs[0]}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload Helm chart to Harbor (Helm Charts tab / ChartMuseum API)
+        env:
+          PACKAGE: ${{ steps.helm_pack.outputs.package }}
+          HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
+          HARBOR_API_BASE_IN: ${{ vars.HARBOR_API_BASE }}
+          CHART_PROJECT: ${{ steps.harbor_helm.outputs.helm_project }}
+          HARBOR_USER: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASS: ${{ secrets.HARBOR_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PACKAGE}" ] || [ ! -f "${PACKAGE}" ]; then
+            echo "::error::Missing packaged chart (expected PACKAGE path from previous step)."
+            exit 1
+          fi
+          if [ -z "${CHART_PROJECT}" ]; then
+            echo "::error::Could not resolve Harbor project for Helm chart upload."
+            exit 1
+          fi
+
+          BASE="${HARBOR_API_BASE_IN:-}"
+          BASE="${BASE%/}"
+          if [ -z "${BASE}" ]; then
+            BASE="https://${HARBOR_REGISTRY}"
+          fi
+
+          URL="${BASE}/api/chartrepo/${CHART_PROJECT}/charts"
+          printf 'POST chart → %s (project=%s)\n' "${URL}" "${CHART_PROJECT}"
+
+          prov_args=()
+          if [ -f "${PACKAGE}.prov" ]; then
+            printf 'Including provenance %s.prov\n' "${PACKAGE}"
+            prov_args+=( -F "prov=@${PACKAGE}.prov" )
+          fi
+
+          curl --fail-with-body -sS \
+            --user "${HARBOR_USER}:${HARBOR_PASS}" \
+            -X POST "${URL}" \
+            -F "chart=@${PACKAGE};type=application/x-compressed-tar" \
+            "${prov_args[@]}"

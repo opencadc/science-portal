@@ -14,44 +14,7 @@ import {
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
 import { HTTP_STATUS, API_TIMEOUTS } from '@/app/api/lib/http-constants';
-
-interface StorageData {
-  size: number;
-  quota: number;
-  date: string;
-  usage: number;
-}
-
-/**
- * Parse VOSpace XML response to extract storage data
- */
-function parseVOSpaceXML(xmlText: string): StorageData {
-  // Simple regex-based parsing for server-side (no DOMParser in Node.js)
-  let size = 0;
-  let quota = 0;
-  let date = new Date().toISOString();
-
-  // Match property elements with their URIs and values
-  const propertyRegex = /<vos:property[^>]*uri="([^"]*)"[^>]*>([\s\S]*?)<\/vos:property>/g;
-  let match;
-
-  while ((match = propertyRegex.exec(xmlText)) !== null) {
-    const uri = match[1];
-    const value = match[2].trim();
-
-    if (uri.includes('vospace/core#length')) {
-      size = parseInt(value, 10) || 0;
-    } else if (uri.includes('vospace/core#quota')) {
-      quota = parseInt(value, 10) || 0;
-    } else if (uri.includes('vospace/core#date')) {
-      date = value;
-    }
-  }
-
-  const usage = quota > 0 ? (size / quota) * 100 : 0;
-
-  return { size, quota, date, usage };
-}
+import { parseVOSpaceXML } from '@/lib/storage/parseVOSpaceXML';
 
 export const GET = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ username: string }> }) => {

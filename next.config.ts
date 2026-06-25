@@ -12,12 +12,26 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+  // Transform `import { Foo } from '@mui/material'` into direct subpath imports
+  // at build time. The MUI barrel pulls ~2,225 modules per file otherwise —
+  // 200-800ms cold-start cost. Next 13.5+ preserves TypeScript autocompletion.
+  experimental: {
+    optimizePackageImports: ['@mui/material', '@mui/icons-material'],
+  },
   // Client-exposed keys only. Do not set LOGIN_API/SKAHA_API here — that would
   // bake empty build-time values and override runtime env in standalone/server.
   env: {
     API_TIMEOUT: process.env.NEXT_PUBLIC_API_TIMEOUT || '30000',
     ENABLE_QUERY_DEVTOOLS: process.env.NEXT_PUBLIC_ENABLE_QUERY_DEVTOOLS || 'false',
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+  },
+  // Disable keep-alive to prevent DNS caching issues.  This is especially important for
+  // the SKAHA API, which is used by the Science Portal to get the list of sessions, as
+  // when the SKAHA service is restarted, the DNS record for the SKAHA API is cached for a
+  // period of time, and the Science Portal will continue to use the old DNS record, which
+  // will cause the Science Portal to fail with a 404.
+  httpAgentOptions: {
+    keepAlive: false,
   },
 };
 

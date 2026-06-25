@@ -14,12 +14,14 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import DocumentationIcon from '@mui/icons-material/Description';
 import InfoIcon from '@mui/icons-material/Info';
 import DiamondIcon from '@mui/icons-material/Diamond';
+import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import {
   DOCS_URL,
   ABOUT_URL,
   OPEN_SOURCE_URL,
   SUPPORT_EMAIL,
   DISCORD_URL,
+  STATUS_PAGE_URL,
   STORAGE_MANAGEMENT_URL,
   GROUP_MANAGEMENT_URL,
   DATA_PUBLICATION_URL,
@@ -108,6 +110,12 @@ export const navigationItems: NavigationItem[] = [
         href: DISCORD_URL,
         type: 'link',
       },
+      {
+        label: 'Status Page',
+        icon: <MonitorHeartIcon />,
+        href: STATUS_PAGE_URL,
+        type: 'link',
+      },
     ],
   },
 ];
@@ -149,6 +157,8 @@ export const getSupportMenuItems = () =>
   navigationItems.find((item) => item.label === 'Support')?.menuItems || [];
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+const srcNetLogoSrc =
+  process.env.NEXT_PUBLIC_SRCNET_LOGO_URL || `${basePath}/SRCNetLogo.png`;
 
 // CANFAR logo component
 export const CanfarLogo = ({ height = 40 }: { height?: number }) => (
@@ -159,7 +169,7 @@ export const CanfarLogo = ({ height = 40 }: { height?: number }) => (
 // SRCNet logo component (for OIDC mode)
 export const SRCNetLogo = ({ height = 40 }: { height?: number }) => (
   /* eslint-disable-next-line @next/next/no-img-element */
-  <img src={`${basePath}/SRCNetLogo.png`} alt="SRCNet Logo" style={{ height }} />
+  <img src={srcNetLogoSrc} alt="SRCNet Logo" style={{ height }} />
 );
 
 // Convert navigation items to AppBar format
