@@ -9,4 +9,6 @@ export interface ActiveSessionsWidgetProps {
   showSessionCount?: boolean;
   maxSessionsToShow?: number;
   emptyMessage?: string;
+  /** When true, stretch to match the User Home Storage panel height on desktop. */
+  fillHeight?: boolean;
 }

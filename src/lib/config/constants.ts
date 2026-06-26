@@ -18,9 +18,6 @@ export const DEFAULT_MEMORY_OPTIONS = [
 
 export const DEFAULT_CORE_OPTIONS = Array.from({ length: 16 }, (_, i) => i + 1);
 
-// Per-user cap on concurrently running interactive (non-headless) sessions.
-export const MAX_INTERACTIVE_SESSIONS = 3;
-
 // Session type constants
 export const NOTEBOOK_TYPE = 'notebook';
 export const CARTA_TYPE = 'carta';

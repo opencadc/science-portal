@@ -39,4 +39,6 @@ export interface SessionCardProps extends Omit<CardProps, 'onClick'> {
   loading?: boolean; // Full skeleton loading state (initial load)
   isOperating?: boolean; // Overlay spinner during operations (delete/renew)
   disableHover?: boolean;
+  /** Dense layout for the Active Sessions widget panel */
+  compact?: boolean;
 }

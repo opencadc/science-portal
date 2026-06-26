@@ -211,6 +211,7 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
       dateFormatter = formatStorageDateLocalDefault,
       fileSizeFormatter = convertToFileSize,
       testMode = false,
+      fillHeight = false,
     },
     ref,
   ) => {
@@ -373,9 +374,9 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
           border: `1px solid ${theme.palette.divider}`,
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
           maxWidth: 600,
-          height: '100%',
           display: 'flex',
           flexDirection: 'column',
+          ...(fillHeight && { height: '100%', flex: 1 }),
           // Better mobile padding
           [theme.breakpoints.down('sm')]: {
             padding: theme.spacing(1.5),
@@ -484,8 +485,12 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
           {!displayData && !currentLoading ? (
             <Box
               sx={{
+                flex: fillHeight ? 1 : undefined,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 textAlign: 'center',
-                py: 4,
+                py: fillHeight ? 0 : 4,
                 color: theme.palette.text.secondary,
               }}
             >

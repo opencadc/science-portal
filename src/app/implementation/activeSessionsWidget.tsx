@@ -12,28 +12,44 @@ import {
 } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { ActiveSessionsWidgetProps } from '@/app/types/ActiveSessionsWidgetProps';
 import { SessionCard } from '@/app/components/SessionCard/SessionCard';
 import { SessionCheckModal } from '@/app/components/SessionCheckModal/SessionCheckModal';
 
-const SESSION_CARD_MIN = 320;
-const SESSION_CARD_MAX = 460;
-// Floor that matches a fully-populated SessionCard so skeleton, empty and real
-// states all settle at the same height — prevents the widget from jumping when
-// sessions arrive, change state, or all clear.
-const SESSION_CARD_MIN_HEIGHT = 360;
+const SESSION_CARD_MIN = 260;
+const VISIBLE_DESKTOP_CARDS = 3;
 
-const gridSx = {
+const mobileGridSx = {
   display: 'grid',
-  gridTemplateColumns: `repeat(auto-fill, minmax(${SESSION_CARD_MIN}px, 1fr))`,
   gap: 2,
-  alignItems: 'start',
+  alignItems: 'stretch',
+  gridTemplateColumns: `repeat(auto-fill, minmax(${SESSION_CARD_MIN}px, 1fr))`,
 } as const;
 
-const cardSx = {
+const desktopRowSx = {
+  display: 'flex',
+  flexWrap: 'nowrap',
+  gap: 2,
+  overflowX: 'auto',
+  overflowY: 'hidden',
+  flex: 1,
+  minHeight: 0,
+  alignItems: 'stretch',
+  scrollbarWidth: 'thin',
+  pb: 0.25,
+} as const;
+
+const desktopCardSx = {
+  flex: '0 0 auto',
+  width: `calc((100% - ${(VISIBLE_DESKTOP_CARDS - 1) * 16}px) / ${VISIBLE_DESKTOP_CARDS})`,
+  minWidth: 240,
+  height: '100%',
+  alignSelf: 'stretch',
+};
+
+const mobileCardSx = {
   width: '100%',
-  maxWidth: SESSION_CARD_MAX,
-  minHeight: SESSION_CARD_MIN_HEIGHT,
 };
 
 // Hoisted so callers omitting `operatingSessionIds` get a stable Set reference;
@@ -49,8 +65,11 @@ export function ActiveSessionsWidgetImpl({
   showSessionCount = true,
   maxSessionsToShow,
   emptyMessage = 'No active sessions',
+  fillHeight = false,
 }: ActiveSessionsWidgetProps) {
   const theme = useTheme();
+  const isLgUp = useMediaQuery(theme.breakpoints.up('lg'));
+  const skeletonCount = isLgUp ? VISIBLE_DESKTOP_CARDS : 3;
   const [showCheckModal, setShowCheckModal] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
@@ -60,6 +79,9 @@ export function ActiveSessionsWidgetImpl({
   const sessionsToDisplay = maxSessionsToShow ? sessions.slice(0, maxSessionsToShow) : sessions;
 
   const hasMoreSessions = maxSessionsToShow && sessions.length > maxSessionsToShow;
+
+  const sessionsLayoutSx = isLgUp ? desktopRowSx : mobileGridSx;
+  const sessionCardSx = isLgUp ? desktopCardSx : mobileCardSx;
 
   // Keep refs to in-flight timers so we can cancel on unmount; otherwise
   // setState fires on an unmounted component when the user navigates away
@@ -89,6 +111,19 @@ export function ActiveSessionsWidgetImpl({
     }, 2000);
   };
 
+  const renderSessionCard = (session: (typeof sessionsToDisplay)[number], index: number) => (
+    <SessionCard
+      key={session.sessionName || `session-${index}`}
+      {...session}
+      compact
+      isOperating={
+        !!(session.id && operatingSessionIds.has(session.id)) || session.status === 'Pending'
+      }
+      disableHover={true}
+      sx={sessionCardSx}
+    />
+  );
+
   return (
     <Paper
       elevation={0}
@@ -100,9 +135,9 @@ export function ActiveSessionsWidgetImpl({
         borderRadius: theme.shape.borderRadius,
         border: `1px solid ${theme.palette.divider}`,
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        height: '100%',
         display: 'flex',
         flexDirection: 'column',
+        ...(fillHeight && { height: '100%', flex: 1 }),
       }}
       component="div"
     >
@@ -113,6 +148,7 @@ export function ActiveSessionsWidgetImpl({
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: theme.spacing(1),
+          flexShrink: 0,
         }}
       >
         <Typography variant="h6" component="h2">
@@ -140,6 +176,7 @@ export function ActiveSessionsWidgetImpl({
           height: 4,
           marginBottom: theme.spacing(2),
           borderRadius: 2,
+          flexShrink: 0,
           '& .MuiLinearProgress-bar': {
             borderRadius: 2,
           },
@@ -149,18 +186,18 @@ export function ActiveSessionsWidgetImpl({
       {/* Content - Session Cards */}
       <Box
         sx={{
-          flex: 1,
-          minHeight: 0,
-          marginBottom: theme.spacing(2),
+          flex: fillHeight ? 1 : undefined,
           display: 'flex',
           flexDirection: 'column',
+          minHeight: 0,
         }}
       >
         {isLoading ? (
-          <Box sx={gridSx}>
-            {[1, 2, 3].map((index) => (
+          <Box sx={sessionsLayoutSx}>
+            {Array.from({ length: skeletonCount }, (_, index) => (
               <SessionCard
                 key={`skeleton-${index}`}
+                compact
                 sessionType="notebook"
                 sessionName=""
                 status="Running"
@@ -170,7 +207,7 @@ export function ActiveSessionsWidgetImpl({
                 memoryAllocated=""
                 cpuAllocated=""
                 loading={true}
-                sx={cardSx}
+                sx={sessionCardSx}
               />
             ))}
           </Box>
@@ -179,17 +216,22 @@ export function ActiveSessionsWidgetImpl({
             elevation={0}
             variant="outlined"
             sx={{
-              ...cardSx,
+              width: '100%',
+              flex: fillHeight ? 1 : undefined,
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: fillHeight ? 0 : 120,
               border: `1px solid ${theme.palette.divider}`,
               cursor: 'default',
             }}
           >
             <CardContent
               sx={{
-                minHeight: SESSION_CARD_MIN_HEIGHT,
+                flex: 1,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                py: 3,
                 background:
                   theme.palette.mode === 'dark'
                     ? 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 100%)'
@@ -203,7 +245,7 @@ export function ActiveSessionsWidgetImpl({
               }}
             >
               <Typography
-                variant="body1"
+                variant="body2"
                 sx={{
                   color:
                     theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
@@ -216,28 +258,16 @@ export function ActiveSessionsWidgetImpl({
           </Card>
         ) : (
           <>
-            <Box sx={gridSx}>
-              {sessionsToDisplay.map((session, index) => (
-                <SessionCard
-                  key={session.sessionName || `session-${index}`}
-                  {...session}
-                  isOperating={
-                    // Delete/renew operations OR any session still spinning up
-                    // (status === Pending). Decoupled from `pollingSessionId`
-                    // so launching multiple sessions back to back doesn't drop
-                    // the spinner on earlier-or-later cards. Don't AND with
-                    // `connectUrl` — Skaha sets it during Pending too, well
-                    // before the pod is Running.
-                    !!(session.id && operatingSessionIds.has(session.id)) ||
-                    session.status === 'Pending'
-                  }
-                  disableHover={true}
-                  sx={cardSx}
-                />
-              ))}
+            <Box sx={sessionsLayoutSx}>
+              {sessionsToDisplay.map((session, index) => renderSessionCard(session, index))}
             </Box>
             {hasMoreSessions && (
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ pt: 2 }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                align="center"
+                sx={{ pt: 1, flexShrink: 0 }}
+              >
                 And {sessions.length - maxSessionsToShow} more...
               </Typography>
             )}

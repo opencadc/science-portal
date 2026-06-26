@@ -53,4 +53,6 @@ export interface UserStorageWidgetProps {
   fileSizeFormatter?: (bytes: number) => string;
   /** Test mode flag to use test data */
   testMode?: boolean;
+  /** When true, stretch to match the Active Sessions panel height on desktop. */
+  fillHeight?: boolean;
 }
