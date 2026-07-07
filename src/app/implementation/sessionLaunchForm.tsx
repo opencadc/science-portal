@@ -49,7 +49,6 @@ import {
   FIREFLY_TYPE,
   NOTEBOOK_TYPE,
   SKAHA_PROJECT,
-  MAX_INTERACTIVE_SESSIONS,
 } from '@/lib/config/constants';
 
 interface TabPanelProps {
@@ -198,12 +197,11 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     }, [formData.type]);
 
     // Count only interactive sessions — headless are batch jobs with their own quota.
-    // Used both for the naming counter (notebook1, notebook2…) and the launch cap.
+    // Used for the auto-naming counter (notebook1, notebook2…).
     const activeSessionsCount = useMemo(
       () => activeSessions.filter((s) => s.sessionType !== 'headless' && s.sessionType !== 'desktop-app').length,
       [activeSessions],
     );
-    const isAtSessionLimit = activeSessionsCount >= MAX_INTERACTIVE_SESSIONS;
 
     // Generate the next available session name based on active sessions
     const generateSessionName = useCallback(
@@ -965,29 +963,14 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                   <Grid size={{ xs: 12, sm: 4 }}>{/* Empty grid for alignment */}</Grid>
                   <Grid size={{ xs: 12, sm: 8 }}>
                     <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                      <Tooltip
-                        title={
-                          isAtSessionLimit
-                            ? `You already have ${MAX_INTERACTIVE_SESSIONS} active interactive sessions. Delete one before launching another.`
-                            : ''
-                        }
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        size="small"
+                        disabled={isLoading || !formData.project || !formData.containerImage}
                       >
-                        <span>
-                          <Button
-                            type="submit"
-                            variant="contained"
-                            size="small"
-                            disabled={
-                              isLoading ||
-                              !formData.project ||
-                              !formData.containerImage ||
-                              isAtSessionLimit
-                            }
-                          >
-                            Launch
-                          </Button>
-                        </span>
-                      </Tooltip>
+                        Launch
+                      </Button>
                       <Button
                         type="button"
                         variant="outlined"
@@ -1296,24 +1279,9 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                     <Grid size={{ xs: 12, sm: 4 }}>{/* Empty grid for alignment */}</Grid>
                     <Grid size={{ xs: 12, sm: 8 }}>
                       <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                        <Tooltip
-                          title={
-                            isAtSessionLimit
-                              ? `You already have ${MAX_INTERACTIVE_SESSIONS} active interactive sessions. Delete one before launching another.`
-                              : ''
-                          }
-                        >
-                          <span>
-                            <Button
-                              type="submit"
-                              variant="contained"
-                              size="small"
-                              disabled={isLoading || isAtSessionLimit}
-                            >
-                              Launch
-                            </Button>
-                          </span>
-                        </Tooltip>
+                        <Button type="submit" variant="contained" size="small" disabled={isLoading}>
+                          Launch
+                        </Button>
                         <Button
                           type="button"
                           variant="outlined"

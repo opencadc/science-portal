@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import { SessionCardProps, SessionType, SessionStatus } from '@/app/types/SessionCardProps';
 import React, { useState, useCallback } from 'react';
+import type { Theme } from '@mui/material/styles';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 
@@ -35,9 +36,7 @@ import { EventsModal } from '@/app/components/EventsModal/EventsModal';
 import { DeleteSessionModal } from '@/app/components/DeleteSessionModal/DeleteSessionModal';
 import { SessionRenewModal } from '@/app/components/SessionRenewModal/SessionRenewModal';
 
-const getSessionIcon = (basePath: string, type: SessionType): React.ReactNode => {
-  const iconSize = 24; // Standard icon size
-
+const getSessionIcon = (basePath: string, type: SessionType, iconSize = 24): React.ReactNode => {
   switch (type) {
     case 'notebook':
     case 'contributednotebook':
@@ -120,6 +119,35 @@ const getStatusLabel = (status: SessionStatus): string => {
   return status === 'Failed' ? 'Expired' : status;
 };
 
+const hasResourceModeBadge = (isFixedResources: boolean | undefined): isFixedResources is boolean =>
+  isFixedResources === true || isFixedResources === false;
+
+const resourceModeChipSx = (theme: Theme, isFixed: boolean) => ({
+  height: '20px',
+  fontSize: '0.7rem',
+  fontWeight: 700,
+  flexShrink: 0,
+  backgroundColor: isFixed ? theme.palette.primary.dark : theme.palette.success.light,
+  color: isFixed ? theme.palette.primary.contrastText : theme.palette.success.contrastText,
+});
+
+const ResourceModeChip = ({
+  isFixedResources,
+  sx,
+}: {
+  isFixedResources: boolean;
+  sx?: object;
+}) => {
+  const theme = useTheme();
+  return (
+    <Chip
+      label={isFixedResources ? 'FIXED' : 'FLEX'}
+      size="small"
+      sx={{ ...resourceModeChipSx(theme, isFixedResources), ...sx }}
+    />
+  );
+};
+
 /**
  * Split a full container image path into project and image name.
  * Example: "images.canfar.net/skaha/firefly:2025.2" -> { project: "skaha", image: "firefly:2025.2" }
@@ -194,6 +222,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
       loading = false,
       isOperating = false,
       disableHover: _disableHover,
+      compact = false,
       sx,
       ...cardProps
     },
@@ -289,30 +318,320 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           elevation={0}
           variant="outlined"
           sx={[
-            { border: `1px solid ${theme.palette.divider}` },
+            { border: `1px solid ${theme.palette.divider}`, ...(compact ? { height: '100%' } : {}) },
             ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
           ]}
         >
-          <CardContent>
-            <Stack spacing={2}>
+          <CardContent sx={compact ? { p: 2, height: '100%', '&:last-child': { pb: 2 } } : undefined}>
+            <Stack spacing={compact ? 1.25 : 2}>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box display="flex" alignItems="center" gap={1}>
-                  <Skeleton variant="circular" width={24} height={24} />
-                  <Skeleton variant="text" width={150} />
+                  <Skeleton variant="circular" width={compact ? 22 : 24} height={compact ? 22 : 24} />
+                  <Skeleton variant="text" width={compact ? 140 : 150} height={compact ? 22 : 24} />
                 </Box>
-                <Skeleton variant="rectangular" width={80} height={24} />
+                <Skeleton variant="rectangular" width={compact ? 64 : 80} height={compact ? 22 : 24} />
               </Box>
-              <Skeleton variant="text" width="100%" />
-              <Skeleton variant="text" width="100%" />
-              <Box display="flex" gap={1} mt={2}>
-                <Skeleton variant="circular" width={40} height={40} />
-                <Skeleton variant="circular" width={40} height={40} />
-                <Skeleton variant="circular" width={40} height={40} />
-                <Skeleton variant="circular" width={40} height={40} />
+              <Skeleton variant="text" width="100%" height={compact ? 18 : 20} />
+              <Skeleton variant="text" width="100%" height={compact ? 18 : 20} />
+              <Skeleton variant="text" width="90%" height={compact ? 18 : 20} />
+              <Skeleton variant="text" width="75%" height={compact ? 18 : 20} />
+              <Box display="flex" gap={0.5} mt={compact ? 0.5 : 2}>
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton
+                    key={i}
+                    variant="circular"
+                    width={compact ? 32 : 40}
+                    height={compact ? 32 : 40}
+                  />
+                ))}
               </Box>
             </Stack>
           </CardContent>
         </MuiCard>
+      );
+    }
+
+    const { project, image } = parseImagePath(containerImage);
+    const memoryDisplay =
+      isFixedResources === false
+        ? formatMemoryUnit(memoryUsage)
+        : `${stripMemoryUnit(memoryUsage)} / ${formatMemoryUnit(memoryAllocated)}`;
+    const cpuDisplay =
+      isFixedResources === false
+        ? cpuUsage || 'N/A'
+        : `${cpuUsage || 'N/A'} / ${cpuAllocated}`;
+    const showGpu = !!(gpuAllocated && gpuAllocated !== '0');
+    const showResourceMode = hasResourceModeBadge(isFixedResources);
+
+    const footerActions = (
+      <>
+        <Tooltip
+          title={status === 'Pending' ? 'Cannot extend a pending session' : 'Extend time'}
+        >
+          <span>
+            <IconButton
+              size="small"
+              onClick={handleExtendClick}
+              aria-label="Extend time"
+              disabled={status === 'Pending'}
+              sx={{
+                [theme.breakpoints.down('sm')]: {
+                  minWidth: '44px',
+                  minHeight: '44px',
+                },
+              }}
+            >
+              <ExtendIcon fontSize="small" />
+            </IconButton>
+          </span>
+        </Tooltip>
+        <Tooltip title="View session logs">
+          <IconButton
+            size="small"
+            onClick={handleShowLogs}
+            aria-label="View logs"
+            sx={{
+              [theme.breakpoints.down('sm')]: {
+                minWidth: '44px',
+                minHeight: '44px',
+              },
+            }}
+          >
+            <LogsIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="View launch info">
+          <IconButton
+            size="small"
+            onClick={handleShowEvents}
+            aria-label="View events"
+            sx={{
+              [theme.breakpoints.down('sm')]: {
+                minWidth: '44px',
+                minHeight: '44px',
+              },
+            }}
+          >
+            <FlagIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Delete session">
+          <IconButton
+            size="small"
+            onClick={handleDeleteClick}
+            aria-label="Delete session"
+            sx={{
+              [theme.breakpoints.down('sm')]: {
+                minWidth: '44px',
+                minHeight: '44px',
+              },
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </>
+    );
+
+    if (compact) {
+      return (
+        <>
+          <MuiCard
+            ref={ref}
+            {...cardProps}
+            onClick={handleCardClick}
+            elevation={0}
+            raised={false}
+            variant="outlined"
+            sx={[
+              {
+                cursor: status === 'Running' ? 'pointer' : 'default',
+                border: `1px solid ${theme.palette.divider}`,
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                height: '100%',
+              },
+              ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
+            ]}
+          >
+            {isOperating && (
+              <Backdrop
+                open={isOperating}
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 1,
+                  backgroundColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(0, 0, 0, 0.7)'
+                      : 'rgba(255, 255, 255, 0.7)',
+                  borderRadius: theme.shape.borderRadius,
+                }}
+              >
+                <CircularProgress size={32} />
+              </Backdrop>
+            )}
+
+            {showResourceMode && (
+              <ResourceModeChip
+                isFixedResources={isFixedResources}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  zIndex: 2,
+                  borderRadius: '0 0 8px 0',
+                }}
+              />
+            )}
+
+            <CardContent
+              sx={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                px: 2,
+                pb: 2,
+                pt: showResourceMode ? 4.5 : 2,
+                height: '100%',
+                '&:last-child': { pb: 2 },
+              }}
+            >
+              <Box display="flex" alignItems="center" gap={1} mb={1} minWidth={0}>
+                <Box sx={{ color: theme.palette.primary.main, display: 'flex', flexShrink: 0 }}>
+                  {getSessionIcon(basePath, sessionType, 22)}
+                </Box>
+                <Typography
+                  variant="subtitle1"
+                  component="div"
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    minWidth: 0,
+                    flex: 1,
+                    fontWeight: theme.typography.fontWeightBold,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {sessionName}
+                </Typography>
+                <Chip
+                  label={getStatusLabel(status)}
+                  color={getStatusColor(status)}
+                  size="small"
+                  sx={{ height: 22, fontSize: '0.7rem', fontWeight: 600, flexShrink: 0 }}
+                />
+              </Box>
+
+              <Stack spacing={0.75} sx={{ minWidth: 0, flex: 1 }}>
+                <Typography variant="body2" color="text.secondary" noWrap title={project}>
+                  <Box component="span" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                    Project:{' '}
+                  </Box>
+                  <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {project}
+                  </Box>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" noWrap title={image}>
+                  <Box component="span" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                    Image:{' '}
+                  </Box>
+                  <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                    {image}
+                  </Box>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Memory:{' '}
+                  </Box>
+                  {memoryDisplay}
+                  {' · '}
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    CPU:{' '}
+                  </Box>
+                  {cpuDisplay}
+                  {showGpu && (
+                    <>
+                      {' · '}
+                      <Box component="span" sx={{ fontWeight: 600 }}>
+                        GPU:{' '}
+                      </Box>
+                      {gpuAllocated}
+                    </>
+                  )}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Started:{' '}
+                  </Box>
+                  {formatTimestamp(startedTime)} UTC
+                </Typography>
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  <Box component="span" sx={{ fontWeight: 600 }}>
+                    Expires:{' '}
+                  </Box>
+                  {formatTimestamp(expiresTime)} UTC
+                </Typography>
+              </Stack>
+
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="flex-end"
+                gap={0.25}
+                sx={{
+                  borderTop: 1,
+                  borderColor: 'divider',
+                  pt: 1,
+                  mt: 'auto',
+                  mx: -2,
+                  px: 1.5,
+                  mb: -2,
+                }}
+              >
+                {footerActions}
+              </Box>
+            </CardContent>
+          </MuiCard>
+
+          <EventsModal
+            open={showEventsModal}
+            sessionId={sessionId || sessionName}
+            sessionName={sessionName}
+            onClose={() => setShowEventsModal(false)}
+            showRefreshButton={true}
+            eventsEndpoint={apiRoutes.sessions.events(sessionId || sessionName)}
+          />
+          <EventsModal
+            open={showLogsModal}
+            sessionId={sessionId || sessionName}
+            sessionName={`${sessionName} - Logs`}
+            onClose={() => setShowLogsModal(false)}
+            showRefreshButton={true}
+            forceRawView={true}
+            defaultView="raw"
+            eventsEndpoint={apiRoutes.sessions.logs(sessionId || sessionName)}
+          />
+          <DeleteSessionModal
+            open={showDeleteModal}
+            sessionName={sessionName}
+            sessionId={sessionId || ''}
+            onClose={() => setShowDeleteModal(false)}
+            onConfirm={handleDeleteConfirm}
+            isDeleting={isDeleting}
+          />
+          <SessionRenewModal
+            open={showRenewModal}
+            sessionName={sessionName}
+            sessionId={sessionId}
+            onClose={() => setShowRenewModal(false)}
+            onConfirm={handleRenewConfirm}
+            isRenewing={isRenewing}
+          />
+        </>
       );
     }
 
@@ -331,10 +650,9 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
               border: `1px solid ${theme.palette.divider}`,
               position: 'relative',
               // Flex column so CardContent can fill the card vertically (the
-              // widget enforces a 360px minHeight on every card; without this
-              // the body sits at the top and leftover space falls between the
-              // footer and the card's bottom border, breaking the footer's
-              // perceived position).
+              // widget enforces a minHeight on every card; without this the
+              // body sits at the top and leftover space falls between the
+              // footer and the card's bottom border).
               display: 'flex',
               flexDirection: 'column',
             },
@@ -380,7 +698,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
               alignItems="center"
               justifyContent="space-between"
               gap={1}
-              mb={1.5}
+              mb={1}
             >
               <Box
                 display="flex"
@@ -402,56 +720,30 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                   {getSessionIcon(basePath, sessionType)}
                 </Box>
                 <Typography
-                  variant="h6"
+                  variant="subtitle1"
                   component="div"
                   sx={{
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
-                    minWidth: 0, // Allow text to shrink
+                    minWidth: 0,
+                    fontWeight: theme.typography.fontWeightBold,
                     [theme.breakpoints.down('sm')]: {
-                      fontSize: theme.typography.body1.fontSize,
+                      fontSize: theme.typography.body2.fontSize,
                     },
                   }}
                 >
                   {sessionName}
                 </Typography>
               </Box>
-              {/* FLEX badge for flexible resources */}
-              {isFixedResources === false && (
-                <Chip
-                  label="FLEX"
-                  size="small"
-                  sx={{
-                    height: '20px',
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    backgroundColor: theme.palette.success.light,
-                    color: theme.palette.success.contrastText,
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-              {/* FIXED badge for fixed-resource sessions */}
-              {isFixedResources === true && (
-                <Chip
-                  label="FIXED"
-                  size="small"
-                  sx={{
-                    height: '20px',
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    backgroundColor: theme.palette.primary.dark,
-                    color: theme.palette.primary.contrastText,
-                    flexShrink: 0,
-                  }}
-                />
+              {showResourceMode && (
+                <ResourceModeChip isFixedResources={isFixedResources} />
               )}
             </Box>
-            <Divider sx={{ mx: theme.spacing(-2), mb: theme.spacing(1.5) }} />
+            <Divider sx={{ mx: theme.spacing(-2), mb: 1 }} />
 
             {/* Details Section */}
-            <Stack spacing={1} mb={theme.spacing(2)}>
+            <Stack spacing={0.75} mb={1.5}>
               <Box display="flex" justifyContent="flex-end">
                 <Chip
                   label={getStatusLabel(status)}
@@ -613,7 +905,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                   rowGap: theme.spacing(0.5),
                   // Reserve room for the 2-row worst case (Memory/CPU on row 1, GPU on
                   // row 2) so cards keep the same height regardless of value length.
-                  minHeight: theme.spacing(6),
+                  minHeight: theme.spacing(5),
                 }}
               >
                 <Box
@@ -755,8 +1047,8 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                 borderColor: theme.palette.divider,
                 // Equal top/bottom padding so the icon row is visually
                 // Y-centered between the divider and the card's bottom edge.
-                py: theme.spacing(1.5),
-                mt: theme.spacing(2),
+                py: theme.spacing(1),
+                mt: 1.5,
                 // Cancel CardContent's edges so the footer truly bleeds to the
                 // card border and the centering is honest. CardContent uses
                 // `&:last-child { paddingBottom: 24 }` (the special last-child
@@ -781,7 +1073,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
               >
                 <span>
                   <IconButton
-                    size="medium"
+                    size="small"
                     onClick={handleExtendClick}
                     aria-label="Extend time"
                     disabled={status === 'Pending'}
@@ -792,13 +1084,13 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                       },
                     }}
                   >
-                    <ExtendIcon fontSize="medium" />
+                    <ExtendIcon fontSize="small" />
                   </IconButton>
                 </span>
               </Tooltip>
               <Tooltip title="View session logs">
                 <IconButton
-                  size="medium"
+                  size="small"
                   onClick={handleShowLogs}
                   aria-label="View logs"
                   sx={{
@@ -808,12 +1100,12 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                     },
                   }}
                 >
-                  <LogsIcon fontSize="medium" />
+                  <LogsIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
               <Tooltip title="View launch info">
                 <IconButton
-                  size="medium"
+                  size="small"
                   onClick={handleShowEvents}
                   aria-label="View events"
                   sx={{
@@ -823,12 +1115,12 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                     },
                   }}
                 >
-                  <FlagIcon fontSize="medium" />
+                  <FlagIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
               <Tooltip title="Delete session">
                 <IconButton
-                  size="medium"
+                  size="small"
                   onClick={handleDeleteClick}
                   aria-label="Delete session"
                   sx={{
@@ -838,7 +1130,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                     },
                   }}
                 >
-                  <DeleteIcon fontSize="medium" />
+                  <DeleteIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
             </Box>

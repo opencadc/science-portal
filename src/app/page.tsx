@@ -8,7 +8,8 @@ import { LaunchFormWidget } from '@/app/components/LaunchFormWidget/LaunchFormWi
 import { PlatformLoad } from '@/app/components/PlatformLoad/PlatformLoad';
 import { Footer } from '@/app/components/Footer/Footer';
 import { Box } from '@/app/components/Box/Box';
-import { Container } from '@mui/material';
+import { Container, useMediaQuery } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { ThemeToggle } from '@/app/components/ThemeToggle/ThemeToggle';
 import { appBarWithUserMenu, CanfarLogo, SRCNetLogo } from '@/stories/shared/navigation';
 import type { SessionCardProps } from '@/app/types/SessionCardProps';
@@ -35,6 +36,8 @@ import {
 import { applyServiceNavUrlsToAppBarLinks } from '@/lib/config/apply-service-nav-urls';
 
 export default function SciencePortalPage() {
+  const theme = useTheme();
+  const isDesktopTopRow = useMediaQuery(theme.breakpoints.up('lg'));
   const { useCanfar, serviceUrls } = usePublicRuntimeConfig();
   const isOIDCMode = !useCanfar;
 
@@ -297,13 +300,16 @@ export default function SciencePortalPage() {
               display: 'flex',
               flexDirection: { xs: 'column', lg: 'row' },
               gap: 3,
+              alignItems: { lg: isDesktopTopRow ? 'stretch' : 'flex-start' },
             }}
           >
             {/* ActiveSessionsWidget - 80% width on large screens */}
             <Box
               sx={{
                 flex: { xs: 1, lg: '0 0 80%' },
-                minWidth: 0, // Prevent flex item from overflowing
+                minWidth: 0,
+                display: { lg: isDesktopTopRow ? 'flex' : 'block' },
+                flexDirection: 'column',
               }}
             >
               <ActiveSessionsWidget
@@ -311,6 +317,7 @@ export default function SciencePortalPage() {
                 operatingSessionIds={operatingSessionIds}
                 isLoading={isLoadingSessions}
                 onRefresh={handleSessionsRefresh}
+                fillHeight={isDesktopTopRow}
                 emptyMessage={
                   showLoggedOutCopy
                     ? 'Sign in to see your active sessions. Use the Login button in the header.'
@@ -323,14 +330,17 @@ export default function SciencePortalPage() {
             <Box
               sx={{
                 flex: { xs: 1, lg: '0 0 20%' },
-                minWidth: 0, // Prevent flex item from overflowing
-                px: { xs: 1, sm: 2 }, // Add horizontal padding
+                minWidth: 0,
+                px: { xs: 1, sm: 2 },
+                display: { lg: isDesktopTopRow ? 'flex' : 'block' },
+                flexDirection: 'column',
               }}
             >
               <UserStorageWidget
                 isAuthenticated={isAuthenticated}
                 name={authStatus?.user?.username || ''}
                 isLoading={isLoadingUserStorage}
+                fillHeight={isDesktopTopRow}
                 emptyMessage={
                   showLoggedOutCopy
                     ? 'Sign in to view your storage usage. Use the Login button in the header.'
