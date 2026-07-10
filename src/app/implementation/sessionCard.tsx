@@ -3,6 +3,7 @@
 import {
   Card as MuiCard,
   CardContent,
+  CardActions,
   Box,
   Typography,
   IconButton,
@@ -456,24 +457,6 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
               ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
             ]}
           >
-            {isOperating && (
-              <Backdrop
-                open={isOperating}
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  zIndex: 1,
-                  backgroundColor:
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(0, 0, 0, 0.7)'
-                      : 'rgba(255, 255, 255, 0.7)',
-                  borderRadius: theme.shape.borderRadius,
-                }}
-              >
-                <CircularProgress size={32} />
-              </Backdrop>
-            )}
-
             {showResourceMode && (
               <ResourceModeChip
                 isFixedResources={isFixedResources}
@@ -489,16 +472,36 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
 
             <CardContent
               sx={{
+                position: 'relative',
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
                 px: 2,
-                pb: 2,
+                pb: 1.5,
                 pt: showResourceMode ? 4.5 : 2,
-                height: '100%',
-                '&:last-child': { pb: 2 },
+                '&:last-child': { pb: 1.5 },
               }}
             >
+              {/* Operating overlay covers the content only; the actions row below
+                  stays visible and clickable (e.g. delete) during operations. */}
+              {isOperating && (
+                <Backdrop
+                  open={isOperating}
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    zIndex: 1,
+                    backgroundColor:
+                      theme.palette.mode === 'dark'
+                        ? 'rgba(0, 0, 0, 0.7)'
+                        : 'rgba(255, 255, 255, 0.7)',
+                    borderRadius: theme.shape.borderRadius,
+                  }}
+                >
+                  <CircularProgress size={32} />
+                </Backdrop>
+              )}
+
               <Box display="flex" alignItems="center" gap={1} mb={1} minWidth={0}>
                 <Box sx={{ color: theme.palette.primary.main, display: 'flex', flexShrink: 0 }}>
                   {getSessionIcon(basePath, sessionType, 22)}
@@ -576,25 +579,21 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                   {formatTimestamp(expiresTime)} UTC
                 </Typography>
               </Stack>
-
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="flex-end"
-                gap={0.25}
-                sx={{
-                  borderTop: 1,
-                  borderColor: 'divider',
-                  pt: 1,
-                  mt: 'auto',
-                  mx: -2,
-                  px: 1.5,
-                  mb: -2,
-                }}
-              >
-                {footerActions}
-              </Box>
             </CardContent>
+
+            <CardActions
+              disableSpacing
+              sx={{
+                borderTop: 1,
+                borderColor: 'divider',
+                justifyContent: 'flex-end',
+                gap: 0.25,
+                px: 1.5,
+                py: 0.5,
+              }}
+            >
+              {footerActions}
+            </CardActions>
           </MuiCard>
 
           <EventsModal
@@ -659,39 +658,38 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
             ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
           ]}
         >
-          {/* Operating state overlay — kept inside the Card with a low z-index so
-              a sticky AppBar above always wins the stacking order. */}
-          {isOperating && (
-            <Backdrop
-              open={isOperating}
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                zIndex: 1,
-                backgroundColor:
-                  theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-                borderRadius: theme.shape.borderRadius,
-              }}
-            >
-              <CircularProgress size={40} />
-            </Backdrop>
-          )}
-
           <CardContent
             sx={{
+              position: 'relative',
               // Fill the card's height (set by widget cardSx minHeight) so the
-              // footer can be pushed to the bottom via `mt: auto`.
+              // actions row below sits at the bottom of the card.
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
               [theme.breakpoints.down('sm')]: {
                 padding: theme.spacing(2),
-                '&:last-child': {
-                  paddingBottom: theme.spacing(2),
-                },
               },
             }}
           >
+            {/* Operating state overlay — covers the content only (the actions row
+                stays clickable) and keeps a low z-index so a sticky AppBar above
+                always wins the stacking order. */}
+            {isOperating && (
+              <Backdrop
+                open={isOperating}
+                sx={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 1,
+                  backgroundColor:
+                    theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+                  borderRadius: theme.shape.borderRadius,
+                }}
+              >
+                <CircularProgress size={40} />
+              </Backdrop>
+            )}
+
             {/* Header Section */}
             <Box
               display="flex"
@@ -1036,105 +1034,27 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                 </Box>
               </Box>
             </Stack>
-
-            {/* Footer Actions */}
-            <Box
-              display="flex"
-              alignItems="center"
-              gap={theme.spacing(0.5)}
-              sx={{
-                borderTop: 1,
-                borderColor: theme.palette.divider,
-                // Equal top/bottom padding so the icon row is visually
-                // Y-centered between the divider and the card's bottom edge.
-                py: theme.spacing(1),
-                mt: 1.5,
-                // Cancel CardContent's edges so the footer truly bleeds to the
-                // card border and the centering is honest. CardContent uses
-                // `&:last-child { paddingBottom: 24 }` (the special last-child
-                // rule), so we need -3 (= -24px) on `mb`, not -2.
-                mx: theme.spacing(-2),
-                mb: theme.spacing(-3),
-                px: theme.spacing(2),
-                justifyContent: 'flex-end',
-                flexWrap: 'wrap', // Allow wrapping on very small screens
-                [theme.breakpoints.down('sm')]: {
-                  justifyContent: 'space-evenly', // Better distribution on mobile
-                  gap: theme.spacing(0.5), // Consistent gap
-                  py: theme.spacing(2), // More padding on mobile
-                  // Mobile CardContent override sets last-child paddingBottom
-                  // to 16, so the negative offset there is only -2.
-                  mb: theme.spacing(-2),
-                },
-              }}
-            >
-              <Tooltip
-                title={status === 'Pending' ? 'Cannot extend a pending session' : 'Extend time'}
-              >
-                <span>
-                  <IconButton
-                    size="small"
-                    onClick={handleExtendClick}
-                    aria-label="Extend time"
-                    disabled={status === 'Pending'}
-                    sx={{
-                      [theme.breakpoints.down('sm')]: {
-                        minWidth: '44px',
-                        minHeight: '44px',
-                      },
-                    }}
-                  >
-                    <ExtendIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="View session logs">
-                <IconButton
-                  size="small"
-                  onClick={handleShowLogs}
-                  aria-label="View logs"
-                  sx={{
-                    [theme.breakpoints.down('sm')]: {
-                      minWidth: '44px',
-                      minHeight: '44px',
-                    },
-                  }}
-                >
-                  <LogsIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="View launch info">
-                <IconButton
-                  size="small"
-                  onClick={handleShowEvents}
-                  aria-label="View events"
-                  sx={{
-                    [theme.breakpoints.down('sm')]: {
-                      minWidth: '44px',
-                      minHeight: '44px',
-                    },
-                  }}
-                >
-                  <FlagIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Delete session">
-                <IconButton
-                  size="small"
-                  onClick={handleDeleteClick}
-                  aria-label="Delete session"
-                  sx={{
-                    [theme.breakpoints.down('sm')]: {
-                      minWidth: '44px',
-                      minHeight: '44px', // Ensure touch-friendly size on mobile
-                    },
-                  }}
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
           </CardContent>
+
+          {/* Footer Actions */}
+          <CardActions
+            disableSpacing
+            sx={{
+              borderTop: 1,
+              borderColor: theme.palette.divider,
+              justifyContent: 'flex-end',
+              gap: theme.spacing(0.5),
+              px: theme.spacing(2),
+              py: theme.spacing(1),
+              flexWrap: 'wrap', // Allow wrapping on very small screens
+              [theme.breakpoints.down('sm')]: {
+                justifyContent: 'space-evenly', // Better distribution on mobile
+                py: theme.spacing(2), // More padding on mobile
+              },
+            }}
+          >
+            {footerActions}
+          </CardActions>
         </MuiCard>
 
         {/* Events Modal */}
