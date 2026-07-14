@@ -124,6 +124,9 @@ src/lib/stores/
 ### Rules
 
 1. **Use selector hooks** from `selectors.ts` — avoid `useAppStore()` without a selector in leaf components.
+   Selectors that return a new object per call (e.g. action bundles) **must** wrap the selector in
+   `useShallow` from `zustand/react/shallow`; in Zustand v5 a bare object-returning selector causes an
+   infinite re-render loop ("Maximum update depth exceeded").
 2. **Reset slices on logout** — every slice exposes a `reset*()` called from `useLogoutReset`.
 3. **Do not persist** uploads, selection, or modals to `localStorage`.
 4. New cross-route UI → extend an existing slice or add a slice; do not add a new global pattern.

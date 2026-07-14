@@ -130,7 +130,7 @@ export const useAppStore = create<AppStore>()(
         resetUploads: () => set({ uploads: initialUploads }),
       })),
     ),
-    { name: 'AppStore' },
+    { name: 'AppStore', enabled: process.env.NODE_ENV === 'development' },
   ),
 );
 

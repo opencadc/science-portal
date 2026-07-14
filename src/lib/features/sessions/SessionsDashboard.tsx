@@ -47,7 +47,6 @@ export function SessionsDashboard() {
   const {
     data: sessions = [],
     isLoading,
-    isFetching,
     refetch: refetchSessions,
   } = useSessions(isAuthenticated);
 
@@ -100,7 +99,6 @@ export function SessionsDashboard() {
   );
 
   const isLoadingSessions = authLoading || (isAuthenticated && isLoading);
-  void isFetching;
 
   const isLoadingLaunchForm =
     authLoading ||

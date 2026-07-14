@@ -33,12 +33,10 @@ export default function RootLayout({
             <NuqsProvider>
               <AuthProvider>
                 <ThemeProvider>
-                  <PortalLayout>
-                    <ClientErrorBoundary>
-                      <SkipNavigation />
-                      {children}
-                    </ClientErrorBoundary>
-                  </PortalLayout>
+                  <ClientErrorBoundary>
+                    <SkipNavigation />
+                    <PortalLayout>{children}</PortalLayout>
+                  </ClientErrorBoundary>
                 </ThemeProvider>
               </AuthProvider>
             </NuqsProvider>
