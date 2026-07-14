@@ -12,12 +12,7 @@ import { useTheme } from '@mui/material/styles';
 import type { SessionCardProps } from '@/app/types/SessionCardProps';
 import { useAuthStatus } from '@/lib/hooks/useAuth';
 import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
-import {
-  useSessions,
-  useDeleteSession,
-  useRenewSession,
-  useLaunchSession,
-} from '@/lib/hooks/useSessions';
+import { useSessions, useLaunchSession } from '@/lib/hooks/useSessions';
 import { useContainerImages, useImageRepositories, useContext } from '@/lib/hooks/useImages';
 import { useUserStorageSummary } from '@/lib/hooks/useUserStorage';
 import { STATIC_PLATFORM_LOAD_DATA } from '@/lib/config/static-platform-load';
@@ -31,6 +26,7 @@ import {
   STATUS_PAGE_URL,
 } from '@/lib/config/site-config';
 import { useOperatingSessionIds, useSessionUiActions } from '@/lib/stores';
+import { SessionModalsHost } from '@/lib/features/sessions/SessionModalsHost';
 
 export function SessionsDashboard() {
   const theme = useTheme();
@@ -45,7 +41,7 @@ export function SessionsDashboard() {
   const isLoggedOut = !authLoading && !isAuthenticated;
 
   const operatingSessionIds = useOperatingSessionIds();
-  const { markOperating, clearOperating } = useSessionUiActions();
+  const { clearOperating } = useSessionUiActions();
 
   const {
     data: sessions = [],
@@ -84,23 +80,6 @@ export function SessionsDashboard() {
     refetch: refetchStorage,
   } = useUserStorageSummary(username, isAuthenticated);
 
-  const { mutate: deleteSession } = useDeleteSession({
-    // On success the "delete" mark stays until the session actually drops out
-    // of the refetched sessions list (see the effect below) — no timers.
-    onError: (_error, sessionId) => {
-      clearOperating(sessionId);
-    },
-  });
-
-  const { mutate: renewSession } = useRenewSession({
-    onSuccess: (_, { sessionId }) => {
-      clearOperating(sessionId);
-    },
-    onError: (_error, { sessionId }) => {
-      clearOperating(sessionId);
-    },
-  });
-
   const { mutateAsync: launchSessionAsync } = useLaunchSession();
 
   const handleLaunchSession = useCallback(
@@ -121,22 +100,6 @@ export function SessionsDashboard() {
     isAuthenticated && (isFetchingImages || isFetchingRepositories || isFetchingContext);
 
   const isLoadingUserStorage = authLoading || (isAuthenticated && isLoadingStorageSummary);
-
-  const handleDeleteSession = useCallback(
-    (sessionId: string) => {
-      markOperating(sessionId, 'delete');
-      deleteSession(sessionId);
-    },
-    [deleteSession, markOperating],
-  );
-
-  const handleRenewSession = useCallback(
-    (sessionId: string) => {
-      markOperating(sessionId, 'renew');
-      renewSession({ sessionId, hours: 12 });
-    },
-    [renewSession, markOperating],
-  );
 
   // A deleted session keeps its "Terminating" card state until the server
   // confirms it's gone, i.e. the session no longer appears in the refetched
@@ -170,10 +133,8 @@ export function SessionsDashboard() {
         gpuAllocated: session.gpuAllocated,
         isFixedResources: session.isFixedResources,
         connectUrl: session.connectUrl,
-        onDelete: () => handleDeleteSession(session.id),
-        onExtendTime: () => handleRenewSession(session.id),
       }));
-  }, [sessions, handleDeleteSession, handleRenewSession]);
+  }, [sessions]);
 
   const handleSessionsRefresh = useCallback(() => {
     refetchSessions();
@@ -236,6 +197,7 @@ export function SessionsDashboard() {
 
   return (
     <>
+      <SessionModalsHost />
       <Box component="main" sx={{ flex: 1, pt: 2 }}>
         {isLoggedOut ? (
           <Container maxWidth="sm" sx={{ py: { xs: 8, md: 12 }, textAlign: 'center' }}>
@@ -243,8 +205,8 @@ export function SessionsDashboard() {
               Sign in to access the Science Portal
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Use the Login button in the header to view your active sessions, check your
-              storage, and launch new sessions.
+              Use the Login button in the header to view your active sessions, check your storage,
+              and launch new sessions.
             </Typography>
           </Container>
         ) : (

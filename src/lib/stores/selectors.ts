@@ -44,11 +44,13 @@ export const useAuthModalActions = () =>
     })),
   );
 
+export const useSessionModalActive = () => useAppStore((s) => s.sessionModals.active);
+
 export const useSessionModalsActions = () =>
   useAppStore(
     useShallow((s) => ({
-      openSessionDetail: s.openSessionDetail,
-      closeSessionDetail: s.closeSessionDetail,
+      openSessionModal: s.openSessionModal,
+      closeSessionModal: s.closeSessionModal,
     })),
   );
 

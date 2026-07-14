@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStore, resetAppUiState } from './app-store';
-import { initialAuthModals, initialSessionModals, initialUploads } from './types';
+import {
+  initialAuthModals,
+  initialSessionModals,
+  initialUploads,
+} from './types';
 
 describe('useAppStore', () => {
   beforeEach(() => {
@@ -29,7 +33,11 @@ describe('useAppStore', () => {
   it('resetAppUiState clears client UI slices', () => {
     useAppStore.getState().markOperating('session-b', 'delete');
     useAppStore.getState().openLogin('manual');
-    useAppStore.getState().openSessionDetail({ sessionId: 's-1', kind: 'events' });
+    useAppStore.getState().openSessionModal({
+      sessionId: 's-1',
+      sessionName: 'notebook1',
+      kind: 'events',
+    });
     useAppStore.getState().openMobileDrawer();
     useAppStore.getState().setLaunchRequest({
       status: 'requesting',
@@ -78,5 +86,21 @@ describe('useAppStore', () => {
     expect(useAppStore.getState().mobileDrawerOpen).toBe(true);
     useAppStore.getState().closeMobileDrawer();
     expect(useAppStore.getState().mobileDrawerOpen).toBe(false);
+  });
+
+  it('opens and closes session modals', () => {
+    useAppStore.getState().openSessionModal({
+      sessionId: 's-1',
+      sessionName: 'nb-1',
+      kind: 'delete',
+    });
+    expect(useAppStore.getState().sessionModals.active).toEqual({
+      sessionId: 's-1',
+      sessionName: 'nb-1',
+      kind: 'delete',
+    });
+
+    useAppStore.getState().closeSessionModal();
+    expect(useAppStore.getState().sessionModals.active).toBeNull();
   });
 });

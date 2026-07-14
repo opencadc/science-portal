@@ -4,13 +4,13 @@ import { enableMapSet } from 'immer';
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { AppStore, SessionOperation } from './types';
 import {
   initialAuthModals,
   initialSessionModals,
   initialStorageUi,
   initialUploads,
 } from './types';
+import type { AppStore, SessionOperation } from './types';
 
 enableMapSet();
 
@@ -80,14 +80,14 @@ export const useAppStore = create<AppStore>()(
 
         sessionModals: initialSessionModals,
 
-        openSessionDetail: (activeDetail) =>
+        openSessionModal: (active) =>
           set((state) => {
-            state.sessionModals.activeDetail = activeDetail;
+            state.sessionModals.active = active;
           }),
 
-        closeSessionDetail: () =>
+        closeSessionModal: () =>
           set((state) => {
-            state.sessionModals.activeDetail = null;
+            state.sessionModals.active = null;
           }),
 
         mobileDrawerOpen: false,
@@ -124,7 +124,7 @@ export function resetAppUiState(): void {
   const state = useAppStore.getState();
   state.resetSessionUi();
   state.closeAllAuthModals();
-  state.closeSessionDetail();
+  state.closeSessionModal();
   state.closeMobileDrawer();
   state.resetStorageUi();
   state.resetUploads();

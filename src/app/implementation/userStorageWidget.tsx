@@ -340,6 +340,7 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
               </Tooltip>
             </Box>
           )}
+
       </DashboardWidget>
     );
   },

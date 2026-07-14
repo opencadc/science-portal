@@ -23,7 +23,7 @@ import {
   Code as CodeIcon,
 } from '@mui/icons-material';
 import { SessionCardProps, SessionType, SessionStatus } from '@/app/types/SessionCardProps';
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { alpha, type Theme } from '@mui/material/styles';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -31,9 +31,7 @@ import utc from 'dayjs/plugin/utc';
 dayjs.extend(utc);
 import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
 import Image from 'next/image';
-import { EventsModal } from '@/app/components/EventsModal/EventsModal';
-import { DeleteSessionModal } from '@/app/components/DeleteSessionModal/DeleteSessionModal';
-import { SessionRenewModal } from '@/app/components/SessionRenewModal/SessionRenewModal';
+import { useSessionModalsActions } from '@/lib/stores';
 
 const ICON_SIZE = 22;
 
@@ -243,8 +241,6 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
       gpuAllocated,
       isFixedResources,
       connectUrl,
-      onDelete,
-      onExtendTime,
       loading = false,
       isOperating = false,
       isTerminating = false,
@@ -255,12 +251,12 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
   ) => {
     const { basePath } = usePublicRuntimeConfig();
     const theme = useTheme();
-    const [showEventsModal, setShowEventsModal] = useState(false);
-    const [showLogsModal, setShowLogsModal] = useState(false);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [showRenewModal, setShowRenewModal] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [isRenewing, setIsRenewing] = useState(false);
+    const { openSessionModal } = useSessionModalsActions();
+
+    const openModal = (kind: 'events' | 'logs' | 'extend' | 'delete') => {
+      const apiSessionId = id || sessionName;
+      openSessionModal({ sessionId: apiSessionId, sessionName, kind });
+    };
 
     // While terminating, the server may still report the pre-delete status
     // (Running/Pending) for a few polls — surface Terminating instead.
@@ -282,60 +278,23 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
 
     const handleShowEvents = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setShowEventsModal(true);
+      openModal('events');
     };
 
     const handleShowLogs = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setShowLogsModal(true);
+      openModal('logs');
     };
 
     const handleDeleteClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setShowDeleteModal(true);
+      openModal('delete');
     };
-
-    const handleDeleteConfirm = useCallback(async () => {
-      setIsDeleting(true);
-      try {
-        if (onDelete) {
-          await onDelete();
-        }
-        // Wait a bit to show the deleting state before closing modal
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } catch {
-        // Swallow — the underlying mutation surfaces the error to the user.
-      } finally {
-        setIsDeleting(false);
-        setShowDeleteModal(false);
-      }
-    }, [onDelete]);
 
     const handleExtendClick = (e: React.MouseEvent) => {
       e.stopPropagation();
-      setShowRenewModal(true);
+      openModal('extend');
     };
-
-    const handleRenewConfirm = useCallback(
-      async (_hours: number) => {
-        setIsRenewing(true);
-        try {
-          if (onExtendTime) {
-            await onExtendTime();
-          }
-          // Wait a bit to show success state
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        } catch {
-          // Swallow — the underlying mutation surfaces the error to the user.
-        } finally {
-          setIsRenewing(false);
-          setTimeout(() => {
-            setShowRenewModal(false);
-          }, 500);
-        }
-      },
-      [onExtendTime],
-    );
 
     if (loading) {
       return (
@@ -381,18 +340,11 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
         ? formatMemoryUnit(memoryUsage)
         : `${stripMemoryUnit(memoryUsage)} / ${formatMemoryUnit(memoryAllocated)}`;
     const cpuDisplay =
-      isFixedResources === false
-        ? cpuUsage || 'N/A'
-        : `${cpuUsage || 'N/A'} / ${cpuAllocated}`;
+      isFixedResources === false ? cpuUsage || 'N/A' : `${cpuUsage || 'N/A'} / ${cpuAllocated}`;
     const showGpu = !!(gpuAllocated && gpuAllocated !== '0');
     const showResourceMode = hasResourceModeBadge(isFixedResources);
 
-    // The session id drives the modal API calls; fall back to the name for
-    // resilience with older payloads.
-    const apiSessionId = id || sessionName;
-
     return (
-      <>
         <MuiCard
           ref={ref}
           {...cardProps}
@@ -598,40 +550,6 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
             </Tooltip>
           </CardActions>
         </MuiCard>
-
-        <EventsModal
-          open={showEventsModal}
-          sessionId={apiSessionId}
-          sessionName={sessionName}
-          onClose={() => setShowEventsModal(false)}
-          logView="events"
-        />
-        <EventsModal
-          open={showLogsModal}
-          sessionId={apiSessionId}
-          sessionName={sessionName}
-          onClose={() => setShowLogsModal(false)}
-          forceRawView={true}
-          defaultView="raw"
-          logView="logs"
-        />
-        <DeleteSessionModal
-          open={showDeleteModal}
-          sessionName={sessionName}
-          sessionId={apiSessionId}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDeleteConfirm}
-          isDeleting={isDeleting}
-        />
-        <SessionRenewModal
-          open={showRenewModal}
-          sessionName={sessionName}
-          sessionId={apiSessionId}
-          onClose={() => setShowRenewModal(false)}
-          onConfirm={handleRenewConfirm}
-          isRenewing={isRenewing}
-        />
-      </>
     );
   },
 );

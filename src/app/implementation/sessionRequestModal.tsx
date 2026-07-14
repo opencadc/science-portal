@@ -1,23 +1,9 @@
 'use client';
 
 import React from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Box,
-  CircularProgress,
-  Alert,
-  IconButton,
-} from '@mui/material';
-import {
-  ErrorOutline as ErrorIcon,
-  Close as CloseIcon,
-} from '@mui/icons-material';
-import { useTheme } from '@mui/material/styles';
+import { Button, Typography, Box } from '@mui/material';
+import { ErrorOutline as ErrorIcon, RocketLaunch as RequestIcon } from '@mui/icons-material';
+import { PortalModal } from '@/app/components/PortalModal/PortalModal';
 import { SessionRequestModalProps } from '../types/SessionRequestModalProps';
 
 /**
@@ -28,10 +14,8 @@ const parseErrorMessage = (error: string | undefined): string => {
 
   let errorText = error;
 
-  // Try to parse as JSON first
   try {
     const errorObj = JSON.parse(error);
-    // Extract message field if it exists
     if (errorObj.message) {
       errorText = errorObj.message;
     } else if (errorObj.details) {
@@ -43,30 +27,23 @@ const parseErrorMessage = (error: string | undefined): string => {
     // Not JSON, continue with string parsing
   }
 
-  // Match: "User X has reached the maximum of N active sessions."
   const maxSessionsMatch = errorText.match(/reached the maximum of (\d+) active sessions/i);
   if (maxSessionsMatch) {
     const maxSessions = maxSessionsMatch[1];
     return `You have reached the maximum limit of ${maxSessions} active sessions. Please delete an existing session before creating a new one.`;
   }
 
-  // Match: "insufficient resources" or similar
   if (errorText.match(/insufficient|not enough|unavailable/i)) {
     return 'Insufficient resources available. Please try again later or request fewer resources.';
   }
 
-  // Match: "quota exceeded"
   if (errorText.match(/quota.*exceeded/i)) {
     return 'Resource quota exceeded. Please delete unused sessions or contact support.';
   }
 
-  // Default: return the original error, cleaned up
   return errorText.trim();
 };
 
-/**
- * SessionRequestModal implementation component
- */
 export const SessionRequestModalImpl: React.FC<SessionRequestModalProps> = ({
   open,
   sessionName,
@@ -76,167 +53,35 @@ export const SessionRequestModalImpl: React.FC<SessionRequestModalProps> = ({
   onClose,
   onRetry,
 }) => {
-  const theme = useTheme();
   const parsedError = parseErrorMessage(errorMessage);
+  const isBusy = status === 'requesting' || status === 'provisioning';
+  const isError = status === 'error';
 
-  const getStatusIcon = () => {
-    switch (status) {
-      case 'requesting':
-      case 'provisioning':
-        return <CircularProgress size={48} sx={{ color: theme.palette.primary.main }} />;
-      case 'error':
-        return <ErrorIcon sx={{ fontSize: 48, color: theme.palette.error.main }} />;
-    }
-  };
+  const statusMessage = isError
+    ? 'Failed to create session'
+    : status === 'provisioning'
+      ? 'Provisioning resources...'
+      : 'Requesting session...';
 
-  const getStatusMessage = () => {
-    switch (status) {
-      case 'requesting':
-        return 'Requesting session...';
-      case 'provisioning':
-        return 'Provisioning resources...';
-      case 'error':
-        return 'Failed to create session';
-    }
-  };
-
-  const getStatusDescription = () => {
-    switch (status) {
-      case 'requesting':
-        return `Submitting request for ${sessionType} session "${sessionName}"`;
-      case 'provisioning':
-        return 'Allocating compute resources and preparing your environment';
-      case 'error':
-        return 'An error occurred while creating your session. See details below.';
-    }
-  };
+  const statusDescription = isError
+    ? 'An error occurred while creating your session. See details below.'
+    : status === 'provisioning'
+      ? 'Allocating compute resources and preparing your environment'
+      : `Submitting request for ${sessionType} session "${sessionName}"`;
 
   return (
-    <Dialog
+    <PortalModal
       open={open}
-      onClose={status === 'error' ? onClose : undefined}
-      maxWidth="sm"
-      fullWidth
-      disableEscapeKeyDown={status === 'requesting' || status === 'provisioning'}
-      PaperProps={{
-        sx: (theme) => ({
-          // Better mobile dialog handling
-          [theme.breakpoints.down('sm')]: {
-            margin: theme.spacing(1),
-            maxHeight: 'calc(100vh - 16px)',
-            borderRadius: theme.spacing(1),
-          },
-        }),
-      }}
-    >
-      <DialogTitle
-        sx={(theme) => ({
-          // Better mobile padding
-          [theme.breakpoints.down('sm')]: {
-            padding: theme.spacing(2, 2, 1, 2),
-          },
-        })}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Typography
-            variant="h6"
-            sx={(theme) => ({
-              // Smaller title on mobile if needed
-              [theme.breakpoints.down('sm')]: {
-                fontSize: theme.typography.body1.fontSize,
-                fontWeight: theme.typography.fontWeightBold,
-              },
-            })}
-          >
-            Session Request
-          </Typography>
-          {status === 'error' && (
-            <IconButton aria-label="close" onClick={onClose} sx={{ ml: 2 }}>
-              <CloseIcon />
-            </IconButton>
-          )}
-        </Box>
-      </DialogTitle>
-
-      <DialogContent
-        sx={(theme) => ({
-          // Better mobile padding
-          [theme.breakpoints.down('sm')]: {
-            padding: theme.spacing(1, 2, 2, 2),
-          },
-        })}
-      >
-        <Box
-          sx={(theme) => ({
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            py: 3,
-            // Smaller padding on mobile
-            [theme.breakpoints.down('sm')]: {
-              py: 2,
-            },
-          })}
-        >
-          {getStatusIcon()}
-
-          <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
-            {getStatusMessage()}
-          </Typography>
-
-          <Typography variant="body2" color="text.secondary">
-            {getStatusDescription()}
-          </Typography>
-
-          {status === 'error' && (
-            <Alert
-              severity="error"
-              sx={(theme) => ({
-                mt: 3,
-                width: '100%',
-                // Better mobile text handling
-                [theme.breakpoints.down('sm')]: {
-                  mt: 2,
-                  '& .MuiAlert-message': {
-                    fontSize: theme.typography.body2.fontSize,
-                  },
-                },
-              })}
-            >
-              {parsedError}
-            </Alert>
-          )}
-        </Box>
-      </DialogContent>
-
-      <DialogActions
-        sx={(theme) => ({
-          px: 3,
-          pb: 3,
-          // Better mobile button layout
-          [theme.breakpoints.down('sm')]: {
-            px: 2,
-            pb: 2,
-            flexDirection: 'column-reverse',
-            gap: 1,
-            '& > *': {
-              width: '100%',
-              margin: '0 !important',
-            },
-          },
-        })}
-      >
-        {status === 'error' && (
+      onClose={onClose}
+      title="Request New Session"
+      icon={<RequestIcon />}
+      isFetching={isBusy}
+      error={isError ? parsedError : undefined}
+      actions={
+        isError ? (
           <>
-            <Button onClick={onClose} color="inherit">
-              Cancel
+            <Button variant="outlined" onClick={onClose}>
+              Close
             </Button>
             {onRetry && (
               <Button variant="contained" onClick={onRetry} autoFocus>
@@ -244,14 +89,18 @@ export const SessionRequestModalImpl: React.FC<SessionRequestModalProps> = ({
               </Button>
             )}
           </>
-        )}
-
-        {(status === 'requesting' || status === 'provisioning') && (
-          <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
-            Please wait while we process your request...
-          </Typography>
-        )}
-      </DialogActions>
-    </Dialog>
+        ) : undefined
+      }
+    >
+      <Box display="flex" flexDirection="column" alignItems="center" textAlign="center" py={2}>
+        {isError && <ErrorIcon sx={{ fontSize: 48, color: 'error.main', mb: 2 }} />}
+        <Typography variant="h6" gutterBottom>
+          {statusMessage}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {statusDescription}
+        </Typography>
+      </Box>
+    </PortalModal>
   );
 };

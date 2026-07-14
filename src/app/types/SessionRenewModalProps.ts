@@ -3,6 +3,5 @@ export interface SessionRenewModalProps {
   sessionName?: string;
   sessionId?: string;
   onClose: () => void;
-  onConfirm?: (hours: number) => void | Promise<void>;
   isRenewing?: boolean;
 }

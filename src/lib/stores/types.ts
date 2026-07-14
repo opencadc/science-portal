@@ -5,7 +5,14 @@ export type ThemeMode = 'light' | 'dark';
 export type AuthModalTrigger = 'auto' | 'manual';
 export type UploadStatus = 'queued' | 'uploading' | 'success' | 'error' | 'cancelled';
 export type StorageViewMode = 'list' | 'grid';
-export type SessionDetailKind = 'events' | 'logs' | 'delete' | 'renew';
+export type SessionModalKind = 'delete' | 'extend' | 'events' | 'logs';
+
+export interface SessionModalActive {
+  sessionId: string;
+  sessionName: string;
+  kind: SessionModalKind;
+}
+
 /** Kind of in-flight mutation a session card is showing an overlay for. */
 export type SessionOperation = 'delete' | 'renew';
 
@@ -13,11 +20,6 @@ export interface LaunchRequestState {
   status: SessionRequestStatus;
   error?: string;
   sessionData: SessionFormData;
-}
-
-export interface ActiveSessionDetail {
-  sessionId: string;
-  kind: SessionDetailKind;
 }
 
 export interface UploadItem {
@@ -59,10 +61,10 @@ export interface AuthModalsSlice {
 
 export interface SessionModalsSlice {
   sessionModals: {
-    activeDetail: ActiveSessionDetail | null;
+    active: SessionModalActive | null;
   };
-  openSessionDetail: (detail: ActiveSessionDetail) => void;
-  closeSessionDetail: () => void;
+  openSessionModal: (active: SessionModalActive) => void;
+  closeSessionModal: () => void;
 }
 
 export interface NavigationSlice {
@@ -106,7 +108,7 @@ export const initialAuthModals: AuthModalsSlice['authModals'] = {
 };
 
 export const initialSessionModals: SessionModalsSlice['sessionModals'] = {
-  activeDetail: null,
+  active: null,
 };
 
 export const initialStorageUi: StorageUiSlice['storageUi'] = {

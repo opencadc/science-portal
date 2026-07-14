@@ -28,8 +28,6 @@ export interface SessionCardProps extends Omit<CardProps, 'onClick' | 'id'> {
   gpuAllocated?: string; // e.g., "0" or "1"
   isFixedResources?: boolean; // True if resources are fixed, false if flexible
   connectUrl?: string; // optional to match API
-  onDelete?: () => void;
-  onExtendTime?: () => void;
   loading?: boolean; // Full skeleton loading state (initial load)
   isOperating?: boolean; // Overlay spinner during operations (delete/renew)
   /**

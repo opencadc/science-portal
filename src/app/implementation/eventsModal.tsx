@@ -2,21 +2,14 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Table,
   TableHead,
   TableBody,
   TableRow,
   TableCell,
-  IconButton,
   Typography,
   Box,
   Chip,
-  CircularProgress,
-  LinearProgress,
   Alert,
   Button,
   Tooltip,
@@ -27,8 +20,6 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import {
-  Close as CloseIcon,
-  Refresh as RefreshIcon,
   Error as ErrorIcon,
   Schedule as ScheduleIcon,
   CloudDownload as CloudDownloadIcon,
@@ -42,6 +33,7 @@ import type {
   EventType,
   EventReason,
 } from '@/app/types/EventsModalProps';
+import { PortalModal } from '@/app/components/PortalModal/PortalModal';
 import { useSessionEventLog } from '@/lib/hooks/useSessions';
 import { parseEventLog } from '@/lib/sessions/parseEventLog';
 
@@ -117,7 +109,6 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
   defaultView = 'table',
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [showRawView, setShowRawView] = useState(forceRawView || defaultView === 'raw');
 
@@ -154,67 +145,42 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
       .slice(0, maxEvents);
   }, [events, maxEvents]);
 
-  // Same convention as DashboardWidget:
-  // - isLoading: initial fetch, nothing cached yet → skeleton/spinner + progress bar
-  // - isFetching: background refetch → keep stale content visible + progress bar
-  const isBusy = isLoading || isFetching;
-
-  // Auto-switch to raw view if parsing errors detected
   useEffect(() => {
     if (parseError && !showRawView) {
       setShowRawView(true);
     }
   }, [parseError, showRawView]);
 
+  // Same convention as DashboardWidget:
+  // - isLoading: initial fetch, nothing cached yet → spinner + progress bar
+  // - isFetching: background refetch → keep stale content visible + progress bar
   const isLogsView = logView === 'logs';
-  const title = isLogsView ? 'Container Logs' : 'Container Events';
+  const titleLabel = isLogsView ? 'Container Logs' : 'Container Events';
 
   return (
-    <Dialog
+    <PortalModal
       open={open}
       onClose={onClose}
+      title={`${titleLabel} - ${sessionName}`}
+      icon={isLogsView ? <LogsIcon /> : <FlagIcon />}
+      isLoading={isLoading}
+      isFetching={isFetching}
       maxWidth="lg"
-      fullWidth
-      fullScreen={isMobile}
-      aria-labelledby="events-modal-title"
+      titleId="events-modal-title"
+      onRefresh={showRefreshButton ? handleRefresh : undefined}
+      refreshAriaLabel={isLogsView ? 'refresh logs' : 'refresh events'}
+      refreshTooltip={isLogsView ? 'Refresh logs' : 'Refresh events'}
+      error={
+        error && !isLoading ? (
+          <>
+            {error}
+            <Button size="small" onClick={handleRefresh} sx={{ ml: 2 }}>
+              Retry
+            </Button>
+          </>
+        ) : undefined
+      }
     >
-      <DialogTitle id="events-modal-title">
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Box display="flex" alignItems="center" gap={1}>
-            {isLogsView ? <LogsIcon /> : <FlagIcon />}
-            <Typography variant="h6">
-              {title} - {sessionName}
-            </Typography>
-          </Box>
-          <Box display="flex" alignItems="center" gap={1}>
-            {showRefreshButton && (
-              <Tooltip title={isLogsView ? 'Refresh logs' : 'Refresh events'}>
-                <span>
-                  <IconButton
-                    onClick={handleRefresh}
-                    size="small"
-                    aria-label={isLogsView ? 'refresh logs' : 'refresh events'}
-                    disabled={isBusy}
-                  >
-                    <RefreshIcon />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            )}
-            <IconButton onClick={onClose} size="small" aria-label="close modal">
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </Box>
-      </DialogTitle>
-
-      {/* Fixed-height slot — both isLoading and isFetching animate the bar;
-          initial load also shows the spinner in the content area below. */}
-      <Box sx={{ height: 4, flexShrink: 0 }}>
-        {isBusy && <LinearProgress sx={{ height: 4 }} />}
-      </Box>
-
-      <DialogContent dividers>
         {/* View toggle and parse error warning (hidden when parsing is disabled) */}
         {!forceRawView && (
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
@@ -234,22 +200,6 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
               </Alert>
             )}
           </Box>
-        )}
-
-        {isLoading && (
-          <Box display="flex" justifyContent="center" alignItems="center" py={4}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {/* A failed refetch keeps the last data visible below the alert. */}
-        {error && !isLoading && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-            <Button size="small" onClick={handleRefresh} sx={{ ml: 2 }}>
-              Retry
-            </Button>
-          </Alert>
         )}
 
         {/* Raw view display */}
@@ -369,13 +319,6 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
             </Table>
           </Box>
         )}
-      </DialogContent>
-
-      <DialogActions>
-        <Button onClick={onClose} variant="outlined">
-          Close
-        </Button>
-      </DialogActions>
-    </Dialog>
+    </PortalModal>
   );
 };
