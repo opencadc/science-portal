@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import { ActiveSessionsWidget } from '@/app/components/ActiveSessionsWidget/ActiveSessionsWidget';
 import { UserStorageWidget } from '@/app/components/UserStorageWidget/UserStorageWidget';
 import { LaunchFormWidget } from '@/app/components/LaunchFormWidget/LaunchFormWidget';
@@ -85,9 +85,8 @@ export function SessionsDashboard() {
   } = useUserStorageSummary(username, isAuthenticated);
 
   const { mutate: deleteSession } = useDeleteSession({
-    onSuccess: (_, sessionId) => {
-      setTimeout(() => clearOperating(sessionId), 3500);
-    },
+    // On success the "delete" mark stays until the session actually drops out
+    // of the refetched sessions list (see the effect below) — no timers.
     onError: (_error, sessionId) => {
       clearOperating(sessionId);
     },
@@ -125,7 +124,7 @@ export function SessionsDashboard() {
 
   const handleDeleteSession = useCallback(
     (sessionId: string) => {
-      markOperating(sessionId);
+      markOperating(sessionId, 'delete');
       deleteSession(sessionId);
     },
     [deleteSession, markOperating],
@@ -133,11 +132,22 @@ export function SessionsDashboard() {
 
   const handleRenewSession = useCallback(
     (sessionId: string) => {
-      markOperating(sessionId);
+      markOperating(sessionId, 'renew');
       renewSession({ sessionId, hours: 12 });
     },
     [renewSession, markOperating],
   );
+
+  // A deleted session keeps its "Terminating" card state until the server
+  // confirms it's gone, i.e. the session no longer appears in the refetched
+  // list. (Renew marks are cleared by the mutation callbacks instead.)
+  useEffect(() => {
+    operatingSessionIds.forEach((operation, sessionId) => {
+      if (operation === 'delete' && !sessions.some((s) => s.id === sessionId)) {
+        clearOperating(sessionId);
+      }
+    });
+  }, [sessions, operatingSessionIds, clearOperating]);
 
   const activeSessions: SessionCardProps[] = useMemo(() => {
     return sessions
@@ -147,7 +157,6 @@ export function SessionsDashboard() {
       )
       .map((session: Session) => ({
         id: session.id,
-        sessionId: session.sessionId,
         sessionType: session.sessionType,
         sessionName: session.sessionName,
         status: session.status,
@@ -161,9 +170,6 @@ export function SessionsDashboard() {
         gpuAllocated: session.gpuAllocated,
         isFixedResources: session.isFixedResources,
         connectUrl: session.connectUrl,
-        requestedRAM: session.requestedRAM,
-        requestedCPU: session.requestedCPU,
-        requestedGPU: session.requestedGPU,
         onDelete: () => handleDeleteSession(session.id),
         onExtendTime: () => handleRenewSession(session.id),
       }));

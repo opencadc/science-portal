@@ -411,7 +411,7 @@ src/lib/stores/
 useAppStore
 │
 ├── sessionUi                         [Phase 1 — migrate from page.tsx]
-│   ├── operatingSessionIds: Set<string>
+│   ├── operatingSessionIds: Map<string, 'delete' | 'renew'>
 │   ├── launchRequest: LaunchRequestState | null
 │   └── actions: markOperating, clearOperating, setLaunchRequest, resetSessionUi
 │

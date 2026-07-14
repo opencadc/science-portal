@@ -14,7 +14,6 @@ import {
   Tooltip,
   CircularProgress,
   Backdrop,
-  Divider,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -25,7 +24,7 @@ import {
 } from '@mui/icons-material';
 import { SessionCardProps, SessionType, SessionStatus } from '@/app/types/SessionCardProps';
 import React, { useState, useCallback } from 'react';
-import type { Theme } from '@mui/material/styles';
+import { alpha, type Theme } from '@mui/material/styles';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 
@@ -36,7 +35,9 @@ import { EventsModal } from '@/app/components/EventsModal/EventsModal';
 import { DeleteSessionModal } from '@/app/components/DeleteSessionModal/DeleteSessionModal';
 import { SessionRenewModal } from '@/app/components/SessionRenewModal/SessionRenewModal';
 
-const getSessionIcon = (basePath: string, type: SessionType, iconSize = 24): React.ReactNode => {
+const ICON_SIZE = 22;
+
+const getSessionIcon = (basePath: string, type: SessionType): React.ReactNode => {
   switch (type) {
     case 'notebook':
     case 'contributednotebook':
@@ -44,8 +45,8 @@ const getSessionIcon = (basePath: string, type: SessionType, iconSize = 24): Rea
         <Image
           src={`${basePath}/notebook_icon.jpg`}
           alt="Notebook"
-          width={iconSize}
-          height={iconSize}
+          width={ICON_SIZE}
+          height={ICON_SIZE}
           style={{ objectFit: 'contain' }}
         />
       );
@@ -55,8 +56,8 @@ const getSessionIcon = (basePath: string, type: SessionType, iconSize = 24): Rea
         <Image
           src={`${basePath}/desktop_icon.png`}
           alt="Desktop"
-          width={iconSize}
-          height={iconSize}
+          width={ICON_SIZE}
+          height={ICON_SIZE}
           style={{ objectFit: 'contain' }}
         />
       );
@@ -65,8 +66,8 @@ const getSessionIcon = (basePath: string, type: SessionType, iconSize = 24): Rea
         <Image
           src={`${basePath}/carta_icon.png`}
           alt="CARTA"
-          width={iconSize}
-          height={iconSize}
+          width={ICON_SIZE}
+          height={ICON_SIZE}
           style={{ objectFit: 'contain' }}
         />
       );
@@ -75,8 +76,8 @@ const getSessionIcon = (basePath: string, type: SessionType, iconSize = 24): Rea
         <Image
           src={`${basePath}/contributed_icon.png`}
           alt="Contributed"
-          width={iconSize}
-          height={iconSize}
+          width={ICON_SIZE}
+          height={ICON_SIZE}
           style={{ objectFit: 'contain' }}
         />
       );
@@ -85,8 +86,8 @@ const getSessionIcon = (basePath: string, type: SessionType, iconSize = 24): Rea
         <Image
           src={`${basePath}/firefly_icon.png`}
           alt="Firefly"
-          width={iconSize}
-          height={iconSize}
+          width={ICON_SIZE}
+          height={ICON_SIZE}
           style={{ objectFit: 'contain' }}
         />
       );
@@ -100,11 +101,10 @@ const getStatusColor = (status: SessionStatus): 'success' | 'warning' | 'error' 
     case 'Running':
       return 'success';
     case 'Pending':
+    case 'Terminating':
       return 'warning';
     case 'Failed':
       return 'error';
-    case 'Terminating':
-      return 'warning';
     default:
       return 'default';
   }
@@ -122,29 +122,41 @@ const getStatusLabel = (status: SessionStatus): string => {
 const hasResourceModeBadge = (isFixedResources: boolean | undefined): isFixedResources is boolean =>
   isFixedResources === true || isFixedResources === false;
 
-const resourceModeChipSx = (theme: Theme, isFixed: boolean) => ({
-  height: '20px',
-  fontSize: '0.7rem',
-  fontWeight: 700,
-  flexShrink: 0,
-  backgroundColor: isFixed ? theme.palette.primary.dark : theme.palette.success.light,
-  color: isFixed ? theme.palette.primary.contrastText : theme.palette.success.contrastText,
-});
-
-const ResourceModeChip = ({
-  isFixedResources,
-  sx,
-}: {
-  isFixedResources: boolean;
-  sx?: object;
-}) => {
+/**
+ * Corner badge for the session's resource mode. Rendered inside CardContent
+ * (without a z-index) so the operating/terminating backdrop dims it along
+ * with the rest of the content.
+ */
+const ResourceModeChip = ({ isFixedResources }: { isFixedResources: boolean }) => {
   const theme = useTheme();
   return (
-    <Chip
-      label={isFixedResources ? 'FIXED' : 'FLEX'}
-      size="small"
-      sx={{ ...resourceModeChipSx(theme, isFixedResources), ...sx }}
-    />
+    <Tooltip
+      title={
+        isFixedResources
+          ? 'Fixed resources — the session gets exactly the CPU and RAM it requested'
+          : 'Flexible resources — the session shares idle cluster capacity'
+      }
+    >
+      <Chip
+        label={isFixedResources ? 'FIXED' : 'FLEX'}
+        size="small"
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          height: '20px',
+          fontSize: '0.7rem',
+          fontWeight: 700,
+          borderRadius: '0 0 8px 0',
+          backgroundColor: isFixedResources
+            ? theme.palette.primary.dark
+            : theme.palette.success.light,
+          color: isFixedResources
+            ? theme.palette.primary.contrastText
+            : theme.palette.success.contrastText,
+        }}
+      />
+    </Tooltip>
   );
 };
 
@@ -191,15 +203,35 @@ const formatTimestamp = (timestamp: string): string => {
   return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : 'Pending...';
 };
 
+// --- Hoisted styles (static, or theme-derived via sx callbacks) ---
+
+// No borderRadius: the card root has overflow:hidden, so it clips the
+// backdrop to its own radius. (Careful when tempted to add one back — in sx,
+// numeric borderRadius values are multiplied by theme.shape.borderRadius, so
+// `borderRadius: theme.shape.borderRadius` renders 16px on a 6px card.)
+const backdropSx = (theme: Theme) => ({
+  position: 'absolute',
+  inset: 0,
+  zIndex: 1,
+  backgroundColor: alpha(theme.palette.background.paper, 0.7),
+});
+
+const actionButtonSx = (theme: Theme) => ({
+  [theme.breakpoints.down('sm')]: {
+    minWidth: '44px',
+    minHeight: '44px',
+  },
+});
+
+const detailLabelSx = { fontWeight: 600 } as const;
+
 export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps>(
   (
     {
-      // Strip custom session-card props so they don't fall through to the DOM
-      // via {...cardProps} on <MuiCard>. React warns on unknown DOM attributes.
-      id: _id,
+      // Consume `id` so it doesn't fall through to the DOM via {...cardProps}.
+      id,
       sessionType,
       sessionName,
-      sessionId,
       status,
       containerImage,
       startedTime,
@@ -211,18 +243,11 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
       gpuAllocated,
       isFixedResources,
       connectUrl,
-      requestedRAM: _requestedRAM,
-      requestedCPU: _requestedCPU,
-      requestedGPU: _requestedGPU,
       onDelete,
-      onShowEvents,
-      onShowLogs,
       onExtendTime,
-      onClick,
       loading = false,
       isOperating = false,
-      disableHover: _disableHover,
-      compact = false,
+      isTerminating = false,
       sx,
       ...cardProps
     },
@@ -237,27 +262,32 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
     const [isDeleting, setIsDeleting] = useState(false);
     const [isRenewing, setIsRenewing] = useState(false);
 
+    // While terminating, the server may still report the pre-delete status
+    // (Running/Pending) for a few polls — surface Terminating instead.
+    const displayStatus: SessionStatus = isTerminating ? 'Terminating' : status;
+    const isConnectable = status === 'Running' && !isTerminating && !!connectUrl;
+
     const handleCardClick = () => {
-      // Only allow clicking on Running sessions
-      if (status === 'Running') {
-        if (onClick) {
-          onClick();
-        } else if (connectUrl) {
-          window.open(connectUrl, '_blank');
-        }
+      if (isConnectable) {
+        window.open(connectUrl, '_blank');
+      }
+    };
+
+    const handleCardKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleCardClick();
       }
     };
 
     const handleShowEvents = (e: React.MouseEvent) => {
       e.stopPropagation();
       setShowEventsModal(true);
-      onShowEvents?.();
     };
 
     const handleShowLogs = (e: React.MouseEvent) => {
       e.stopPropagation();
       setShowLogsModal(true);
-      onShowLogs?.();
     };
 
     const handleDeleteClick = (e: React.MouseEvent) => {
@@ -268,7 +298,6 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
     const handleDeleteConfirm = useCallback(async () => {
       setIsDeleting(true);
       try {
-        // Call the actual delete function
         if (onDelete) {
           await onDelete();
         }
@@ -291,7 +320,6 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
       async (_hours: number) => {
         setIsRenewing(true);
         try {
-          // Call the actual renew function
           if (onExtendTime) {
             await onExtendTime();
           }
@@ -317,31 +345,26 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           elevation={0}
           variant="outlined"
           sx={[
-            { border: `1px solid ${theme.palette.divider}`, ...(compact ? { height: '100%' } : {}) },
+            { border: `1px solid ${theme.palette.divider}`, height: '100%' },
             ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
           ]}
         >
-          <CardContent sx={compact ? { p: 2, height: '100%', '&:last-child': { pb: 2 } } : undefined}>
-            <Stack spacing={compact ? 1.25 : 2}>
+          <CardContent sx={{ p: 2, height: '100%', '&:last-child': { pb: 2 } }}>
+            <Stack spacing={1.25}>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box display="flex" alignItems="center" gap={1}>
-                  <Skeleton variant="circular" width={compact ? 22 : 24} height={compact ? 22 : 24} />
-                  <Skeleton variant="text" width={compact ? 140 : 150} height={compact ? 22 : 24} />
+                  <Skeleton variant="circular" width={22} height={22} />
+                  <Skeleton variant="text" width={140} height={22} />
                 </Box>
-                <Skeleton variant="rectangular" width={compact ? 64 : 80} height={compact ? 22 : 24} />
+                <Skeleton variant="rectangular" width={64} height={22} />
               </Box>
-              <Skeleton variant="text" width="100%" height={compact ? 18 : 20} />
-              <Skeleton variant="text" width="100%" height={compact ? 18 : 20} />
-              <Skeleton variant="text" width="90%" height={compact ? 18 : 20} />
-              <Skeleton variant="text" width="75%" height={compact ? 18 : 20} />
-              <Box display="flex" gap={0.5} mt={compact ? 0.5 : 2}>
+              <Skeleton variant="text" width="100%" height={18} />
+              <Skeleton variant="text" width="100%" height={18} />
+              <Skeleton variant="text" width="90%" height={18} />
+              <Skeleton variant="text" width="75%" height={18} />
+              <Box display="flex" gap={0.5} mt={0.5}>
                 {[1, 2, 3, 4].map((i) => (
-                  <Skeleton
-                    key={i}
-                    variant="circular"
-                    width={compact ? 32 : 40}
-                    height={compact ? 32 : 40}
-                  />
+                  <Skeleton key={i} variant="circular" width={32} height={32} />
                 ))}
               </Box>
             </Stack>
@@ -362,275 +385,9 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
     const showGpu = !!(gpuAllocated && gpuAllocated !== '0');
     const showResourceMode = hasResourceModeBadge(isFixedResources);
 
-    const footerActions = (
-      <>
-        <Tooltip
-          title={status === 'Pending' ? 'Cannot extend a pending session' : 'Extend time'}
-        >
-          <span>
-            <IconButton
-              size="small"
-              onClick={handleExtendClick}
-              aria-label="Extend time"
-              disabled={status === 'Pending'}
-              sx={{
-                [theme.breakpoints.down('sm')]: {
-                  minWidth: '44px',
-                  minHeight: '44px',
-                },
-              }}
-            >
-              <ExtendIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="View session logs">
-          <IconButton
-            size="small"
-            onClick={handleShowLogs}
-            aria-label="View logs"
-            sx={{
-              [theme.breakpoints.down('sm')]: {
-                minWidth: '44px',
-                minHeight: '44px',
-              },
-            }}
-          >
-            <LogsIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="View launch info">
-          <IconButton
-            size="small"
-            onClick={handleShowEvents}
-            aria-label="View events"
-            sx={{
-              [theme.breakpoints.down('sm')]: {
-                minWidth: '44px',
-                minHeight: '44px',
-              },
-            }}
-          >
-            <FlagIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Delete session">
-          <IconButton
-            size="small"
-            onClick={handleDeleteClick}
-            aria-label="Delete session"
-            sx={{
-              [theme.breakpoints.down('sm')]: {
-                minWidth: '44px',
-                minHeight: '44px',
-              },
-            }}
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </>
-    );
-
-    if (compact) {
-      return (
-        <>
-          <MuiCard
-            ref={ref}
-            {...cardProps}
-            onClick={handleCardClick}
-            elevation={0}
-            raised={false}
-            variant="outlined"
-            sx={[
-              {
-                cursor: status === 'Running' ? 'pointer' : 'default',
-                border: `1px solid ${theme.palette.divider}`,
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                height: '100%',
-              },
-              ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
-            ]}
-          >
-            {showResourceMode && (
-              <ResourceModeChip
-                isFixedResources={isFixedResources}
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  zIndex: 2,
-                  borderRadius: '0 0 8px 0',
-                }}
-              />
-            )}
-
-            <CardContent
-              sx={{
-                position: 'relative',
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                px: 2,
-                pb: 1.5,
-                pt: showResourceMode ? 4.5 : 2,
-                '&:last-child': { pb: 1.5 },
-              }}
-            >
-              {/* Operating overlay covers the content only; the actions row below
-                  stays visible and clickable (e.g. delete) during operations. */}
-              {isOperating && (
-                <Backdrop
-                  open={isOperating}
-                  sx={{
-                    position: 'absolute',
-                    inset: 0,
-                    zIndex: 1,
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(0, 0, 0, 0.7)'
-                        : 'rgba(255, 255, 255, 0.7)',
-                    borderRadius: theme.shape.borderRadius,
-                  }}
-                >
-                  <CircularProgress size={32} />
-                </Backdrop>
-              )}
-
-              <Box display="flex" alignItems="center" gap={1} mb={1} minWidth={0}>
-                <Box sx={{ color: theme.palette.primary.main, display: 'flex', flexShrink: 0 }}>
-                  {getSessionIcon(basePath, sessionType, 22)}
-                </Box>
-                <Typography
-                  variant="subtitle1"
-                  component="div"
-                  sx={{
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    flex: 1,
-                    fontWeight: theme.typography.fontWeightBold,
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {sessionName}
-                </Typography>
-                <Chip
-                  label={getStatusLabel(status)}
-                  color={getStatusColor(status)}
-                  size="small"
-                  sx={{ height: 22, fontSize: '0.7rem', fontWeight: 600, flexShrink: 0 }}
-                />
-              </Box>
-
-              <Stack spacing={0.75} sx={{ minWidth: 0, flex: 1 }}>
-                <Typography variant="body2" color="text.secondary" noWrap title={project}>
-                  <Box component="span" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                    Project:{' '}
-                  </Box>
-                  <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                    {project}
-                  </Box>
-                </Typography>
-                <Typography variant="body2" color="text.secondary" noWrap title={image}>
-                  <Box component="span" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                    Image:{' '}
-                  </Box>
-                  <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                    {image}
-                  </Box>
-                </Typography>
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  <Box component="span" sx={{ fontWeight: 600 }}>
-                    Memory:{' '}
-                  </Box>
-                  {memoryDisplay}
-                  {' · '}
-                  <Box component="span" sx={{ fontWeight: 600 }}>
-                    CPU:{' '}
-                  </Box>
-                  {cpuDisplay}
-                  {showGpu && (
-                    <>
-                      {' · '}
-                      <Box component="span" sx={{ fontWeight: 600 }}>
-                        GPU:{' '}
-                      </Box>
-                      {gpuAllocated}
-                    </>
-                  )}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  <Box component="span" sx={{ fontWeight: 600 }}>
-                    Started:{' '}
-                  </Box>
-                  {formatTimestamp(startedTime)} UTC
-                </Typography>
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  <Box component="span" sx={{ fontWeight: 600 }}>
-                    Expires:{' '}
-                  </Box>
-                  {formatTimestamp(expiresTime)} UTC
-                </Typography>
-              </Stack>
-            </CardContent>
-
-            <CardActions
-              disableSpacing
-              sx={{
-                borderTop: 1,
-                borderColor: 'divider',
-                justifyContent: 'flex-end',
-                gap: 0.25,
-                px: 1.5,
-                py: 0.5,
-              }}
-            >
-              {footerActions}
-            </CardActions>
-          </MuiCard>
-
-          <EventsModal
-            open={showEventsModal}
-            sessionId={sessionId || sessionName}
-            sessionName={sessionName}
-            onClose={() => setShowEventsModal(false)}
-            showRefreshButton={true}
-            logView="events"
-          />
-          <EventsModal
-            open={showLogsModal}
-            sessionId={sessionId || sessionName}
-            sessionName={`${sessionName} - Logs`}
-            onClose={() => setShowLogsModal(false)}
-            showRefreshButton={true}
-            forceRawView={true}
-            defaultView="raw"
-            logView="logs"
-          />
-          <DeleteSessionModal
-            open={showDeleteModal}
-            sessionName={sessionName}
-            sessionId={sessionId || ''}
-            onClose={() => setShowDeleteModal(false)}
-            onConfirm={handleDeleteConfirm}
-            isDeleting={isDeleting}
-          />
-          <SessionRenewModal
-            open={showRenewModal}
-            sessionName={sessionName}
-            sessionId={sessionId}
-            onClose={() => setShowRenewModal(false)}
-            onConfirm={handleRenewConfirm}
-            isRenewing={isRenewing}
-          />
-        </>
-      );
-    }
+    // The session id drives the modal API calls; fall back to the name for
+    // resilience with older payloads.
+    const apiSessionId = id || sessionName;
 
     return (
       <>
@@ -638,20 +395,22 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           ref={ref}
           {...cardProps}
           onClick={handleCardClick}
+          onKeyDown={isConnectable ? handleCardKeyDown : undefined}
+          role={isConnectable ? 'link' : undefined}
+          tabIndex={isConnectable ? 0 : undefined}
+          aria-label={isConnectable ? `Open session ${sessionName}` : undefined}
           elevation={0}
           raised={false}
           variant="outlined"
           sx={[
             {
-              cursor: status === 'Running' ? 'pointer' : 'default',
+              cursor: isConnectable ? 'pointer' : 'default',
               border: `1px solid ${theme.palette.divider}`,
               position: 'relative',
-              // Flex column so CardContent can fill the card vertically (the
-              // widget enforces a minHeight on every card; without this the
-              // body sits at the top and leftover space falls between the
-              // footer and the card's bottom border).
               display: 'flex',
               flexDirection: 'column',
+              overflow: 'hidden',
+              height: '100%',
             },
             ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
           ]}
@@ -659,416 +418,193 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           <CardContent
             sx={{
               position: 'relative',
-              // Fill the card's height (set by widget cardSx minHeight) so the
-              // actions row below sits at the bottom of the card.
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
-              [theme.breakpoints.down('sm')]: {
-                padding: theme.spacing(2),
-              },
+              px: 2,
+              pb: 1.5,
+              pt: showResourceMode ? 4.5 : 2,
+              '&:last-child': { pb: 1.5 },
             }}
           >
-            {/* Operating state overlay — covers the content only (the actions row
-                stays clickable) and keeps a low z-index so a sticky AppBar above
-                always wins the stacking order. */}
-            {isOperating && (
-              <Backdrop
-                open={isOperating}
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  zIndex: 1,
-                  backgroundColor:
-                    theme.palette.mode === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-                  borderRadius: theme.shape.borderRadius,
-                }}
-              >
-                <CircularProgress size={40} />
+            {showResourceMode && <ResourceModeChip isFixedResources={isFixedResources} />}
+
+            {/* Operating overlay covers the content only; the actions row below
+                stays visible and clickable (e.g. delete) during operations.
+                Terminating gets a dedicated actions-row backdrop instead. */}
+            {(isOperating || isTerminating) && (
+              <Backdrop open sx={backdropSx(theme)}>
+                <CircularProgress size={32} />
               </Backdrop>
             )}
 
-            {/* Header Section */}
-            <Box
-              display="flex"
-              alignItems="center"
-              justifyContent="space-between"
-              gap={1}
-              mb={1}
-            >
-              <Box
-                display="flex"
-                alignItems="center"
-                gap={1}
+            <Box display="flex" alignItems="center" gap={1} mb={1} minWidth={0}>
+              <Box sx={{ color: theme.palette.primary.main, display: 'flex', flexShrink: 0 }}>
+                {getSessionIcon(basePath, sessionType)}
+              </Box>
+              <Typography
+                variant="subtitle1"
+                component="div"
                 sx={{
-                  minWidth: 0, // Allow flexbox to shrink
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  minWidth: 0,
                   flex: 1,
+                  fontWeight: theme.typography.fontWeightBold,
+                  lineHeight: 1.2,
                 }}
               >
-                <Box
-                  sx={{
-                    color: theme.palette.primary.main,
-                    display: 'flex',
-                    alignItems: 'center',
-                    flexShrink: 0, // Icon never shrinks
-                  }}
-                >
-                  {getSessionIcon(basePath, sessionType)}
-                </Box>
-                <Typography
-                  variant="subtitle1"
-                  component="div"
-                  sx={{
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    fontWeight: theme.typography.fontWeightBold,
-                    [theme.breakpoints.down('sm')]: {
-                      fontSize: theme.typography.body2.fontSize,
-                    },
-                  }}
-                >
-                  {sessionName}
-                </Typography>
-              </Box>
-              {showResourceMode && (
-                <ResourceModeChip isFixedResources={isFixedResources} />
-              )}
+                {sessionName}
+              </Typography>
+              <Chip
+                label={getStatusLabel(displayStatus)}
+                color={getStatusColor(displayStatus)}
+                size="small"
+                sx={{ height: 22, fontSize: '0.7rem', fontWeight: 600, flexShrink: 0 }}
+              />
             </Box>
-            <Divider sx={{ mx: theme.spacing(-2), mb: 1 }} />
 
-            {/* Details Section */}
-            <Stack spacing={0.75} mb={1.5}>
-              <Box display="flex" justifyContent="flex-end">
-                <Chip
-                  label={getStatusLabel(status)}
-                  color={getStatusColor(status)}
-                  size="small"
-                  sx={{
-                    fontWeight: theme.typography.fontWeightMedium,
-                    flexShrink: 0,
-                    [theme.breakpoints.down('sm')]: {
-                      fontSize: theme.typography.caption.fontSize,
-                      height: 'auto',
-                      minHeight: '24px',
-                    },
-                  }}
-                />
-              </Box>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  minWidth: 0,
-                  [theme.breakpoints.up('sm')]: {
-                    flexDirection: 'row',
-                    alignItems: 'baseline',
-                  },
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  component="span"
-                  sx={{
-                    flexShrink: 0,
-                    mr: 1,
-                    [theme.breakpoints.down('sm')]: {
-                      fontSize: theme.typography.caption.fontSize,
-                      marginBottom: '2px',
-                    },
-                  }}
-                >
-                  Project:
-                </Typography>
-                <Typography
-                  variant="body2"
-                  component="span"
-                  sx={{
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    flex: 1,
-                    fontWeight: theme.typography.fontWeightBold,
-                    [theme.breakpoints.down('sm')]: {
-                      fontSize: theme.typography.caption.fontSize,
-                    },
-                  }}
-                >
-                  {parseImagePath(containerImage).project}
-                </Typography>
-              </Box>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  minWidth: 0,
-                  [theme.breakpoints.up('sm')]: {
-                    flexDirection: 'row',
-                    alignItems: 'baseline',
-                  },
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  component="span"
-                  sx={{
-                    flexShrink: 0,
-                    mr: 1,
-                    [theme.breakpoints.down('sm')]: {
-                      fontSize: theme.typography.caption.fontSize,
-                      marginBottom: '2px',
-                    },
-                  }}
-                >
-                  Container:
-                </Typography>
-                <Typography
-                  variant="body2"
-                  component="span"
-                  sx={{
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    minWidth: 0,
-                    flex: 1,
-                    fontWeight: theme.typography.fontWeightBold,
-                    [theme.breakpoints.down('sm')]: {
-                      fontSize: theme.typography.caption.fontSize,
-                    },
-                  }}
-                  title={containerImage} // Show full text on hover
-                >
-                  {parseImagePath(containerImage).image}
-                </Typography>
-              </Box>
-
-              <Box display="flex" flexDirection="column" gap={theme.spacing(0.5)}>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    component="span"
-                    sx={{ mr: 1 }}
-                  >
-                    Started:
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    component="span"
-                    sx={{
-                      fontWeight: theme.typography.fontWeightBold,
-                      [theme.breakpoints.down('sm')]: {
-                        fontSize: theme.typography.caption.fontSize,
-                      },
-                    }}
-                  >
-                    {formatTimestamp(startedTime)} UTC
-                  </Typography>
+            <Stack spacing={0.75} sx={{ minWidth: 0, flex: 1 }}>
+              <Typography variant="body2" color="text.secondary" noWrap title={project}>
+                <Box component="span" sx={detailLabelSx}>
+                  Project:{' '}
                 </Box>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    component="span"
-                    sx={{ mr: 1 }}
-                  >
-                    Expires:
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    component="span"
-                    sx={{
-                      fontWeight: theme.typography.fontWeightBold,
-                      [theme.breakpoints.down('sm')]: {
-                        fontSize: theme.typography.caption.fontSize,
-                      },
-                    }}
-                  >
-                    {formatTimestamp(expiresTime)} UTC
-                  </Typography>
+                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                  {project}
                 </Box>
-              </Box>
-
-              <Box
-                display="flex"
-                sx={{
-                  flexWrap: 'wrap',
-                  columnGap: theme.spacing(3),
-                  rowGap: theme.spacing(0.5),
-                  // Reserve room for the 2-row worst case (Memory/CPU on row 1, GPU on
-                  // row 2) so cards keep the same height regardless of value length.
-                  minHeight: theme.spacing(5),
-                }}
-              >
-                <Box
-                  sx={{
-                    minWidth: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    [theme.breakpoints.up('sm')]: {
-                      flexDirection: 'row',
-                      alignItems: 'baseline',
-                    },
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    component="span"
-                    sx={{
-                      flexShrink: 0,
-                      mr: 1,
-                      [theme.breakpoints.down('sm')]: {
-                        fontSize: theme.typography.caption.fontSize,
-                        marginBottom: '2px',
-                      },
-                    }}
-                  >
-                    Memory:
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    component="span"
-                    sx={{
-                      fontWeight: theme.typography.fontWeightBold,
-                      [theme.breakpoints.down('sm')]: {
-                        fontSize: theme.typography.caption.fontSize,
-                      },
-                    }}
-                  >
-                    {isFixedResources === false
-                      ? formatMemoryUnit(memoryUsage)
-                      : `${stripMemoryUnit(memoryUsage)} / ${formatMemoryUnit(memoryAllocated)}`}
-                  </Typography>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" noWrap title={image}>
+                <Box component="span" sx={detailLabelSx}>
+                  Image:{' '}
                 </Box>
-                <Box
-                  sx={{
-                    minWidth: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    [theme.breakpoints.up('sm')]: {
-                      flexDirection: 'row',
-                      alignItems: 'baseline',
-                    },
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    component="span"
-                    sx={{
-                      flexShrink: 0,
-                      mr: 1,
-                      [theme.breakpoints.down('sm')]: {
-                        fontSize: theme.typography.caption.fontSize,
-                        marginBottom: '2px',
-                      },
-                    }}
-                  >
-                    CPU:
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    component="span"
-                    sx={{
-                      fontWeight: theme.typography.fontWeightBold,
-                      [theme.breakpoints.down('sm')]: {
-                        fontSize: theme.typography.caption.fontSize,
-                      },
-                    }}
-                  >
-                    {isFixedResources === false
-                      ? cpuUsage || 'N/A'
-                      : `${cpuUsage || 'N/A'} / ${cpuAllocated}`}
-                  </Typography>
+                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                  {image}
                 </Box>
-                {/* Always rendered (visibility-hidden when 0) so the card height
-                    doesn't jump between sessions with and without a GPU. */}
-                <Box
-                  aria-hidden={!gpuAllocated || gpuAllocated === '0' ? true : undefined}
-                  sx={{
-                    minWidth: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    visibility:
-                      gpuAllocated && gpuAllocated !== '0' ? 'visible' : 'hidden',
-                    [theme.breakpoints.up('sm')]: {
-                      flexDirection: 'row',
-                      alignItems: 'baseline',
-                    },
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    component="span"
-                    sx={{
-                      flexShrink: 0,
-                      mr: 1,
-                      [theme.breakpoints.down('sm')]: {
-                        fontSize: theme.typography.caption.fontSize,
-                        marginBottom: '2px',
-                      },
-                    }}
-                  >
-                    GPU:
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    component="span"
-                    sx={{
-                      fontWeight: theme.typography.fontWeightBold,
-                      [theme.breakpoints.down('sm')]: {
-                        fontSize: theme.typography.caption.fontSize,
-                      },
-                    }}
-                  >
-                    {gpuAllocated || '0'}
-                  </Typography>
+              </Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>
+                <Box component="span" sx={detailLabelSx}>
+                  Memory:{' '}
                 </Box>
-              </Box>
+                {memoryDisplay}
+                {' · '}
+                <Box component="span" sx={detailLabelSx}>
+                  CPU:{' '}
+                </Box>
+                {cpuDisplay}
+                {showGpu && (
+                  <>
+                    {' · '}
+                    <Box component="span" sx={detailLabelSx}>
+                      GPU:{' '}
+                    </Box>
+                    {gpuAllocated}
+                  </>
+                )}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>
+                <Box component="span" sx={detailLabelSx}>
+                  Started:{' '}
+                </Box>
+                {formatTimestamp(startedTime)} UTC
+              </Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>
+                <Box component="span" sx={detailLabelSx}>
+                  Expires:{' '}
+                </Box>
+                {formatTimestamp(expiresTime)} UTC
+              </Typography>
             </Stack>
           </CardContent>
 
-          {/* Footer Actions */}
           <CardActions
             disableSpacing
             sx={{
+              position: 'relative',
               borderTop: 1,
-              borderColor: theme.palette.divider,
+              borderColor: 'divider',
               justifyContent: 'flex-end',
-              gap: theme.spacing(0.5),
-              px: theme.spacing(2),
-              py: theme.spacing(1),
-              flexWrap: 'wrap', // Allow wrapping on very small screens
-              [theme.breakpoints.down('sm')]: {
-                justifyContent: 'space-evenly', // Better distribution on mobile
-                py: theme.spacing(2), // More padding on mobile
-              },
+              gap: 0.25,
+              px: 1.5,
+              py: 0.5,
             }}
           >
-            {footerActions}
+            {/* Extra overlay for the actions row, terminating case only: the
+                content backdrop deliberately leaves the footer clickable (so
+                Pending sessions can still be deleted), but a terminating
+                session must not accept any further actions. */}
+            {isTerminating && <Backdrop open sx={backdropSx(theme)} />}
+            {/* Footer buttons stay active for Pending/operating sessions (a
+                stuck Pending session must remain deletable) and are only
+                disabled while the session is terminating. */}
+            <Tooltip
+              title={status === 'Pending' ? 'Cannot extend a pending session' : 'Extend time'}
+            >
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={handleExtendClick}
+                  aria-label="Extend time"
+                  disabled={status === 'Pending' || isTerminating}
+                  sx={actionButtonSx(theme)}
+                >
+                  <ExtendIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="View session logs">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={handleShowLogs}
+                  aria-label="View logs"
+                  disabled={isTerminating}
+                  sx={actionButtonSx(theme)}
+                >
+                  <LogsIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="View launch info">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={handleShowEvents}
+                  aria-label="View events"
+                  disabled={isTerminating}
+                  sx={actionButtonSx(theme)}
+                >
+                  <FlagIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Delete session">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={handleDeleteClick}
+                  aria-label="Delete session"
+                  disabled={isTerminating}
+                  sx={actionButtonSx(theme)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
           </CardActions>
         </MuiCard>
 
-        {/* Events Modal */}
         <EventsModal
           open={showEventsModal}
-          sessionId={sessionId || sessionName}
+          sessionId={apiSessionId}
           sessionName={sessionName}
           onClose={() => setShowEventsModal(false)}
           showRefreshButton={true}
           logView="events"
         />
-
-        {/* Logs Modal (Raw view only, parsing disabled) */}
         <EventsModal
           open={showLogsModal}
-          sessionId={sessionId || sessionName}
+          sessionId={apiSessionId}
           sessionName={`${sessionName} - Logs`}
           onClose={() => setShowLogsModal(false)}
           showRefreshButton={true}
@@ -1076,22 +612,18 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           defaultView="raw"
           logView="logs"
         />
-
-        {/* Delete Confirmation Modal */}
         <DeleteSessionModal
           open={showDeleteModal}
           sessionName={sessionName}
-          sessionId={sessionId || ''}
+          sessionId={apiSessionId}
           onClose={() => setShowDeleteModal(false)}
           onConfirm={handleDeleteConfirm}
           isDeleting={isDeleting}
         />
-
-        {/* Session Renewal Modal */}
         <SessionRenewModal
           open={showRenewModal}
           sessionName={sessionName}
-          sessionId={sessionId}
+          sessionId={apiSessionId}
           onClose={() => setShowRenewModal(false)}
           onConfirm={handleRenewConfirm}
           isRenewing={isRenewing}

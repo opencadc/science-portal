@@ -51,7 +51,6 @@ export interface SkahaSessionResponse {
 // Normalized session interface for internal use
 export interface Session {
   id: string;
-  sessionId?: string;
   sessionType: SessionType;
   sessionName: string;
   status: SessionStatus;
@@ -168,7 +167,6 @@ export interface SessionLaunchParams {
 function transformSkahaSession(skahaSession: SkahaSessionResponse): Session {
   return {
     id: skahaSession.id,
-    sessionId: skahaSession.id,
     sessionType: skahaSession.type as SessionType,
     sessionName: skahaSession.name,
     status: skahaSession.status as SessionStatus,
@@ -271,7 +269,6 @@ export async function launchSession(params: SessionLaunchParams): Promise<Sessio
     const sessionId = (result.sessionId || result.id).trim(); // Remove any whitespace/newlines
     return {
       id: sessionId,
-      sessionId: sessionId,
       sessionType: params.sessionType,
       sessionName: result.sessionName || params.sessionName,
       status: 'Pending' as SessionStatus,

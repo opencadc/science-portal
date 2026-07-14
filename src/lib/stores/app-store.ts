@@ -4,7 +4,7 @@ import { enableMapSet } from 'immer';
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { AppStore } from './types';
+import type { AppStore, SessionOperation } from './types';
 import {
   initialAuthModals,
   initialSessionModals,
@@ -18,12 +18,12 @@ export const useAppStore = create<AppStore>()(
   devtools(
     subscribeWithSelector(
       immer((set) => ({
-        operatingSessionIds: new Set<string>(),
+        operatingSessionIds: new Map<string, SessionOperation>(),
         launchRequest: null,
 
-        markOperating: (sessionId) =>
+        markOperating: (sessionId, operation) =>
           set((state) => {
-            state.operatingSessionIds.add(sessionId);
+            state.operatingSessionIds.set(sessionId, operation);
           }),
 
         clearOperating: (sessionId) =>
@@ -35,7 +35,7 @@ export const useAppStore = create<AppStore>()(
 
         resetSessionUi: () =>
           set({
-            operatingSessionIds: new Set<string>(),
+            operatingSessionIds: new Map<string, SessionOperation>(),
             launchRequest: null,
           }),
 

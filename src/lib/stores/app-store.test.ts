@@ -7,9 +7,12 @@ describe('useAppStore', () => {
     resetAppUiState();
   });
 
-  it('tracks operating session ids', () => {
-    useAppStore.getState().markOperating('session-a');
-    expect(useAppStore.getState().operatingSessionIds.has('session-a')).toBe(true);
+  it('tracks operating sessions with their operation kind', () => {
+    useAppStore.getState().markOperating('session-a', 'delete');
+    expect(useAppStore.getState().operatingSessionIds.get('session-a')).toBe('delete');
+
+    useAppStore.getState().markOperating('session-a', 'renew');
+    expect(useAppStore.getState().operatingSessionIds.get('session-a')).toBe('renew');
 
     useAppStore.getState().clearOperating('session-a');
     expect(useAppStore.getState().operatingSessionIds.has('session-a')).toBe(false);
@@ -24,7 +27,7 @@ describe('useAppStore', () => {
   });
 
   it('resetAppUiState clears client UI slices', () => {
-    useAppStore.getState().markOperating('session-b');
+    useAppStore.getState().markOperating('session-b', 'delete');
     useAppStore.getState().openLogin('manual');
     useAppStore.getState().openSessionDetail({ sessionId: 's-1', kind: 'events' });
     useAppStore.getState().openMobileDrawer();

@@ -43,9 +43,9 @@ const mobileCardSx = {
   width: '100%',
 };
 
-// Hoisted so callers omitting `operatingSessionIds` get a stable Set reference;
-// otherwise a fresh `new Set()` per render breaks downstream memoization.
-const EMPTY_OPERATING_IDS: Set<string> = new Set();
+// Hoisted so callers omitting `operatingSessionIds` get a stable Map reference;
+// otherwise a fresh `new Map()` per render breaks downstream memoization.
+const EMPTY_OPERATING_IDS: Map<string, 'delete' | 'renew'> = new Map();
 
 export function ActiveSessionsWidgetImpl({
   sessions = [],
@@ -73,18 +73,22 @@ export function ActiveSessionsWidgetImpl({
   const sessionsLayoutSx = isLgUp ? desktopRowSx : mobileGridSx;
   const sessionCardSx = isLgUp ? desktopCardSx : mobileCardSx;
 
-  const renderSessionCard = (session: (typeof sessionsToDisplay)[number], index: number) => (
-    <SessionCard
-      key={session.sessionName || `session-${index}`}
-      {...session}
-      compact
-      isOperating={
-        !!(session.id && operatingSessionIds.has(session.id)) || session.status === 'Pending'
-      }
-      disableHover={true}
-      sx={sessionCardSx}
-    />
-  );
+  const renderSessionCard = (session: (typeof sessionsToDisplay)[number], index: number) => {
+    const operation = session.id ? operatingSessionIds.get(session.id) : undefined;
+    // A session is "terminating" from the moment the user confirms the delete
+    // (client mark) until the server stops listing it; Skaha also reports the
+    // Terminating status directly once the pod starts winding down.
+    const isTerminating = operation === 'delete' || session.status === 'Terminating';
+    return (
+      <SessionCard
+        key={session.sessionName || `session-${index}`}
+        {...session}
+        isOperating={!!operation || session.status === 'Pending'}
+        isTerminating={isTerminating}
+        sx={sessionCardSx}
+      />
+    );
+  };
 
   return (
     <DashboardWidget
@@ -100,7 +104,6 @@ export function ActiveSessionsWidgetImpl({
           {Array.from({ length: skeletonCount }, (_, index) => (
             <SessionCard
               key={`skeleton-${index}`}
-              compact
               sessionType="notebook"
               sessionName=""
               status="Running"

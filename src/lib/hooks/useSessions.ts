@@ -22,6 +22,7 @@ import {
   type Session,
   type SessionLaunchParams,
 } from '@/lib/api/skaha';
+import { useAppStore } from '@/lib/stores';
 
 /**
  * Query keys for sessions
@@ -69,8 +70,21 @@ export function useSessions(
     // part of the transitional check — Skaha sets it as soon as the route is
     // allocated, well before the pod is actually Running, so Pending sessions
     // routinely have a connectUrl already. Status is the only reliable signal.
+    //
+    // Deletions poll faster: after a DELETE the card stays in its
+    // "Terminating" state until the session drops out of this list, so
+    // converge quickly. A delete is in flight when the client marked the
+    // session as being deleted (Zustand) or the server already reports
+    // Terminating.
     refetchInterval: (query) => {
       const data = query.state.data;
+      const operating = useAppStore.getState().operatingSessionIds;
+      const hasTerminating =
+        data?.some((s) => s.status === 'Terminating' || operating.get(s.id) === 'delete') ??
+        false;
+      if (hasTerminating) {
+        return 5000;
+      }
       const hasTransitional = data?.some(
         (s) => s.sessionType !== 'headless' && s.sessionType !== 'desktop-app' && s.status === 'Pending',
       );
@@ -214,31 +228,15 @@ export function useDeleteSession(options?: UseMutationOptions<void, Error, strin
   return useMutation({
     ...restOptions,
     mutationFn: deleteSession,
-    onSuccess: async (data, sessionId, ...rest) => {
-      // Call user's onSuccess callback if provided
+    onSuccess: (data, sessionId, ...rest) => {
       userOnSuccess?.(data, sessionId, ...rest);
 
-      // Wait 3 seconds before verifying deletion
-      setTimeout(async () => {
-        try {
-          // Try to fetch the session to verify it's deleted
-          await getSession(sessionId);
-
-          // If we get here, session still exists - invalidate to refetch all
-          queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
-        } catch {
-          // Session not found (404) - it's been deleted successfully
-          // Remove the session from the list
-          const currentSessions = queryClient.getQueryData<Session[]>(sessionKeys.list()) || [];
-          const updatedSessions = currentSessions.filter((s) => s.id !== sessionId);
-          queryClient.setQueryData(sessionKeys.list(), updatedSessions);
-
-          // Remove the specific session from cache
-          queryClient.removeQueries({
-            queryKey: sessionKeys.detail(sessionId),
-          });
-        }
-      }, 3000);
+      // The sessions list is the source of truth for when the pod is actually
+      // gone: refetch it now, then let the list's refetchInterval poll until
+      // the session disappears (the caller keeps the card in a "Terminating"
+      // state via the sessionUi slice in the meantime).
+      queryClient.removeQueries({ queryKey: sessionKeys.detail(sessionId) });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
     },
   });
 }

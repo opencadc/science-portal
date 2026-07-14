@@ -6,6 +6,8 @@ export type AuthModalTrigger = 'auto' | 'manual';
 export type UploadStatus = 'queued' | 'uploading' | 'success' | 'error' | 'cancelled';
 export type StorageViewMode = 'list' | 'grid';
 export type SessionDetailKind = 'events' | 'logs' | 'delete' | 'renew';
+/** Kind of in-flight mutation a session card is showing an overlay for. */
+export type SessionOperation = 'delete' | 'renew';
 
 export interface LaunchRequestState {
   status: SessionRequestStatus;
@@ -29,9 +31,10 @@ export interface UploadItem {
 }
 
 export interface SessionUiSlice {
-  operatingSessionIds: Set<string>;
+  /** Sessions with an in-flight mutation, keyed by session id. */
+  operatingSessionIds: Map<string, SessionOperation>;
   launchRequest: LaunchRequestState | null;
-  markOperating: (sessionId: string) => void;
+  markOperating: (sessionId: string, operation: SessionOperation) => void;
   clearOperating: (sessionId: string) => void;
   setLaunchRequest: (request: LaunchRequestState | null) => void;
   resetSessionUi: () => void;
