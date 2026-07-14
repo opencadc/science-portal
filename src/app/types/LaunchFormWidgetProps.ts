@@ -2,7 +2,10 @@ import { SessionLaunchFormProps } from './SessionLaunchFormProps';
 import type { Session, SessionLaunchParams } from '@/lib/api/skaha';
 
 export interface LaunchFormWidgetProps extends SessionLaunchFormProps {
+  /** Initial load — renders the form skeleton and animates the status bar. */
   isLoading?: boolean;
+  /** Background refetch — keeps the form, only animates the status bar. */
+  isFetching?: boolean;
   onRefresh?: () => void;
   title?: string;
   showProgressIndicator?: boolean;

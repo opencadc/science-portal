@@ -26,8 +26,10 @@ export interface StorageCardData {
 export interface UserStorageWidgetProps {
   /** Title for the widget */
   title?: string;
-  /** Whether the widget is in a loading state */
+  /** Initial load — renders skeleton cards and animates the status bar. */
   isLoading?: boolean;
+  /** Background refetch — keeps content, only animates the status bar. */
+  isFetching?: boolean;
   /** Storage data to display */
   data?: StorageData | null;
   /** Error message to display */

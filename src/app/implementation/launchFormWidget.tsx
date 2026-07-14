@@ -11,6 +11,7 @@ import { useLaunchRequest, useSessionUiActions } from '@/lib/stores';
 
 export function LaunchFormWidgetImpl({
   isLoading = false,
+  isFetching = false,
   onRefresh,
   title = 'Launch New Session',
   showProgressIndicator = false,
@@ -89,6 +90,7 @@ export function LaunchFormWidgetImpl({
     <DashboardWidget
       title={title}
       isLoading={isLoading}
+      isFetching={isFetching}
       onRefresh={onRefresh}
       help={helpUrl ? { url: helpUrl } : undefined}
       statusValue={showProgressIndicator ? progressPercentage : 100}

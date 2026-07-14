@@ -27,8 +27,18 @@ export interface DashboardWidgetHelp {
 export interface DashboardWidgetProps {
   /** Widget heading, rendered as an `h2`. */
   title: ReactNode;
-  /** Drives the status bar and disables the refresh button. */
+  /**
+   * Initial load (React Query `isLoading`): no data yet. The caller should
+   * render skeleton children; the shell shows the indeterminate status bar
+   * and disables the refresh button.
+   */
   isLoading?: boolean;
+  /**
+   * Background refetch (React Query `isFetching`): data is already shown.
+   * Content stays as-is; the shell only animates the status bar and disables
+   * the refresh button while the fetch is in flight.
+   */
+  isFetching?: boolean;
   /** Error message; renders an error alert above the header. */
   error?: ReactNode;
   /** Arbitrary alert/banner node rendered above the header (e.g. info alerts). */

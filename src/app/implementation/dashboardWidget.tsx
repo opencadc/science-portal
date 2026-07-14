@@ -82,6 +82,7 @@ function HelpAffordance({ help, widgetTitle }: { help: DashboardWidgetHelp; widg
 export function DashboardWidgetImpl({
   title,
   isLoading = false,
+  isFetching = false,
   error,
   alert,
   onRefresh,
@@ -100,11 +101,15 @@ export function DashboardWidgetImpl({
 }: DashboardWidgetProps) {
   const theme = useTheme();
 
+  // isLoading = initial load (skeleton children); isFetching = background
+  // refetch (content stays). Both animate the status bar and block refresh.
+  const isBusy = isLoading || isFetching;
+
   const refreshButton = onRefresh && (
     <IconButton
       aria-label={refreshAriaLabel}
       onClick={onRefresh}
-      disabled={isLoading}
+      disabled={isBusy}
       size="small"
       sx={{
         [theme.breakpoints.down('sm')]: {
@@ -195,9 +200,9 @@ export function DashboardWidgetImpl({
       {/* Status bar */}
       {showStatusBar && (
         <LinearProgress
-          color={isLoading ? 'primary' : 'success'}
-          variant={isLoading ? 'indeterminate' : 'determinate'}
-          value={isLoading ? undefined : statusValue}
+          color={isBusy ? 'primary' : 'success'}
+          variant={isBusy ? 'indeterminate' : 'determinate'}
+          value={isBusy ? undefined : statusValue}
           sx={{
             width: '100%',
             height: 4,

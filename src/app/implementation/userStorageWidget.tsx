@@ -176,6 +176,7 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
     {
       title = 'User Home Storage',
       isLoading = false,
+      isFetching = false,
       data = null,
       errorMessage,
       onRefresh,
@@ -258,6 +259,7 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
         ref={ref}
         title={title}
         isLoading={isLoading}
+        isFetching={isFetching}
         error={errorMessage}
         onRefresh={showRefreshButton ? onRefresh : undefined}
         refreshAriaLabel="refresh storage"

@@ -53,6 +53,7 @@ export function ActiveSessionsWidgetImpl({
   sessions = [],
   operatingSessionIds = EMPTY_OPERATING_IDS,
   isLoading = false,
+  isFetching = false,
   onRefresh,
   title = 'Active Sessions',
   showSessionCount = true,
@@ -121,6 +122,7 @@ export function ActiveSessionsWidgetImpl({
     <DashboardWidget
       title={displayTitle}
       isLoading={isLoading}
+      isFetching={isFetching}
       onRefresh={onRefresh ? handleRefreshClick : undefined}
       fillHeight={fillHeight}
     >

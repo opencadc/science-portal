@@ -49,7 +49,8 @@ export function SessionsDashboard() {
 
   const {
     data: sessions = [],
-    isLoading,
+    isLoading: isLoadingSessionsQuery,
+    isFetching: isFetchingSessions,
     refetch: refetchSessions,
   } = useSessions(isAuthenticated);
 
@@ -80,7 +81,7 @@ export function SessionsDashboard() {
     isLoading: isLoadingStorageSummary,
     isFetching: isFetchingStorageSummary,
     error: storageError,
-    refetch: refetchStorage, 
+    refetch: refetchStorage,
   } = useUserStorageSummary(username, isAuthenticated);
 
   const { mutate: deleteSession } = useDeleteSession({
@@ -110,19 +111,17 @@ export function SessionsDashboard() {
     [launchSessionAsync],
   );
 
-  const isLoadingSessions = authLoading || (isAuthenticated && isLoading);
+  // isLoading = initial load, no data yet → widgets render skeletons.
+  // isFetching = background refetch → widgets keep content, status bar animates.
+  const isLoadingSessions = authLoading || (isAuthenticated && isLoadingSessionsQuery);
 
   const isLoadingLaunchForm =
     authLoading ||
-    (isAuthenticated &&
-      (isLoadingImages ||
-        isLoadingRepositories ||
-        isLoadingContext ||
-        isFetchingImages ||
-        isFetchingRepositories ||
-        isFetchingContext));
+    (isAuthenticated && (isLoadingImages || isLoadingRepositories || isLoadingContext));
+  const isFetchingLaunchForm =
+    isAuthenticated && (isFetchingImages || isFetchingRepositories || isFetchingContext);
 
-  const isLoadingUserStorage = authLoading || (isAuthenticated && isLoadingStorageSummary) || isFetchingStorageSummary;
+  const isLoadingUserStorage = authLoading || (isAuthenticated && isLoadingStorageSummary);
 
   const handleDeleteSession = useCallback(
     (sessionId: string) => {
@@ -265,6 +264,7 @@ export function SessionsDashboard() {
                     sessions={activeSessions}
                     operatingSessionIds={operatingSessionIds}
                     isLoading={isLoadingSessions}
+                    isFetching={isAuthenticated && isFetchingSessions}
                     onRefresh={handleSessionsRefresh}
                     fillHeight={isDesktopTopRow}
                   />
@@ -282,6 +282,7 @@ export function SessionsDashboard() {
                   <UserStorageWidget
                     data={storageSummary ?? null}
                     isLoading={isLoadingUserStorage}
+                    isFetching={isAuthenticated && isFetchingStorageSummary}
                     errorMessage={storageError?.message}
                     onRefresh={handleStorageRefresh}
                     fillHeight={isDesktopTopRow}
@@ -311,6 +312,7 @@ export function SessionsDashboard() {
                       .map((repo) => repo.host)
                       .filter((host): host is string => Boolean(host))}
                     isLoading={isLoadingLaunchForm}
+                    isFetching={isFetchingLaunchForm}
                     onRefresh={handleLaunchFormRefresh}
                     activeSessions={sessions}
                     launchSessionFn={handleLaunchSession}
