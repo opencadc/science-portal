@@ -349,7 +349,9 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
             ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
           ]}
         >
-          <CardContent sx={{ p: 2, height: '100%', '&:last-child': { pb: 2 } }}>
+          {/* pt matches the loaded card (badge row reserved) so the layout
+              doesn't shift when skeletons swap to real cards. */}
+          <CardContent sx={{ px: 2, pb: 2, pt: 4.5, height: '100%', '&:last-child': { pb: 2 } }}>
             <Stack spacing={1.25}>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box display="flex" alignItems="center" gap={1}>
@@ -423,7 +425,10 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
               flexDirection: 'column',
               px: 2,
               pb: 1.5,
-              pt: showResourceMode ? 4.5 : 2,
+              // Constant top padding reserves the corner-badge row even before
+              // isFixedResources is known (e.g. a freshly launched session),
+              // so the content doesn't jump down when the chip appears.
+              pt: 4.5,
               '&:last-child': { pb: 1.5 },
             }}
           >
