@@ -1,20 +1,9 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import {
-  Paper,
-  Typography,
-  IconButton,
-  Box,
-  LinearProgress,
-  Alert,
-  Grid,
-  Skeleton,
-  Popover,
-  Tooltip,
-} from '@mui/material';
-import { Refresh as RefreshIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
+import { Typography, Box, Grid, Skeleton, Tooltip } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { DashboardWidget } from '@/app/components/DashboardWidget/DashboardWidget';
 import {
   UserStorageWidgetProps,
   StorageData,
@@ -228,7 +217,6 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
       enabled: isUncontrolled && canFetch,
     });
 
-    const [helpAnchorEl, setHelpAnchorEl] = useState<HTMLElement | null>(null);
     const [relativeNowMs, setRelativeNowMs] = useState(() => Date.now());
 
     const currentData = useMemo(() => {
@@ -292,21 +280,6 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
       }
     }, [onRefresh, isUncontrolled, canFetch, refetch]);
 
-    const handleHelpClick = useCallback(
-      (event: React.MouseEvent<HTMLElement>) => {
-        if (helpUrl) {
-          window.open(helpUrl, '_blank', 'noopener,noreferrer');
-        } else if (helpContent) {
-          setHelpAnchorEl(event.currentTarget);
-        }
-      },
-      [helpUrl, helpContent],
-    );
-
-    const handleHelpClose = useCallback(() => {
-      setHelpAnchorEl(null);
-    }, []);
-
     useEffect(() => {
       if (!displayData?.date) return;
       setRelativeNowMs(Date.now());
@@ -321,221 +294,91 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
     }, [displayData?.date]);
 
     return (
-      <Paper
+      <DashboardWidget
         ref={ref}
-        elevation={0}
-        variant="outlined"
-        sx={{
-          position: 'relative',
-          padding: theme.spacing(2),
-          overflow: 'hidden',
-          borderRadius: 2,
-          border: `1px solid ${theme.palette.divider}`,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          maxWidth: 600,
-          display: 'flex',
-          flexDirection: 'column',
-          ...(fillHeight && { height: '100%', flex: 1 }),
-          // Better mobile padding
-          [theme.breakpoints.down('sm')]: {
-            padding: theme.spacing(1.5),
-            borderRadius: 2,
-          },
-        }}
-        component="div"
+        title={title}
+        isLoading={currentLoading}
+        error={currentError}
+        onRefresh={showRefreshButton ? handleRefresh : undefined}
+        refreshAriaLabel="refresh storage"
+        refreshTooltip="Refresh storage"
+        help={helpUrl || helpContent ? { url: helpUrl, content: helpContent } : undefined}
+        showStatusBar={showProgressIndicator}
+        statusValue={progressPercentage > 0 ? progressPercentage : 100}
+        fillHeight={fillHeight}
+        maxWidth={600}
       >
-        {/* Error Alert */}
-        {currentError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {currentError}
-          </Alert>
-        )}
-
-        {/* Header */}
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: theme.spacing(1),
-            // Better mobile layout for header
-            [theme.breakpoints.down('sm')]: {
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              gap: 1,
-            },
-          }}
-        >
+        {/* Storage Cards or Empty State */}
+        {!displayData && !currentLoading ? (
           <Box
             sx={{
+              flex: fillHeight ? 1 : undefined,
               display: 'flex',
               alignItems: 'center',
-              gap: 1,
-              flexWrap: 'wrap',
+              justifyContent: 'center',
+              textAlign: 'center',
+              py: fillHeight ? 0 : 4,
+              color: theme.palette.text.secondary,
             }}
           >
-            <Typography
-              variant="h6"
-              component="h2"
-              sx={{
-                [theme.breakpoints.down('sm')]: {
-                  fontSize: theme.typography.body1.fontSize,
-                  fontWeight: theme.typography.fontWeightBold,
-                },
-              }}
-            >
-              {title}
-            </Typography>
-            {(helpUrl || helpContent) && (
-              <Tooltip title="More information">
-                <IconButton size="small" onClick={handleHelpClick} sx={{ p: 0.5 }}>
-                  <HelpOutlineIcon sx={{ fontSize: theme.spacing(2.5) }} />
-                </IconButton>
-              </Tooltip>
-            )}
+            <Typography variant="body2">{emptyMessage}</Typography>
           </Box>
-          {showRefreshButton && (
-            <Tooltip title="Refresh storage">
-              <IconButton
-                aria-label="refresh storage"
-                onClick={handleRefresh}
-                disabled={currentLoading}
-                size="small"
-                sx={{
-                  [theme.breakpoints.down('sm')]: {
-                    alignSelf: 'flex-end',
-                    mt: -1,
-                  },
-                }}
-              >
-                <RefreshIcon />
-              </IconButton>
-            </Tooltip>
-          )}
-        </Box>
-
-        {/* Progress Bar */}
-        {showProgressIndicator && (
-          <LinearProgress
-            color={currentLoading ? 'primary' : 'success'}
-            variant={currentLoading ? 'indeterminate' : 'determinate'}
-            value={currentLoading ? undefined : progressPercentage > 0 ? progressPercentage : 100}
-            sx={{
-              width: '100%',
-              height: 4,
-              marginBottom: theme.spacing(2),
-              borderRadius: 2,
-              '& .MuiLinearProgress-bar': {
-                borderRadius: 2,
-              },
-            }}
-          />
+        ) : (
+          <Box sx={{ mb: 2 }}>
+            <Grid container spacing={2} direction="column">
+              {cardData.map((card) => (
+                <Grid size={12} key={card.label}>
+                  <StorageCard
+                    label={card.label}
+                    value={card.value}
+                    isLoading={currentLoading}
+                    isWarning={card.isWarning}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
         )}
 
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {/* Storage Cards or Empty State */}
-          {!displayData && !currentLoading ? (
+        {/* When used size / quota totals last changed (VOSpace node mtime), not “last polled” */}
+        {sizeTotalsModifiedRelative &&
+          sizeTotalsModifiedRelative !== 'Unknown' &&
+          !currentLoading && (
             <Box
               sx={{
-                flex: fillHeight ? 1 : undefined,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
                 textAlign: 'center',
-                py: fillHeight ? 0 : 4,
+                mt: 'auto',
+                pt: 2,
                 color: theme.palette.text.secondary,
               }}
             >
-              <Typography variant="body2">{emptyMessage}</Typography>
-            </Box>
-          ) : (
-            <Box sx={{ mb: 2 }}>
-              <Grid container spacing={2} direction="column">
-                {cardData.map((card) => (
-                  <Grid size={12} key={card.label}>
-                    <StorageCard
-                      label={card.label}
-                      value={card.value}
-                      isLoading={currentLoading}
-                      isWarning={card.isWarning}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
+              <Tooltip
+                title={
+                  sizeTotalsModifiedAbsolute
+                    ? `${sizeTotalsModifiedAbsolute}`
+                    : 'Unknown'
+                }
+                arrow
+              >
+                <Typography variant="caption" sx={{ fontSize: '10px' }}>
+                  Modified{' '}
+                  <Typography
+                    component="span"
+                    variant="caption"
+                    sx={{
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      color: 'primary.500',
+                    }}
+                  >
+                    {sizeTotalsModifiedRelative}
+                  </Typography>
+                  {'.'}
+                </Typography>
+              </Tooltip>
             </Box>
           )}
-
-          {/* When used size / quota totals last changed (VOSpace node mtime), not “last polled” */}
-          {sizeTotalsModifiedRelative &&
-            sizeTotalsModifiedRelative !== 'Unknown' &&
-            !currentLoading && (
-              <Box
-                sx={{
-                  textAlign: 'center',
-                  mt: 'auto',
-                  pt: 2,
-                  color: theme.palette.text.secondary,
-                }}
-              >
-                <Tooltip
-                  title={
-                    sizeTotalsModifiedAbsolute
-                      ? `${sizeTotalsModifiedAbsolute}`
-                      : 'Unknown'
-                  }
-                  arrow
-                >
-                  <Typography variant="caption" sx={{ fontSize: '10px' }}>
-                    Modified{' '}
-                    <Typography
-                      component="span"
-                      variant="caption"
-                      sx={{
-                        fontSize: '10px',
-                        fontWeight: 'bold',
-                        color: 'primary.500',
-                      }}
-                    >
-                      {sizeTotalsModifiedRelative}
-                    </Typography>
-                    {'.'}
-                  </Typography>
-                </Tooltip>
-              </Box>
-            )}
-        </Box>
-
-        {/* Help Popover */}
-        {helpContent && (
-          <Popover
-            open={Boolean(helpAnchorEl)}
-            anchorEl={helpAnchorEl}
-            onClose={handleHelpClose}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'center',
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'center',
-            }}
-          >
-            <Box sx={{ p: 2, maxWidth: 300 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                User Home Storage
-              </Typography>
-              <Typography variant="body2">{helpContent}</Typography>
-            </Box>
-          </Popover>
-        )}
-      </Paper>
+      </DashboardWidget>
     );
   },
 );

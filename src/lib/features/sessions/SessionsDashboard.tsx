@@ -7,7 +7,7 @@ import { LaunchFormWidget } from '@/app/components/LaunchFormWidget/LaunchFormWi
 import { PlatformLoad } from '@/app/components/PlatformLoad/PlatformLoad';
 import { Footer } from '@/app/components/Footer/Footer';
 import { Box } from '@/app/components/Box/Box';
-import { Container, useMediaQuery } from '@mui/material';
+import { Container, Typography, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import type { SessionCardProps } from '@/app/types/SessionCardProps';
 import { useAuthStatus } from '@/lib/hooks/useAuth';
@@ -39,7 +39,9 @@ export function SessionsDashboard() {
 
   const { data: authStatus, isLoading: authLoading } = useAuthStatus();
   const isAuthenticated = authStatus?.authenticated ?? false;
-  const showLoggedOutCopy = !authLoading && !isAuthenticated;
+  // Widgets render only for authenticated users; while the auth check is in
+  // flight they stay mounted in their loading state to avoid a layout flash.
+  const isLoggedOut = !authLoading && !isAuthenticated;
 
   const operatingSessionIds = useOperatingSessionIds();
   const { markOperating, clearOperating } = useSessionUiActions();
@@ -109,7 +111,8 @@ export function SessionsDashboard() {
         isFetchingImages ||
         isFetchingRepositories ||
         isFetchingContext));
-  const isLoadingUserStorage = authLoading;
+
+  const isLoadingUserStorage = authLoading || isFetchingStorage;
 
   const handleDeleteSession = useCallback(
     (sessionId: string) => {
@@ -215,111 +218,110 @@ export function SessionsDashboard() {
   return (
     <>
       <Box component="main" sx={{ flex: 1, pt: 2 }}>
-        <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', lg: 'row' },
-              gap: 3,
-              alignItems: { lg: isDesktopTopRow ? 'stretch' : 'flex-start' },
-            }}
-          >
-            <Box
-              sx={{
-                flex: { xs: 1, lg: '0 0 80%' },
-                minWidth: 0,
-                display: { lg: isDesktopTopRow ? 'flex' : 'block' },
-                flexDirection: 'column',
-              }}
-            >
-              <ActiveSessionsWidget
-                sessions={activeSessions}
-                operatingSessionIds={operatingSessionIds}
-                isLoading={isLoadingSessions}
-                onRefresh={handleSessionsRefresh}
-                fillHeight={isDesktopTopRow}
-                emptyMessage={
-                  showLoggedOutCopy
-                    ? 'Sign in to see your active sessions. Use the Login button in the header.'
-                    : 'No active sessions'
-                }
-              />
-            </Box>
+        {isLoggedOut ? (
+          <Container maxWidth="sm" sx={{ py: { xs: 8, md: 12 }, textAlign: 'center' }}>
+            <Typography variant="h5" component="h1" gutterBottom>
+              Sign in to access the Science Portal
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Use the Login button in the header to view your active sessions, check your
+              storage, and launch new sessions.
+            </Typography>
+          </Container>
+        ) : (
+          <>
+            <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', lg: 'row' },
+                  gap: 3,
+                  alignItems: { lg: isDesktopTopRow ? 'stretch' : 'flex-start' },
+                }}
+              >
+                <Box
+                  sx={{
+                    flex: { xs: 1, lg: '0 0 80%' },
+                    minWidth: 0,
+                    display: { lg: isDesktopTopRow ? 'flex' : 'block' },
+                    flexDirection: 'column',
+                  }}
+                >
+                  <ActiveSessionsWidget
+                    sessions={activeSessions}
+                    operatingSessionIds={operatingSessionIds}
+                    isLoading={isLoadingSessions}
+                    onRefresh={handleSessionsRefresh}
+                    fillHeight={isDesktopTopRow}
+                  />
+                </Box>
 
-            <Box
-              sx={{
-                flex: { xs: 1, lg: '0 0 20%' },
-                minWidth: 0,
-                px: { xs: 1, sm: 2 },
-                display: { lg: isDesktopTopRow ? 'flex' : 'block' },
-                flexDirection: 'column',
-              }}
-            >
-              <UserStorageWidget
-                isAuthenticated={isAuthenticated}
-                name={authStatus?.user?.username || ''}
-                isLoading={isLoadingUserStorage}
-                fillHeight={isDesktopTopRow}
-                emptyMessage={
-                  showLoggedOutCopy
-                    ? 'Sign in to view your storage usage. Use the Login button in the header.'
-                    : 'No storage data available'
-                }
-              />
-            </Box>
-          </Box>
-        </Container>
+                <Box
+                  sx={{
+                    flex: { xs: 1, lg: '0 0 20%' },
+                    minWidth: 0,
+                    px: { xs: 1, sm: 2 },
+                    display: { lg: isDesktopTopRow ? 'flex' : 'block' },
+                    flexDirection: 'column',
+                  }}
+                >
+                  <UserStorageWidget
+                    isAuthenticated={isAuthenticated}
+                    name={authStatus?.user?.username || ''}
+                    isLoading={isLoadingUserStorage}
+                    fillHeight={isDesktopTopRow}
+                  />
+                </Box>
+              </Box>
+            </Container>
 
-        <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: { xs: 'column', lg: 'row' },
-              gap: 3,
-            }}
-          >
-            <Box
-              sx={{
-                flex: { xs: 1, lg: '0 0 60%' },
-                minWidth: 0,
-              }}
-            >
-              <LaunchFormWidget
-                helpUrl="https://www.opencadc.org/canfar/latest/platform/sessions/"
-                signInAlertMessage={
-                  showLoggedOutCopy
-                    ? 'Sign in to launch sessions. Use the Login button in the header.'
-                    : undefined
-                }
-                imagesByType={imagesByType}
-                repositoryHosts={imageRepositories
-                  .map((repo) => repo.host)
-                  .filter((host): host is string => Boolean(host))}
-                isLoading={isLoadingLaunchForm}
-                onRefresh={handleLaunchFormRefresh}
-                activeSessions={sessions}
-                launchSessionFn={handleLaunchSession}
-                coreOptions={context?.cores.options}
-                memoryOptions={context?.memoryGB.options}
-                gpuOptions={context?.gpus.options}
-              />
-            </Box>
+            <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', lg: 'row' },
+                  gap: 3,
+                }}
+              >
+                <Box
+                  sx={{
+                    flex: { xs: 1, lg: '0 0 60%' },
+                    minWidth: 0,
+                  }}
+                >
+                  <LaunchFormWidget
+                    helpUrl="https://www.opencadc.org/canfar/latest/platform/sessions/"
+                    imagesByType={imagesByType}
+                    repositoryHosts={imageRepositories
+                      .map((repo) => repo.host)
+                      .filter((host): host is string => Boolean(host))}
+                    isLoading={isLoadingLaunchForm}
+                    onRefresh={handleLaunchFormRefresh}
+                    activeSessions={sessions}
+                    launchSessionFn={handleLaunchSession}
+                    coreOptions={context?.cores.options}
+                    memoryOptions={context?.memoryGB.options}
+                    gpuOptions={context?.gpus.options}
+                  />
+                </Box>
 
-            <Box
-              sx={{
-                flex: { xs: 1, lg: '0 0 40%' },
-                minWidth: 0,
-                px: { xs: 1, sm: 2 },
-              }}
-            >
-              <PlatformLoad
-                data={STATIC_PLATFORM_LOAD_DATA}
-                isLoading={false}
-                showDisabledOverlay
-              />
-            </Box>
-          </Box>
-        </Container>
+                <Box
+                  sx={{
+                    flex: { xs: 1, lg: '0 0 40%' },
+                    minWidth: 0,
+                    px: { xs: 1, sm: 2 },
+                  }}
+                >
+                  <PlatformLoad
+                    data={STATIC_PLATFORM_LOAD_DATA}
+                    isLoading={false}
+                    showDisabledOverlay
+                  />
+                </Box>
+              </Box>
+            </Container>
+          </>
+        )}
       </Box>
 
       {!isOIDCMode && <Footer sections={footerSections} copyright="© 2022-2026" />}

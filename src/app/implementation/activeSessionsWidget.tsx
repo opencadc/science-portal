@@ -1,19 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import {
-  Paper,
-  Typography,
-  IconButton,
-  Box,
-  LinearProgress,
-  Card,
-  CardContent,
-} from '@mui/material';
-import { Refresh as RefreshIcon } from '@mui/icons-material';
+import { Typography, Box, Card, CardContent } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { ActiveSessionsWidgetProps } from '@/app/types/ActiveSessionsWidgetProps';
+import { DashboardWidget } from '@/app/components/DashboardWidget/DashboardWidget';
 import { SessionCard } from '@/app/components/SessionCard/SessionCard';
 import { SessionCheckModal } from '@/app/components/SessionCheckModal/SessionCheckModal';
 import { useSessionHealthCheck, useSessionModalsActions } from '@/lib/stores';
@@ -126,155 +118,94 @@ export function ActiveSessionsWidgetImpl({
   );
 
   return (
-    <Paper
-      elevation={0}
-      variant="outlined"
-      sx={{
-        position: 'relative',
-        padding: theme.spacing(2),
-        overflow: 'hidden',
-        borderRadius: theme.shape.borderRadius,
-        border: `1px solid ${theme.palette.divider}`,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        display: 'flex',
-        flexDirection: 'column',
-        ...(fillHeight && { height: '100%', flex: 1 }),
-      }}
-      component="div"
+    <DashboardWidget
+      title={displayTitle}
+      isLoading={isLoading}
+      onRefresh={onRefresh ? handleRefreshClick : undefined}
+      fillHeight={fillHeight}
     >
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: theme.spacing(1),
-          flexShrink: 0,
-        }}
-      >
-        <Typography variant="h6" component="h2">
-          {displayTitle}
-        </Typography>
-        {onRefresh && (
-          <IconButton
-            aria-label="refresh"
-            onClick={handleRefreshClick}
-            disabled={isLoading}
-            size="small"
-          >
-            <RefreshIcon />
-          </IconButton>
-        )}
-      </Box>
-
-      {/* Loading Bar */}
-      <LinearProgress
-        color={isLoading ? 'primary' : 'success'}
-        variant={isLoading ? 'indeterminate' : 'determinate'}
-        value={isLoading ? undefined : 100}
-        sx={{
-          width: '100%',
-          height: 4,
-          marginBottom: theme.spacing(2),
-          borderRadius: 2,
-          flexShrink: 0,
-          '& .MuiLinearProgress-bar': {
-            borderRadius: 2,
-          },
-        }}
-      />
-
       {/* Content - Session Cards */}
-      <Box
-        sx={{
-          flex: fillHeight ? 1 : undefined,
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-        }}
-      >
-        {isLoading ? (
-          <Box sx={sessionsLayoutSx}>
-            {Array.from({ length: skeletonCount }, (_, index) => (
-              <SessionCard
-                key={`skeleton-${index}`}
-                compact
-                sessionType="notebook"
-                sessionName=""
-                status="Running"
-                containerImage=""
-                startedTime=""
-                expiresTime=""
-                memoryAllocated=""
-                cpuAllocated=""
-                loading={true}
-                sx={sessionCardSx}
-              />
-            ))}
-          </Box>
-        ) : sessions.length === 0 ? (
-          <Card
-            elevation={0}
-            variant="outlined"
+      {isLoading ? (
+        <Box sx={sessionsLayoutSx}>
+          {Array.from({ length: skeletonCount }, (_, index) => (
+            <SessionCard
+              key={`skeleton-${index}`}
+              compact
+              sessionType="notebook"
+              sessionName=""
+              status="Running"
+              containerImage=""
+              startedTime=""
+              expiresTime=""
+              memoryAllocated=""
+              cpuAllocated=""
+              loading={true}
+              sx={sessionCardSx}
+            />
+          ))}
+        </Box>
+      ) : sessions.length === 0 ? (
+        <Card
+          elevation={0}
+          variant="outlined"
+          sx={{
+            width: '100%',
+            flex: fillHeight ? 1 : undefined,
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: fillHeight ? 0 : 120,
+            border: `1px solid ${theme.palette.divider}`,
+            cursor: 'default',
+          }}
+        >
+          <CardContent
             sx={{
-              width: '100%',
-              flex: fillHeight ? 1 : undefined,
+              flex: 1,
               display: 'flex',
-              flexDirection: 'column',
-              minHeight: fillHeight ? 0 : 120,
-              border: `1px solid ${theme.palette.divider}`,
-              cursor: 'default',
+              alignItems: 'center',
+              justifyContent: 'center',
+              py: 3,
+              background:
+                theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 100%)'
+                  : 'linear-gradient(135deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.05) 100%)',
+              [theme.breakpoints.down('sm')]: {
+                padding: theme.spacing(2),
+                '&:last-child': {
+                  paddingBottom: theme.spacing(2),
+                },
+              },
             }}
           >
-            <CardContent
+            <Typography
+              variant="body2"
               sx={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                py: 3,
-                background:
-                  theme.palette.mode === 'dark'
-                    ? 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 100%)'
-                    : 'linear-gradient(135deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.05) 100%)',
-                [theme.breakpoints.down('sm')]: {
-                  padding: theme.spacing(2),
-                  '&:last-child': {
-                    paddingBottom: theme.spacing(2),
-                  },
-                },
+                color:
+                  theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                fontWeight: 400,
               }}
             >
-              <Typography
-                variant="body2"
-                sx={{
-                  color:
-                    theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
-                  fontWeight: 400,
-                }}
-              >
-                {emptyMessage}
-              </Typography>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            <Box sx={sessionsLayoutSx}>
-              {sessionsToDisplay.map((session, index) => renderSessionCard(session, index))}
-            </Box>
-            {hasMoreSessions && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                align="center"
-                sx={{ pt: 1, flexShrink: 0 }}
-              >
-                And {sessions.length - maxSessionsToShow} more...
-              </Typography>
-            )}
-          </>
-        )}
-      </Box>
+              {emptyMessage}
+            </Typography>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Box sx={sessionsLayoutSx}>
+            {sessionsToDisplay.map((session, index) => renderSessionCard(session, index))}
+          </Box>
+          {hasMoreSessions && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              align="center"
+              sx={{ pt: 1, flexShrink: 0 }}
+            >
+              And {sessions.length - maxSessionsToShow} more...
+            </Typography>
+          )}
+        </>
+      )}
 
       {/* Session Check Modal */}
       <SessionCheckModal
@@ -282,6 +213,6 @@ export function ActiveSessionsWidgetImpl({
         onClose={closeHealthCheck}
         isChecking={healthCheck.checking}
       />
-    </Paper>
+    </DashboardWidget>
   );
 }

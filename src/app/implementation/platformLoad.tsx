@@ -1,18 +1,11 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import {
-  Paper,
-  Typography,
-  IconButton,
-  Box,
-  LinearProgress,
-  useMediaQuery,
-  Stack,
-} from '@mui/material';
-import { Refresh as RefreshIcon, WarningAmber as WarningAmberIcon } from '@mui/icons-material';
+import { Typography, Box, useMediaQuery, Stack } from '@mui/material';
+import { WarningAmber as WarningAmberIcon } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import { PlatformLoadProps } from '../types/PlatformLoadProps';
+import { DashboardWidget } from '@/app/components/DashboardWidget/DashboardWidget';
 import { MetricBlock } from '../components/MetricBlock/MetricBlock';
 import { PLATFORM_LOAD_DISABLED_MESSAGE } from '@/lib/config/static-platform-load';
 
@@ -76,56 +69,52 @@ export const PlatformLoadImpl: React.FC<PlatformLoadProps> = ({
     </>
   );
 
-  return (
-    <Paper
-      className={className}
-      elevation={0}
-      variant="outlined"
+  // Footer with the last-update timestamp; hidden when live stats are disabled.
+  const lastUpdateFooter = !showDisabledOverlay && (
+    <Box
       sx={{
-        position: 'relative',
-        padding: theme.spacing(2),
-        overflow: 'hidden',
-        borderRadius: theme.shape.borderRadius, // Ensure consistent border radius
-        border: `1px solid ${theme.palette.divider}`,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        display: 'flex',
+        justifyContent: 'flex-end',
+        [theme.breakpoints.down('sm')]: {
+          justifyContent: 'center', // Center text on mobile
+        },
       }}
-      component="div"
     >
-      {/* Header */}
-      <Box
+      <Typography
+        variant="caption"
+        color="text.secondary"
         sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: theme.spacing(1),
-        }}
-      >
-        <Typography variant="h6" component="h2">
-          {title}
-        </Typography>
-        {!showDisabledOverlay && (
-          <IconButton aria-label="refresh" onClick={onRefresh} disabled={isLoading} size="small">
-            <RefreshIcon />
-          </IconButton>
-        )}
-      </Box>
-
-      {/* Loading Bar - Always visible, positioned after title */}
-      <LinearProgress
-        color={effectiveLoading ? 'primary' : 'success'}
-        variant={effectiveLoading ? 'indeterminate' : 'determinate'}
-        value={effectiveLoading ? undefined : 100}
-        sx={{
-          width: '100%',
-          height: 4,
-          marginBottom: theme.spacing(2),
-          borderRadius: 2,
-          '& .MuiLinearProgress-bar': {
-            borderRadius: 2,
+          fontSize: '10px',
+          [theme.breakpoints.down('sm')]: {
+            textAlign: 'center',
           },
         }}
-      />
+      >
+        Last update:{' '}
+        <Typography
+          component="span"
+          variant="caption"
+          sx={{
+            fontSize: '10px',
+            fontWeight: 'bold',
+            fontFamily: 'monospace',
+            color: 'primary.500',
+          }}
+        >
+          {formattedLastUpdate}
+        </Typography>
+      </Typography>
+    </Box>
+  );
 
+  return (
+    <DashboardWidget
+      className={className}
+      title={title}
+      isLoading={effectiveLoading}
+      onRefresh={showDisabledOverlay ? undefined : onRefresh}
+      footer={lastUpdateFooter || undefined}
+    >
       {/* Content - Responsive MetricBlock layout; blurred when live stats disabled (CADC-15555) */}
       <Box sx={{ marginBottom: theme.spacing(2), position: 'relative' }}>
         {showDisabledOverlay ? (
@@ -185,44 +174,6 @@ export const PlatformLoadImpl: React.FC<PlatformLoadProps> = ({
           metricsContent
         )}
       </Box>
-
-      {/* Footer */}
-      {!showDisabledOverlay && (
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            [theme.breakpoints.down('sm')]: {
-              justifyContent: 'center', // Center text on mobile
-            },
-          }}
-        >
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{
-              fontSize: '10px',
-              [theme.breakpoints.down('sm')]: {
-                textAlign: 'center',
-              },
-            }}
-          >
-            Last update:{' '}
-            <Typography
-              component="span"
-              variant="caption"
-              sx={{
-                fontSize: '10px',
-                fontWeight: 'bold',
-                fontFamily: 'monospace',
-                color: 'primary.500',
-              }}
-            >
-              {formattedLastUpdate}
-            </Typography>
-          </Typography>
-        </Box>
-      )}
-    </Paper>
+    </DashboardWidget>
   );
 };
