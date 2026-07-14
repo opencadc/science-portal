@@ -169,6 +169,10 @@ export function useSessionEventLog(
     queryKey: isEvents ? sessionKeys.events(sessionId) : sessionKeys.logs(sessionId),
     queryFn: () => (isEvents ? getSessionEvents(sessionId) : getSessionLogs(sessionId)),
     enabled: enabled && !!sessionId,
+    // Events/logs grow while the session runs, so always refetch when the
+    // modal (re)opens instead of serving the 30s-fresh global cache. This also
+    // guarantees the modal shows fetch feedback on every open.
+    staleTime: 0,
     ...options,
   });
 }

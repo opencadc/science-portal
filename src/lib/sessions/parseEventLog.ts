@@ -34,13 +34,3 @@ export function parseEventLog(logData: string): { events: SessionEvent[]; hasPar
 
   return { events, hasParseErrors };
 }
-
-export function mockRawDataFromEvents(initialEvents: SessionEvent[]): string {
-  const header =
-    'TYPE     REASON      MESSAGE                                                                                                                        FIRST-TIME             LAST-TIME';
-  const lines = initialEvents.map(
-    (e) =>
-      `${e.type}   ${e.reason}   ${e.message}   ${e.firstTime || '<nil>'}   ${e.lastTime || '<nil>'}`,
-  );
-  return [header, ...lines].join('\n');
-}

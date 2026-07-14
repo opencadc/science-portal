@@ -604,15 +604,13 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           sessionId={apiSessionId}
           sessionName={sessionName}
           onClose={() => setShowEventsModal(false)}
-          showRefreshButton={true}
           logView="events"
         />
         <EventsModal
           open={showLogsModal}
           sessionId={apiSessionId}
-          sessionName={`${sessionName} - Logs`}
+          sessionName={sessionName}
           onClose={() => setShowLogsModal(false)}
-          showRefreshButton={true}
           forceRawView={true}
           defaultView="raw"
           logView="logs"

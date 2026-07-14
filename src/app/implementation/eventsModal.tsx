@@ -16,6 +16,7 @@ import {
   Box,
   Chip,
   CircularProgress,
+  LinearProgress,
   Alert,
   Button,
   Tooltip,
@@ -34,6 +35,7 @@ import {
   CloudDone as CloudDoneIcon,
   PlayCircle as PlayCircleIcon,
   Flag as FlagIcon,
+  Description as LogsIcon,
 } from '@mui/icons-material';
 import type {
   EventsModalProps,
@@ -41,7 +43,7 @@ import type {
   EventReason,
 } from '@/app/types/EventsModalProps';
 import { useSessionEventLog } from '@/lib/hooks/useSessions';
-import { mockRawDataFromEvents, parseEventLog } from '@/lib/sessions/parseEventLog';
+import { parseEventLog } from '@/lib/sessions/parseEventLog';
 
 /**
  * Format timestamp for display
@@ -108,12 +110,9 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
   sessionId,
   sessionName = 'Session',
   onClose,
-  onRefresh,
   logView = 'events',
-  initialEvents,
   maxEvents = 100,
   showRefreshButton = true,
-  autoScroll = false,
   forceRawView = false,
   defaultView = 'table',
 }) => {
@@ -123,30 +122,28 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
   const [showRawView, setShowRawView] = useState(forceRawView || defaultView === 'raw');
 
   const {
-    data: rawDataFromQuery,
-    isLoading: queryLoading,
+    data: rawData,
+    isLoading,
+    isFetching,
     error: queryError,
     refetch,
-  } = useSessionEventLog(sessionId, logView, open && !initialEvents);
+  } = useSessionEventLog(sessionId, logView, open);
 
-  const rawData = useMemo(() => {
-    if (initialEvents) return mockRawDataFromEvents(initialEvents);
-    return rawDataFromQuery ?? null;
-  }, [initialEvents, rawDataFromQuery]);
+  // Whitespace-only bodies (e.g. "\n") count as empty — the endpoint returns
+  // 200 before the container has produced output.
+  const hasRawContent = !!rawData?.trim();
 
   const { events, hasParseErrors: parseError } = useMemo(() => {
     if (!rawData) return { events: [], hasParseErrors: false };
     return parseEventLog(rawData);
   }, [rawData]);
 
-  const loading = !initialEvents && queryLoading;
   const error = queryError?.message ?? null;
 
-  const refresh = useCallback(() => {
+  const handleRefresh = useCallback(() => {
     void refetch();
   }, [refetch]);
 
-  // Sort events by timestamp (most recent first)
   const sortedEvents = useMemo(() => {
     return [...events]
       .sort((a, b) => {
@@ -157,20 +154,10 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
       .slice(0, maxEvents);
   }, [events, maxEvents]);
 
-  const handleRefresh = useCallback(() => {
-    refresh();
-    onRefresh?.();
-  }, [refresh, onRefresh]);
-
-  // Auto-scroll to bottom when new events arrive
-  useEffect(() => {
-    if (autoScroll && open) {
-      const content = document.getElementById('events-modal-content');
-      if (content) {
-        content.scrollTop = content.scrollHeight;
-      }
-    }
-  }, [sortedEvents, autoScroll, open]);
+  // Same convention as DashboardWidget:
+  // - isLoading: initial fetch, nothing cached yet → skeleton/spinner + progress bar
+  // - isFetching: background refetch → keep stale content visible + progress bar
+  const isBusy = isLoading || isFetching;
 
   // Auto-switch to raw view if parsing errors detected
   useEffect(() => {
@@ -178,6 +165,9 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
       setShowRawView(true);
     }
   }, [parseError, showRawView]);
+
+  const isLogsView = logView === 'logs';
+  const title = isLogsView ? 'Container Logs' : 'Container Events';
 
   return (
     <Dialog
@@ -191,15 +181,24 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
       <DialogTitle id="events-modal-title">
         <Box display="flex" alignItems="center" justifyContent="space-between">
           <Box display="flex" alignItems="center" gap={1}>
-            <FlagIcon />
-            <Typography variant="h6">Container Events - {sessionName}</Typography>
+            {isLogsView ? <LogsIcon /> : <FlagIcon />}
+            <Typography variant="h6">
+              {title} - {sessionName}
+            </Typography>
           </Box>
           <Box display="flex" alignItems="center" gap={1}>
-            {showRefreshButton && !loading && (
-              <Tooltip title="Refresh events">
-                <IconButton onClick={handleRefresh} size="small" aria-label="refresh events">
-                  <RefreshIcon />
-                </IconButton>
+            {showRefreshButton && (
+              <Tooltip title={isLogsView ? 'Refresh logs' : 'Refresh events'}>
+                <span>
+                  <IconButton
+                    onClick={handleRefresh}
+                    size="small"
+                    aria-label={isLogsView ? 'refresh logs' : 'refresh events'}
+                    disabled={isBusy}
+                  >
+                    <RefreshIcon />
+                  </IconButton>
+                </span>
               </Tooltip>
             )}
             <IconButton onClick={onClose} size="small" aria-label="close modal">
@@ -209,34 +208,42 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
         </Box>
       </DialogTitle>
 
-      <DialogContent id="events-modal-content" dividers>
-        {/* View toggle and parse error warning */}
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={showRawView}
-                onChange={(e) => setShowRawView(e.target.checked)}
-                color="primary"
-                disabled={forceRawView}
-              />
-            }
-            label={forceRawView ? 'Raw view (parsing disabled)' : 'Raw view'}
-          />
-          {parseError && !showRawView && !forceRawView && (
-            <Alert severity="warning" sx={{ flex: 1, ml: 2 }}>
-              Some events could not be parsed. Enable raw view to see all data.
-            </Alert>
-          )}
-        </Box>
+      {/* Fixed-height slot — both isLoading and isFetching animate the bar;
+          initial load also shows the spinner in the content area below. */}
+      <Box sx={{ height: 4, flexShrink: 0 }}>
+        {isBusy && <LinearProgress sx={{ height: 4 }} />}
+      </Box>
 
-        {loading && (
+      <DialogContent dividers>
+        {/* View toggle and parse error warning (hidden when parsing is disabled) */}
+        {!forceRawView && (
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showRawView}
+                  onChange={(e) => setShowRawView(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label="Raw view"
+            />
+            {parseError && !showRawView && (
+              <Alert severity="warning" sx={{ flex: 1, ml: 2 }}>
+                Some events could not be parsed. Enable raw view to see all data.
+              </Alert>
+            )}
+          </Box>
+        )}
+
+        {isLoading && (
           <Box display="flex" justifyContent="center" alignItems="center" py={4}>
             <CircularProgress />
           </Box>
         )}
 
-        {error && !loading && (
+        {/* A failed refetch keeps the last data visible below the alert. */}
+        {error && !isLoading && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
             <Button size="small" onClick={handleRefresh} sx={{ ml: 2 }}>
@@ -246,15 +253,13 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
         )}
 
         {/* Raw view display */}
-        {!loading && !error && showRawView && rawData && (
+        {!isLoading && showRawView && hasRawContent && (
           <Paper
             variant="outlined"
             sx={{
               p: 2,
-              backgroundColor: theme.palette.grey[50],
-              ...(theme.palette.mode === 'dark' && {
-                backgroundColor: theme.palette.grey[900],
-              }),
+              backgroundColor:
+                theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[50],
             }}
           >
             <Typography
@@ -274,8 +279,24 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
           </Paper>
         )}
 
+        {/* Raw view empty state: the endpoint can return 200 with an empty body
+            (e.g. logs of a container that hasn't started), which would otherwise
+            leave the modal blank. */}
+        {!isLoading && !error && showRawView && !hasRawContent && (
+          <Box display="flex" flexDirection="column" alignItems="center" py={4}>
+            <Typography variant="h6" gutterBottom>
+              {isLogsView ? 'No logs available' : 'No events available'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {isLogsView
+                ? 'The container has not produced any output yet.'
+                : 'No container events have been recorded for this session yet.'}
+            </Typography>
+          </Box>
+        )}
+
         {/* Table view display */}
-        {!loading && !error && !showRawView && sortedEvents.length === 0 && (
+        {!isLoading && !error && !showRawView && sortedEvents.length === 0 && (
           <Box display="flex" flexDirection="column" alignItems="center" py={4}>
             <Typography variant="h6" gutterBottom>
               No events available
@@ -286,7 +307,7 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
           </Box>
         )}
 
-        {!loading && !error && !showRawView && sortedEvents.length > 0 && (
+        {!isLoading && !showRawView && sortedEvents.length > 0 && (
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small" stickyHeader>
               <TableHead>
