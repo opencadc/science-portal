@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Typography, Box, Grid, Skeleton, Tooltip } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { DashboardWidget } from '@/app/components/DashboardWidget/DashboardWidget';
@@ -9,7 +9,6 @@ import {
   StorageData,
   StorageCardData,
 } from '@/app/types/UserStorageWidgetProps';
-import { useUserStorageSummary } from '@/lib/hooks/useUserStorage';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -35,14 +34,6 @@ dayjs.updateLocale('en', {
     yy: '%d years',
   },
 });
-
-// Test data for development
-const TEST_DATA = {
-  size: 11281596360,
-  quota: 200000000000,
-  date: '2025-06-12T06:27:58.000Z',
-  usage: 94,
-};
 
 // Utility functions
 const convertToFileSize = (bytes: number): string => {
@@ -184,10 +175,8 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
   (
     {
       title = 'User Home Storage',
-      isAuthenticated = false,
-      name,
       isLoading = false,
-      data: externalData,
+      data = null,
       errorMessage,
       onRefresh,
       showRefreshButton = true,
@@ -199,36 +188,15 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
       emptyMessage = 'No storage data available',
       dateFormatter = formatStorageDateLocalDefault,
       fileSizeFormatter = convertToFileSize,
-      testMode = false,
       fillHeight = false,
     },
     ref,
   ) => {
     const theme = useTheme();
-    const isUncontrolled = externalData === undefined && !testMode;
-    const canFetch = Boolean(isAuthenticated && name && name !== 'Login');
-
-    const {
-      data: queryData,
-      isLoading: queryLoading,
-      error: queryError,
-      refetch,
-    } = useUserStorageSummary(name ?? '', canFetch, {
-      enabled: isUncontrolled && canFetch,
-    });
 
     const [relativeNowMs, setRelativeNowMs] = useState(() => Date.now());
 
-    const currentData = useMemo(() => {
-      if (externalData !== undefined) return externalData;
-      if (testMode) return TEST_DATA;
-      return queryData ?? null;
-    }, [externalData, testMode, queryData]);
-
-    const currentLoading = isLoading || (isUncontrolled && queryLoading);
-    const displayData = currentLoading ? null : currentData;
-    const currentError =
-      externalData !== undefined ? errorMessage : queryError?.message;
+    const displayData = isLoading ? null : data;
 
     // Card configuration
     const cardConfigs = useMemo(
@@ -272,14 +240,6 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
       return displayData?.date ? formatRelativeStorageModified(displayData.date, relativeNowMs) : null;
     }, [displayData?.date, relativeNowMs]);
 
-    const handleRefresh = useCallback(() => {
-      if (onRefresh) {
-        onRefresh();
-      } else if (isUncontrolled && canFetch) {
-        void refetch();
-      }
-    }, [onRefresh, isUncontrolled, canFetch, refetch]);
-
     useEffect(() => {
       if (!displayData?.date) return;
       setRelativeNowMs(Date.now());
@@ -297,9 +257,9 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
       <DashboardWidget
         ref={ref}
         title={title}
-        isLoading={currentLoading}
-        error={currentError}
-        onRefresh={showRefreshButton ? handleRefresh : undefined}
+        isLoading={isLoading}
+        error={errorMessage}
+        onRefresh={showRefreshButton ? onRefresh : undefined}
         refreshAriaLabel="refresh storage"
         refreshTooltip="Refresh storage"
         help={helpUrl || helpContent ? { url: helpUrl, content: helpContent } : undefined}
@@ -309,7 +269,7 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
         maxWidth={600}
       >
         {/* Storage Cards or Empty State */}
-        {!displayData && !currentLoading ? (
+        {!displayData && !isLoading ? (
           <Box
             sx={{
               flex: fillHeight ? 1 : undefined,
@@ -331,7 +291,7 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
                   <StorageCard
                     label={card.label}
                     value={card.value}
-                    isLoading={currentLoading}
+                    isLoading={isLoading}
                     isWarning={card.isWarning}
                   />
                 </Grid>
@@ -343,7 +303,7 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
         {/* When used size / quota totals last changed (VOSpace node mtime), not “last polled” */}
         {sizeTotalsModifiedRelative &&
           sizeTotalsModifiedRelative !== 'Unknown' &&
-          !currentLoading && (
+          !isLoading && (
             <Box
               sx={{
                 textAlign: 'center',

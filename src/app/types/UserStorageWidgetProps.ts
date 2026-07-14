@@ -18,13 +18,14 @@ export interface StorageCardData {
   isWarning?: boolean;
 }
 
+/**
+ * Presentational widget: data is fetched by the feature component (e.g.
+ * `SessionsDashboard` via `useUserStorageSummary`) and passed in as props,
+ * matching the other dashboard widgets.
+ */
 export interface UserStorageWidgetProps {
   /** Title for the widget */
   title?: string;
-  /** Whether the user is authenticated */
-  isAuthenticated?: boolean;
-  /** Username for storage requests */
-  name?: string;
   /** Whether the widget is in a loading state */
   isLoading?: boolean;
   /** Storage data to display */
@@ -51,8 +52,6 @@ export interface UserStorageWidgetProps {
   dateFormatter?: (date: string) => string;
   /** Custom file size formatter */
   fileSizeFormatter?: (bytes: number) => string;
-  /** Test mode flag to use test data */
-  testMode?: boolean;
   /** When true, stretch to match the Active Sessions panel height on desktop. */
   fillHeight?: boolean;
 }

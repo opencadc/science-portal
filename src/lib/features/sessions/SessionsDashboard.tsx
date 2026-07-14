@@ -19,6 +19,7 @@ import {
   useLaunchSession,
 } from '@/lib/hooks/useSessions';
 import { useContainerImages, useImageRepositories, useContext } from '@/lib/hooks/useImages';
+import { useUserStorageSummary } from '@/lib/hooks/useUserStorage';
 import { STATIC_PLATFORM_LOAD_DATA } from '@/lib/config/static-platform-load';
 import type { Session, SessionLaunchParams } from '@/lib/api/skaha';
 import {
@@ -73,6 +74,15 @@ export function SessionsDashboard() {
     refetch: refetchContext,
   } = useContext(isAuthenticated);
 
+  const username = authStatus?.user?.username ?? '';
+  const {
+    data: storageSummary,
+    isLoading: isLoadingStorageSummary,
+    isFetching: isFetchingStorageSummary,
+    error: storageError,
+    refetch: refetchStorage, 
+  } = useUserStorageSummary(username, isAuthenticated);
+
   const { mutate: deleteSession } = useDeleteSession({
     onSuccess: (_, sessionId) => {
       setTimeout(() => clearOperating(sessionId), 3500);
@@ -112,7 +122,7 @@ export function SessionsDashboard() {
         isFetchingRepositories ||
         isFetchingContext));
 
-  const isLoadingUserStorage = authLoading || isFetchingStorage;
+  const isLoadingUserStorage = authLoading || (isAuthenticated && isLoadingStorageSummary) || isFetchingStorageSummary;
 
   const handleDeleteSession = useCallback(
     (sessionId: string) => {
@@ -163,6 +173,10 @@ export function SessionsDashboard() {
   const handleSessionsRefresh = useCallback(() => {
     refetchSessions();
   }, [refetchSessions]);
+
+  const handleStorageRefresh = useCallback(() => {
+    void refetchStorage();
+  }, [refetchStorage]);
 
   const handleLaunchFormRefresh = useCallback(() => {
     refetchImages();
@@ -266,9 +280,10 @@ export function SessionsDashboard() {
                   }}
                 >
                   <UserStorageWidget
-                    isAuthenticated={isAuthenticated}
-                    name={authStatus?.user?.username || ''}
+                    data={storageSummary ?? null}
                     isLoading={isLoadingUserStorage}
+                    errorMessage={storageError?.message}
+                    onRefresh={handleStorageRefresh}
                     fillHeight={isDesktopTopRow}
                   />
                 </Box>
