@@ -129,6 +129,16 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         : 'flexible';
     const [resourceType, setResourceType] = useState<'flexible' | 'fixed'>(initialResourceType);
 
+    // Dirty = the user explicitly edited some field (project, image, name,
+    // registry, resources…). Changing the session *type* alone doesn't count:
+    // on a clean form a type change is free to re-derive the default project,
+    // while on a dirty form it must respect the user's project choice when
+    // that project also exists for the new type. Cleared on Reset. A deep link
+    // with a non-default project is treated as dirty — it's an explicit choice.
+    const [isFormDirty, setIsFormDirty] = useState(
+      () => urlParams.project !== (defaultValues.project || SKAHA_PROJECT),
+    );
+
     const [formData, setFormData] = useState<SessionFormData>({
       type: urlParams.type as SessionType,
       project: urlParams.project,
@@ -309,6 +319,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
               ? Number(event.target.value)
               : event.target.value;
 
+          setIsFormDirty(true);
           setFormData((prev) => ({
             ...prev,
             [field]: value,
@@ -329,12 +340,33 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
             ? Number(event.target.value)
             : event.target.value;
 
+        // Changing the type re-derives the project. On a clean form it snaps
+        // back to the default; on a dirty form the user's selected project is
+        // preserved when it also exists for the new type — only the container
+        // image resets (re-auto-selected for the new type by the effect).
+        let nextProject = SKAHA_PROJECT;
+        if (field === 'type' && typeof value === 'string') {
+          const imagesForNewType = imagesByType[value];
+          const projectsForNewType =
+            imagesForNewType && effectiveRegistry
+              ? getProjectNames(
+                  filterImagesByProjectForRegistry(imagesForNewType, effectiveRegistry),
+                )
+              : [];
+          if (isFormDirty && formData.project && projectsForNewType.includes(formData.project)) {
+            nextProject = formData.project;
+          }
+        } else {
+          // Any explicit edit other than the type marks the form dirty.
+          setIsFormDirty(true);
+        }
+
         setFormData((prev) => {
           const newData = { ...prev, [field]: value };
 
           // Reset dependent fields when session type changes
           if (field === 'type' && typeof value === 'string') {
-            newData.project = SKAHA_PROJECT; // Set to default project
+            newData.project = nextProject;
             newData.containerImage = ''; // Will be auto-selected by useEffect
             // Automatically update session name based on the new type
             newData.sessionName = generateSessionName(value);
@@ -360,7 +392,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
           if (newType === FIREFLY_TYPE || newType === DESKTOP_TYPE) {
             setUrlParams({
               type: newType,
-              project: SKAHA_PROJECT,
+              project: nextProject,
               image: '',
               cores: null,
               memory: null,
@@ -368,7 +400,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
             });
             setResourceType('flexible'); // Reset to flexible
           } else {
-            setUrlParams({ type: newType, project: SKAHA_PROJECT, image: '' });
+            setUrlParams({ type: newType, project: nextProject, image: '' });
           }
         } else if (field === 'repositoryHost') {
           setUrlParams({ project: '', image: '' });
@@ -389,7 +421,15 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
           onSessionTypeChange(value);
         }
       },
-      [onSessionTypeChange, generateSessionName, setUrlParams],
+      [
+        onSessionTypeChange,
+        generateSessionName,
+        setUrlParams,
+        imagesByType,
+        effectiveRegistry,
+        isFormDirty,
+        formData.project,
+      ],
     );
 
     const handleSubmit = useCallback(
@@ -403,6 +443,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     );
 
     const handleReset = useCallback(() => {
+      setIsFormDirty(false);
       setFormData({
         type: defaultValues.type || NOTEBOOK_TYPE,
         project: defaultValues.project || SKAHA_PROJECT,
@@ -448,6 +489,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
 
     const handleResourceTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       const newResourceType = event.target.value as 'flexible' | 'fixed';
+      setIsFormDirty(true);
       setResourceType(newResourceType);
 
       // Update formData with new resource type
@@ -469,6 +511,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     // ResourceField bails out when the *other* fields change.
     const handleMemoryChange = useCallback(
       (value: number) => {
+        setIsFormDirty(true);
         setFormData((prev) => ({ ...prev, memory: value }));
         setUrlParams({ memory: value });
       },
@@ -476,6 +519,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     );
     const handleCoresChange = useCallback(
       (value: number) => {
+        setIsFormDirty(true);
         setFormData((prev) => ({ ...prev, cores: value }));
         setUrlParams({ cores: value });
       },
@@ -483,6 +527,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     );
     const handleGpusChange = useCallback(
       (value: number) => {
+        setIsFormDirty(true);
         setFormData((prev) => ({ ...prev, gpus: value }));
         setUrlParams({ gpus: value });
       },
