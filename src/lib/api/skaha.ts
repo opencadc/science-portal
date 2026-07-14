@@ -376,25 +376,14 @@ export async function getSessionLogs(sessionId: string): Promise<string> {
   return response.text();
 }
 
-// Session event type
-export interface SessionEvent {
-  type?: string;
-  reason?: string;
-  message?: string;
-  count?: number;
-  firstTimestamp?: string;
-  lastTimestamp?: string;
-  [key: string]: unknown;
-}
-
 /**
- * Get session events
+ * Get session container events log (plain text, parsed by UI).
  */
-export async function getSessionEvents(sessionId: string): Promise<SessionEvent[]> {
+export async function getSessionEvents(sessionId: string): Promise<string> {
   const authHeaders = getAuthHeader();
   const response = await fetch(`${sessionsApiRoot()}/${sessionId}/events`, {
     method: 'GET',
-    headers: { Accept: 'application/json', ...authHeaders },
+    headers: { Accept: 'text/plain', ...authHeaders },
     credentials: 'include',
   });
 
@@ -402,7 +391,7 @@ export async function getSessionEvents(sessionId: string): Promise<SessionEvent[
     throw new Error(`Failed to fetch events for session ${sessionId}: ${response.status}`);
   }
 
-  return response.json();
+  return response.text();
 }
 
 /**

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { AppBar } from '@/app/components/AppBar/AppBar';
 import { AppBarProps } from '@/app/types/AppBarProps';
 import { LoginModal } from '@/app/components/LoginModal/LoginModal';
@@ -17,6 +17,12 @@ import { PersonOutline, VpnKey, Verified, Logout as LogoutIcon } from '@mui/icon
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { UPDATE_PROFILE_URL, getCertificateUrl } from '@/lib/config/site-config';
 import { saveCredentials, getCredentials, removeCredentials } from '@/lib/auth/token-storage';
+import {
+  useLoginModal,
+  useResetPasswordModal,
+  useOidcLoginPending,
+  useAuthModalActions,
+} from '@/lib/stores';
 
 interface AppBarWithAuthProps extends Omit<AppBarProps, 'menuLabel' | 'menuItems'> {
   /**
@@ -38,9 +44,11 @@ export function AppBarWithAuth({
   variant,
   sx,
 }: AppBarWithAuthProps) {
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
-  const [resetPasswordModalOpen, setResetPasswordModalOpen] = useState(false);
-  const [isOidcLoginPending, setIsOidcLoginPending] = useState(false);
+  const loginModal = useLoginModal();
+  const resetPasswordModal = useResetPasswordModal();
+  const isOidcLoginPending = useOidcLoginPending();
+  const { openLogin, closeLogin, openResetPassword, closeResetPassword, setOidcLoginPending } =
+    useAuthModalActions();
   const oidcLoginInFlightRef = useRef(false);
   const { data: authStatus, isLoading: isCheckingAuth } = useAuthStatus();
   const { mutate: login, isPending: isLoggingIn, error: loginError } = useLogin();
@@ -57,12 +65,12 @@ export function AppBarWithAuth({
   const autoOpenedRef = useRef(false);
 
   const handleOpenLogin = useCallback(() => {
-    setLoginModalOpen(true);
-  }, []);
+    openLogin('manual');
+  }, [openLogin]);
 
   const handleCloseLogin = useCallback(() => {
-    setLoginModalOpen(false);
-  }, []);
+    closeLogin();
+  }, [closeLogin]);
 
   const handleLogin = useCallback(
     (credentials: LoginCredentials) => {
@@ -101,10 +109,8 @@ export function AppBarWithAuth({
   }, []);
 
   const handleResetPassword = useCallback(() => {
-    // Open reset password modal in CANFAR mode
-    // In OIDC mode, this menu item is not shown
-    setResetPasswordModalOpen(true);
-  }, []);
+    openResetPassword();
+  }, [openResetPassword]);
 
   const handleObtainCertificate = useCallback(() => {
     // Get stored credentials for HTTP Basic Auth
@@ -136,8 +142,8 @@ export function AppBarWithAuth({
     if (!showLoginButton) return;
     if (isAuthenticated) return;
     autoOpenedRef.current = true;
-    setLoginModalOpen(true);
-  }, [isCheckingAuth, isAuthenticated, isOIDCMode, showLoginButton]);
+    openLogin('auto');
+  }, [isCheckingAuth, isAuthenticated, isOIDCMode, showLoginButton, openLogin]);
 
   // Get user's first and last name, fallback to username or 'User'
   const firstName = authStatus?.user?.firstName ?? '';
@@ -205,14 +211,14 @@ export function AppBarWithAuth({
           return;
         }
         oidcLoginInFlightRef.current = true;
-        setIsOidcLoginPending(true);
+        setOidcLoginPending(true);
         try {
           await oidcLogin();
         } catch (error) {
           console.error('OIDC sign-in failed:', error);
         } finally {
           oidcLoginInFlightRef.current = false;
-          setIsOidcLoginPending(false);
+          setOidcLoginPending(false);
         }
       } else {
         handleOpenLogin();
@@ -225,6 +231,7 @@ export function AppBarWithAuth({
     isOIDCMode,
     oidcLogin,
     handleOpenLogin,
+    setOidcLoginPending,
   ]);
 
   // Determine menu items to pass
@@ -275,7 +282,7 @@ export function AppBarWithAuth({
           account-management pages. */}
       {!isOIDCMode && (
         <LoginModal
-          open={loginModalOpen}
+          open={loginModal.open}
           onClose={handleCloseLogin}
           onSubmit={handleLogin}
           isLoading={isLoggingIn}
@@ -286,8 +293,8 @@ export function AppBarWithAuth({
           user-account menu (`handleResetPassword`). */}
       {!isOIDCMode && (
         <ResetPasswordModal
-          open={resetPasswordModalOpen}
-          onClose={() => setResetPasswordModalOpen(false)}
+          open={resetPasswordModal.open}
+          onClose={closeResetPassword}
         />
       )}
     </>

@@ -25,7 +25,6 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { useApiRoutes } from '@/lib/hooks/useApiRoutes';
 import {
   Close as CloseIcon,
   Refresh as RefreshIcon,
@@ -38,52 +37,11 @@ import {
 } from '@mui/icons-material';
 import type {
   EventsModalProps,
-  SessionEvent,
   EventType,
   EventReason,
-  UseSessionEventsReturn,
 } from '@/app/types/EventsModalProps';
-import { getAuthHeader } from '@/lib/auth/token-storage';
-
-/**
- * Parse raw log data into structured events
- */
-const parseEventLog = (logData: string): { events: SessionEvent[]; hasParseErrors: boolean } => {
-  const lines = logData.trim().split('\n');
-  if (lines.length < 2) return { events: [], hasParseErrors: false };
-
-  const events: SessionEvent[] = [];
-  let hasParseErrors = false;
-
-  // Skip header line and parse data lines
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    // Parse the log line - format: TYPE REASON MESSAGE FIRST-TIME LAST-TIME
-    // Using regex to handle spaces in message
-    const match = line.match(/^(\S+)\s+(\S+)\s+(.*?)\s+(\S+|<nil>)\s+(\S+|<nil>)$/);
-
-    if (match) {
-      const [, type, reason, message, firstTime, lastTime] = match;
-
-      events.push({
-        id: `event-${i}-${Date.now()}`,
-        type: type as EventType,
-        reason: reason as EventReason,
-        message: message.trim(),
-        firstTime: firstTime === '<nil>' ? null : firstTime,
-        lastTime: lastTime === '<nil>' ? null : lastTime,
-      });
-    } else {
-      // Mark that we had parsing errors but continue trying to parse other lines
-      hasParseErrors = true;
-      console.warn(`Failed to parse event line ${i}: ${line}`);
-    }
-  }
-
-  return { events, hasParseErrors };
-};
+import { useSessionEventLog } from '@/lib/hooks/useSessions';
+import { mockRawDataFromEvents, parseEventLog } from '@/lib/sessions/parseEventLog';
 
 /**
  * Format timestamp for display
@@ -143,90 +101,6 @@ const getEventTypeColor = (type: EventType): 'success' | 'warning' | 'error' | '
 };
 
 /**
- * Custom hook for fetching session events
- */
-const useSessionEvents = (
-  sessionId: string,
-  open: boolean,
-  eventsEndpoint?: string,
-  initialEvents?: SessionEvent[],
-): UseSessionEventsReturn => {
-  const apiRoutes = useApiRoutes();
-  const [events, setEvents] = useState<SessionEvent[]>(initialEvents || []);
-  const [rawData, setRawData] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!initialEvents);
-  const [error, setError] = useState<string | null>(null);
-  const [parseError, setParseError] = useState(false);
-
-  const fetchEvents = useCallback(async () => {
-    if (!sessionId || !open) return;
-
-    setLoading(true);
-    setError(null);
-    setParseError(false);
-
-    try {
-      const endpoint = eventsEndpoint || apiRoutes.sessions.logs(sessionId);
-
-      const authHeaders = getAuthHeader();
-
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        headers: {
-          Accept: 'text/plain',
-          ...authHeaders,
-        },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch events: ${response.statusText}`);
-      }
-
-      const data = await response.text();
-      setRawData(data); // Store raw data for raw view
-
-      const { events: parsedEvents, hasParseErrors } = parseEventLog(data);
-      setEvents(parsedEvents);
-      setParseError(hasParseErrors);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch events');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId, open, eventsEndpoint, apiRoutes.sessions]);
-
-  useEffect(() => {
-    if (open && !initialEvents) {
-      fetchEvents();
-    }
-  }, [open, fetchEvents, initialEvents]);
-
-  // Set initial raw data if initialEvents provided (for Storybook)
-  useEffect(() => {
-    if (initialEvents && !rawData) {
-      // Generate mock raw data from initial events
-      const header =
-        'TYPE     REASON      MESSAGE                                                                                                                        FIRST-TIME             LAST-TIME';
-      const lines = initialEvents.map(
-        (e) =>
-          `${e.type}   ${e.reason}   ${e.message}   ${e.firstTime || '<nil>'}   ${e.lastTime || '<nil>'}`,
-      );
-      setRawData([header, ...lines].join('\n'));
-    }
-  }, [initialEvents, rawData]);
-
-  return {
-    events,
-    rawData,
-    loading,
-    error,
-    parseError,
-    refresh: fetchEvents,
-  };
-};
-
-/**
  * EventsModal implementation
  */
 export const EventsModalImpl: React.FC<EventsModalProps> = ({
@@ -235,7 +109,7 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
   sessionName = 'Session',
   onClose,
   onRefresh,
-  eventsEndpoint,
+  logView = 'events',
   initialEvents,
   maxEvents = 100,
   showRefreshButton = true,
@@ -248,12 +122,29 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [showRawView, setShowRawView] = useState(forceRawView || defaultView === 'raw');
 
-  const { events, rawData, loading, error, parseError, refresh } = useSessionEvents(
-    sessionId,
-    open,
-    eventsEndpoint,
-    initialEvents,
-  );
+  const {
+    data: rawDataFromQuery,
+    isLoading: queryLoading,
+    error: queryError,
+    refetch,
+  } = useSessionEventLog(sessionId, logView, open && !initialEvents);
+
+  const rawData = useMemo(() => {
+    if (initialEvents) return mockRawDataFromEvents(initialEvents);
+    return rawDataFromQuery ?? null;
+  }, [initialEvents, rawDataFromQuery]);
+
+  const { events, hasParseErrors: parseError } = useMemo(() => {
+    if (!rawData) return { events: [], hasParseErrors: false };
+    return parseEventLog(rawData);
+  }, [rawData]);
+
+  const loading = !initialEvents && queryLoading;
+  const error = queryError?.message ?? null;
+
+  const refresh = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
   // Sort events by timestamp (most recent first)
   const sortedEvents = useMemo(() => {

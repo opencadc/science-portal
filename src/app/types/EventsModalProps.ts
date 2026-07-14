@@ -70,7 +70,13 @@ export interface EventsModalProps {
   onRefresh?: () => void;
 
   /**
+   * Which Skaha plain-text log to fetch when not using initialEvents.
+   */
+  logView?: 'events' | 'logs';
+
+  /**
    * Optional custom endpoint for fetching events
+   * @deprecated Prefer logView — custom endpoints bypass React Query cache
    */
   eventsEndpoint?: string;
 

@@ -21,7 +21,6 @@ import {
   getSessionEvents,
   type Session,
   type SessionLaunchParams,
-  type SessionEvent,
 } from '@/lib/api/skaha';
 
 /**
@@ -123,21 +122,39 @@ export function useSessionLogs(
 }
 
 /**
- * Get session events
+ * Get session container events log (plain text).
  *
  * @example
  * ```tsx
- * const { data: events } = useSessionEvents('session-123');
+ * const { data: eventLog } = useSessionEvents('session-123', { enabled: modalOpen });
  * ```
  */
 export function useSessionEvents(
   sessionId: string,
-  options?: Omit<UseQueryOptions<SessionEvent[]>, 'queryKey' | 'queryFn'>,
+  options?: Omit<UseQueryOptions<string>, 'queryKey' | 'queryFn'>,
 ) {
   return useQuery({
     queryKey: sessionKeys.events(sessionId),
     queryFn: () => getSessionEvents(sessionId),
     enabled: !!sessionId,
+    ...options,
+  });
+}
+
+/**
+ * Fetch session events or logs plain-text by view type.
+ */
+export function useSessionEventLog(
+  sessionId: string,
+  view: 'events' | 'logs',
+  enabled: boolean,
+  options?: Omit<UseQueryOptions<string>, 'queryKey' | 'queryFn' | 'enabled'>,
+) {
+  const isEvents = view === 'events';
+  return useQuery({
+    queryKey: isEvents ? sessionKeys.events(sessionId) : sessionKeys.logs(sessionId),
+    queryFn: () => (isEvents ? getSessionEvents(sessionId) : getSessionLogs(sessionId)),
+    enabled: enabled && !!sessionId,
     ...options,
   });
 }

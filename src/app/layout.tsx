@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { ThemeProvider } from '@/app/theme/ThemeContext';
 import { SkipNavigation } from '@/app/components/SkipNavigation/SkipNavigation';
+import { PortalLayout } from '@/app/components/PortalLayout/PortalLayout';
 import { ClientErrorBoundary } from '@/app/components/ClientErrorBoundary';
 import { AuthProvider } from '@/app/providers/AuthProvider';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
@@ -32,10 +33,12 @@ export default function RootLayout({
             <NuqsProvider>
               <AuthProvider>
                 <ThemeProvider>
-                  <ClientErrorBoundary>
-                    <SkipNavigation />
-                    {children}
-                  </ClientErrorBoundary>
+                  <PortalLayout>
+                    <ClientErrorBoundary>
+                      <SkipNavigation />
+                      {children}
+                    </ClientErrorBoundary>
+                  </PortalLayout>
                 </ThemeProvider>
               </AuthProvider>
             </NuqsProvider>

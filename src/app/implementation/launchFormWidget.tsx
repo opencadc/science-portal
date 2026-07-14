@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { Paper, Typography, IconButton, Box, LinearProgress, Link, Alert } from '@mui/material';
 import { Refresh as RefreshIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
@@ -8,7 +8,7 @@ import { LaunchFormWidgetProps } from '@/app/types/LaunchFormWidgetProps';
 import { SessionLaunchForm } from '@/app/components/SessionLaunchForm/SessionLaunchForm';
 import { SessionRequestModal } from '@/app/components/SessionRequestModal/SessionRequestModal';
 import { SessionFormData } from '@/app/types/SessionLaunchFormProps';
-import { SessionRequestStatus } from '@/app/types/SessionRequestModalProps';
+import { useLaunchRequest, useSessionUiActions } from '@/lib/stores';
 
 export function LaunchFormWidgetImpl({
   isLoading = false,
@@ -26,39 +26,27 @@ export function LaunchFormWidgetImpl({
   ...sessionLaunchFormProps
 }: LaunchFormWidgetProps) {
   const theme = useTheme();
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [requestStatus, setRequestStatus] = useState<SessionRequestStatus>('requesting');
-  const [requestError, setRequestError] = useState<string | undefined>();
-  const [sessionData, setSessionData] = useState<SessionFormData | null>(null);
+  const launchRequest = useLaunchRequest();
+  const { setLaunchRequest } = useSessionUiActions();
 
   const handleLaunch = useCallback(
     async (formData: SessionFormData) => {
-      setSessionData(formData);
-      setModalOpen(true);
-      setRequestStatus('requesting');
-      setRequestError(undefined);
+      setLaunchRequest({ status: 'requesting', sessionData: formData });
 
       try {
-        // Determine which image to use
         const imageToUse = formData.image
           ? `${formData.repositoryHost}/${formData.image}`
           : formData.containerImage;
 
-        // Build launch parameters
-        // Only include cores, ram, and gpus if resourceType is 'fixed' (not flexible)
         const launchParams = {
           sessionType: formData.type,
           sessionName: formData.sessionName,
           containerImage: imageToUse,
-          // Only include cores and ram for fixed resources
           ...(formData.resourceType === 'fixed' && {
             cores: formData.cores,
             ram: formData.memory,
-            // Only include gpus if > 0 (API doesn't accept 0)
             ...(formData.gpus && formData.gpus > 0 && { gpus: formData.gpus }),
           }),
-          // Include registry auth if provided (for Advanced tab with custom images)
           ...(formData.repositoryAuthUsername &&
             formData.repositoryAuthSecret && {
               registryUsername: formData.repositoryAuthUsername,
@@ -66,7 +54,6 @@ export function LaunchFormWidgetImpl({
             }),
         };
 
-        // Launch the session using custom function if provided, otherwise use default API
         if (launchSessionFn) {
           await launchSessionFn(launchParams);
         } else {
@@ -74,30 +61,31 @@ export function LaunchFormWidgetImpl({
           await launchSession(launchParams);
         }
 
-        // Call the original onLaunch if provided
         if (onLaunch) {
           await onLaunch(formData);
         }
 
-        // The 30-second delay in useLaunchSession hook will refetch all sessions
-        setModalOpen(false);
+        setLaunchRequest(null);
       } catch (error) {
-        setRequestStatus('error');
-        setRequestError(error instanceof Error ? error.message : 'An unknown error occurred');
+        setLaunchRequest({
+          status: 'error',
+          sessionData: formData,
+          error: error instanceof Error ? error.message : 'An unknown error occurred',
+        });
       }
     },
-    [launchSessionFn, onLaunch],
+    [launchSessionFn, onLaunch, setLaunchRequest],
   );
 
   const handleModalClose = useCallback(() => {
-    setModalOpen(false);
-  }, []);
+    setLaunchRequest(null);
+  }, [setLaunchRequest]);
 
   const handleRetry = useCallback(() => {
-    if (sessionData) {
-      handleLaunch(sessionData);
+    if (launchRequest?.sessionData) {
+      void handleLaunch(launchRequest.sessionData);
     }
-  }, [sessionData, handleLaunch]);
+  }, [launchRequest?.sessionData, handleLaunch]);
 
   return (
     <Paper
@@ -110,7 +98,6 @@ export function LaunchFormWidgetImpl({
         borderRadius: theme.shape.borderRadius,
         border: `1px solid ${theme.palette.divider}`,
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        // Better mobile padding
         [theme.breakpoints.down('sm')]: {
           padding: theme.spacing(1.5),
           borderRadius: 2,
@@ -124,14 +111,12 @@ export function LaunchFormWidgetImpl({
         </Alert>
       ) : null}
 
-      {/* Header */}
       <Box
         sx={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: theme.spacing(1),
-          // Better mobile layout for header
           [theme.breakpoints.down('sm')]: {
             flexDirection: 'column',
             alignItems: 'flex-start',
@@ -144,7 +129,6 @@ export function LaunchFormWidgetImpl({
             display: 'flex',
             alignItems: 'center',
             gap: 1,
-            // Ensure title wraps nicely on very small screens
             flexWrap: 'wrap',
           }}
         >
@@ -152,7 +136,6 @@ export function LaunchFormWidgetImpl({
             variant="h6"
             component="h2"
             sx={{
-              // Smaller text on mobile if needed
               [theme.breakpoints.down('sm')]: {
                 fontSize: theme.typography.body1.fontSize,
                 fontWeight: theme.typography.fontWeightBold,
@@ -186,7 +169,6 @@ export function LaunchFormWidgetImpl({
             disabled={isLoading}
             size="small"
             sx={{
-              // Position refresh button better on mobile
               [theme.breakpoints.down('sm')]: {
                 alignSelf: 'flex-end',
                 mt: -1,
@@ -198,7 +180,6 @@ export function LaunchFormWidgetImpl({
         )}
       </Box>
 
-      {/* Loading Bar */}
       <LinearProgress
         color={isLoading ? 'primary' : 'success'}
         variant={isLoading ? 'indeterminate' : 'determinate'}
@@ -214,7 +195,6 @@ export function LaunchFormWidgetImpl({
         }}
       />
 
-      {/* Content - SessionLaunchForm */}
       <Box sx={{ marginBottom: theme.spacing(2) }}>
         <SessionLaunchForm
           {...sessionLaunchFormProps}
@@ -226,13 +206,12 @@ export function LaunchFormWidgetImpl({
         />
       </Box>
 
-      {/* Session Request Modal */}
       <SessionRequestModal
-        open={modalOpen}
-        sessionName={sessionData?.sessionName || ''}
-        sessionType={sessionData?.type || ''}
-        status={requestStatus}
-        errorMessage={requestError}
+        open={launchRequest !== null}
+        sessionName={launchRequest?.sessionData.sessionName || ''}
+        sessionType={launchRequest?.sessionData.type || ''}
+        status={launchRequest?.status ?? 'requesting'}
+        errorMessage={launchRequest?.error}
         onClose={handleModalClose}
         onRetry={handleRetry}
       />

@@ -30,7 +30,6 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 
 dayjs.extend(utc);
-import { useApiRoutes } from '@/lib/hooks/useApiRoutes';
 import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
 import Image from 'next/image';
 import { EventsModal } from '@/app/components/EventsModal/EventsModal';
@@ -229,7 +228,6 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
     },
     ref,
   ) => {
-    const apiRoutes = useApiRoutes();
     const { basePath } = usePublicRuntimeConfig();
     const theme = useTheme();
     const [showEventsModal, setShowEventsModal] = useState(false);
@@ -602,7 +600,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
             sessionName={sessionName}
             onClose={() => setShowEventsModal(false)}
             showRefreshButton={true}
-            eventsEndpoint={apiRoutes.sessions.events(sessionId || sessionName)}
+            logView="events"
           />
           <EventsModal
             open={showLogsModal}
@@ -612,7 +610,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
             showRefreshButton={true}
             forceRawView={true}
             defaultView="raw"
-            eventsEndpoint={apiRoutes.sessions.logs(sessionId || sessionName)}
+            logView="logs"
           />
           <DeleteSessionModal
             open={showDeleteModal}
@@ -1064,7 +1062,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           sessionName={sessionName}
           onClose={() => setShowEventsModal(false)}
           showRefreshButton={true}
-          eventsEndpoint={apiRoutes.sessions.events(sessionId || sessionName)}
+          logView="events"
         />
 
         {/* Logs Modal (Raw view only, parsing disabled) */}
@@ -1076,7 +1074,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           showRefreshButton={true}
           forceRawView={true}
           defaultView="raw"
-          eventsEndpoint={apiRoutes.sessions.logs(sessionId || sessionName)}
+          logView="logs"
         />
 
         {/* Delete Confirmation Modal */}

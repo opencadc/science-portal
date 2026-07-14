@@ -20,7 +20,7 @@ import {
   StorageData,
   StorageCardData,
 } from '@/app/types/UserStorageWidgetProps';
-import { useApiRoutes } from '@/lib/hooks/useApiRoutes';
+import { useUserStorageSummary } from '@/lib/hooks/useUserStorage';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -48,7 +48,7 @@ dayjs.updateLocale('en', {
 });
 
 // Test data for development
-const TEST_DATA: StorageData = {
+const TEST_DATA = {
   size: 11281596360,
   quota: 200000000000,
   date: '2025-06-12T06:27:58.000Z',
@@ -215,29 +215,32 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
     },
     ref,
   ) => {
-    const apiRoutes = useApiRoutes();
     const theme = useTheme();
-    const [internalData, setInternalData] = useState<StorageData | null>(null);
-    const [internalLoading, setInternalLoading] = useState(false);
-    const [internalError, setInternalError] = useState<string | undefined>();
+    const isUncontrolled = externalData === undefined && !testMode;
+    const canFetch = Boolean(isAuthenticated && name && name !== 'Login');
+
+    const {
+      data: queryData,
+      isLoading: queryLoading,
+      error: queryError,
+      refetch,
+    } = useUserStorageSummary(name ?? '', canFetch, {
+      enabled: isUncontrolled && canFetch,
+    });
+
     const [helpAnchorEl, setHelpAnchorEl] = useState<HTMLElement | null>(null);
     const [relativeNowMs, setRelativeNowMs] = useState(() => Date.now());
 
-    // Use external data if provided, otherwise use internal data or test data
     const currentData = useMemo(() => {
       if (externalData !== undefined) return externalData;
       if (testMode) return TEST_DATA;
-      return internalData;
-    }, [externalData, testMode, internalData]);
+      return queryData ?? null;
+    }, [externalData, testMode, queryData]);
 
-    // Determine current loading state
-    // If we're in controlled mode (parent manages loading), use external isLoading
-    // Otherwise use internal loading state
-    const currentLoading = isLoading || internalLoading;
-
-    // When loading, don't show data - override currentData
+    const currentLoading = isLoading || (isUncontrolled && queryLoading);
     const displayData = currentLoading ? null : currentData;
-    const currentError = externalData !== undefined ? errorMessage : internalError;
+    const currentError =
+      externalData !== undefined ? errorMessage : queryError?.message;
 
     // Card configuration
     const cardConfigs = useMemo(
@@ -281,42 +284,13 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
       return displayData?.date ? formatRelativeStorageModified(displayData.date, relativeNowMs) : null;
     }, [displayData?.date, relativeNowMs]);
 
-    // Internal fetch function
-    const fetchStorageData = useCallback(async () => {
-      if (!name || name === 'Login') return;
-
-      setInternalLoading(true);
-      setInternalError(undefined);
-
-      try {
-        // Use server-side API route to avoid CORS issues
-        const url = apiRoutes.storage.raw(name);
-        const response = await fetch(url, {
-          headers: { Accept: 'application/json' },
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          setInternalError(`HTTP ${response.status}`);
-          return;
-        }
-
-        const parsedData: StorageData = await response.json();
-        setInternalData(parsedData);
-      } catch {
-        setInternalError('Failed to fetch storage data');
-      } finally {
-        setInternalLoading(false);
-      }
-    }, [name, apiRoutes.storage]);
-
     const handleRefresh = useCallback(() => {
       if (onRefresh) {
         onRefresh();
-      } else if (isAuthenticated && name && name !== 'Login') {
-        fetchStorageData();
+      } else if (isUncontrolled && canFetch) {
+        void refetch();
       }
-    }, [onRefresh, isAuthenticated, name, fetchStorageData]);
+    }, [onRefresh, isUncontrolled, canFetch, refetch]);
 
     const handleHelpClick = useCallback(
       (event: React.MouseEvent<HTMLElement>) => {
@@ -332,21 +306,6 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
     const handleHelpClose = useCallback(() => {
       setHelpAnchorEl(null);
     }, []);
-
-    // Auto-fetch on mount if authenticated
-    useEffect(() => {
-      if (externalData === undefined && !testMode && isAuthenticated && name && name !== 'Login') {
-        fetchStorageData();
-      }
-    }, [externalData, testMode, isAuthenticated, name, fetchStorageData]);
-
-    // Clear internal data when user logs out
-    useEffect(() => {
-      if (!isAuthenticated) {
-        setInternalData(null);
-        setInternalError(undefined);
-      }
-    }, [isAuthenticated]);
 
     useEffect(() => {
       if (!displayData?.date) return;

@@ -29,6 +29,14 @@ export interface StorageNode {
   lastModified: string;
 }
 
+/** Parsed VOSpace home summary (used / quota / mtime). */
+export interface UserStorageSummary {
+  size: number;
+  quota: number;
+  date: string;
+  usage: number;
+}
+
 /**
  * Get user storage quota information
  */
@@ -42,6 +50,25 @@ export async function getUserStorageQuota(username: string): Promise<UserStorage
 
   if (!response.ok) {
     throw new Error(`Failed to fetch storage quota: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get user home storage summary (used, quota, usage %, last modified).
+ * Proxied through /api/storage/raw — parses VOSpace XML server-side.
+ */
+export async function getUserStorageSummary(username: string): Promise<UserStorageSummary> {
+  const authHeaders = getAuthHeader();
+  const response = await fetch(storageRoutes().raw(username), {
+    method: 'GET',
+    headers: { Accept: 'application/json', ...authHeaders },
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch storage summary: ${response.status}`);
   }
 
   return response.json();

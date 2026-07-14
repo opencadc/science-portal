@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Paper,
   Typography,
@@ -16,6 +16,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { ActiveSessionsWidgetProps } from '@/app/types/ActiveSessionsWidgetProps';
 import { SessionCard } from '@/app/components/SessionCard/SessionCard';
 import { SessionCheckModal } from '@/app/components/SessionCheckModal/SessionCheckModal';
+import { useSessionHealthCheck, useSessionModalsActions } from '@/lib/stores';
 
 const SESSION_CARD_MIN = 260;
 const VISIBLE_DESKTOP_CARDS = 3;
@@ -70,8 +71,8 @@ export function ActiveSessionsWidgetImpl({
   const theme = useTheme();
   const isLgUp = useMediaQuery(theme.breakpoints.up('lg'));
   const skeletonCount = isLgUp ? VISIBLE_DESKTOP_CARDS : 3;
-  const [showCheckModal, setShowCheckModal] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
+  const healthCheck = useSessionHealthCheck();
+  const { openHealthCheck, closeHealthCheck, setHealthCheckChecking } = useSessionModalsActions();
 
   const displayTitle =
     showSessionCount && sessions.length > 0 ? `${title} (${sessions.length})` : title;
@@ -97,16 +98,16 @@ export function ActiveSessionsWidgetImpl({
   }, []);
 
   const handleRefreshClick = () => {
-    setShowCheckModal(true);
-    setIsChecking(true);
+    openHealthCheck();
+    setHealthCheckChecking(true);
 
     if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
     checkTimerRef.current = setTimeout(() => {
-      setIsChecking(false);
+      setHealthCheckChecking(false);
       onRefresh?.();
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
       closeTimerRef.current = setTimeout(() => {
-        setShowCheckModal(false);
+        closeHealthCheck();
       }, 1000);
     }, 2000);
   };
@@ -277,9 +278,9 @@ export function ActiveSessionsWidgetImpl({
 
       {/* Session Check Modal */}
       <SessionCheckModal
-        open={showCheckModal}
-        onClose={() => setShowCheckModal(false)}
-        isChecking={isChecking}
+        open={healthCheck.open}
+        onClose={closeHealthCheck}
+        isChecking={healthCheck.checking}
       />
     </Paper>
   );
