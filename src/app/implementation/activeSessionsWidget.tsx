@@ -1,14 +1,12 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { Typography, Box, Card, CardContent } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { ActiveSessionsWidgetProps } from '@/app/types/ActiveSessionsWidgetProps';
 import { DashboardWidget } from '@/app/components/DashboardWidget/DashboardWidget';
 import { SessionCard } from '@/app/components/SessionCard/SessionCard';
-import { SessionCheckModal } from '@/app/components/SessionCheckModal/SessionCheckModal';
-import { useSessionHealthCheck, useSessionModalsActions } from '@/lib/stores';
 
 const SESSION_CARD_MIN = 260;
 const VISIBLE_DESKTOP_CARDS = 3;
@@ -64,8 +62,6 @@ export function ActiveSessionsWidgetImpl({
   const theme = useTheme();
   const isLgUp = useMediaQuery(theme.breakpoints.up('lg'));
   const skeletonCount = isLgUp ? VISIBLE_DESKTOP_CARDS : 3;
-  const healthCheck = useSessionHealthCheck();
-  const { openHealthCheck, closeHealthCheck, setHealthCheckChecking } = useSessionModalsActions();
 
   const displayTitle =
     showSessionCount && sessions.length > 0 ? `${title} (${sessions.length})` : title;
@@ -76,34 +72,6 @@ export function ActiveSessionsWidgetImpl({
 
   const sessionsLayoutSx = isLgUp ? desktopRowSx : mobileGridSx;
   const sessionCardSx = isLgUp ? desktopCardSx : mobileCardSx;
-
-  // Keep refs to in-flight timers so we can cancel on unmount; otherwise
-  // setState fires on an unmounted component when the user navigates away
-  // mid-check.
-  const checkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    };
-  }, []);
-
-  const handleRefreshClick = () => {
-    openHealthCheck();
-    setHealthCheckChecking(true);
-
-    if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
-    checkTimerRef.current = setTimeout(() => {
-      setHealthCheckChecking(false);
-      onRefresh?.();
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = setTimeout(() => {
-        closeHealthCheck();
-      }, 1000);
-    }, 2000);
-  };
 
   const renderSessionCard = (session: (typeof sessionsToDisplay)[number], index: number) => (
     <SessionCard
@@ -123,7 +91,7 @@ export function ActiveSessionsWidgetImpl({
       title={displayTitle}
       isLoading={isLoading}
       isFetching={isFetching}
-      onRefresh={onRefresh ? handleRefreshClick : undefined}
+      onRefresh={onRefresh}
       fillHeight={fillHeight}
     >
       {/* Content - Session Cards */}
@@ -208,13 +176,6 @@ export function ActiveSessionsWidgetImpl({
           )}
         </>
       )}
-
-      {/* Session Check Modal */}
-      <SessionCheckModal
-        open={healthCheck.open}
-        onClose={closeHealthCheck}
-        isChecking={healthCheck.checking}
-      />
     </DashboardWidget>
   );
 }

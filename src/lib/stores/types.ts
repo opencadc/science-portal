@@ -56,12 +56,8 @@ export interface AuthModalsSlice {
 
 export interface SessionModalsSlice {
   sessionModals: {
-    healthCheck: { open: boolean; checking: boolean };
     activeDetail: ActiveSessionDetail | null;
   };
-  openHealthCheck: () => void;
-  closeHealthCheck: () => void;
-  setHealthCheckChecking: (checking: boolean) => void;
   openSessionDetail: (detail: ActiveSessionDetail) => void;
   closeSessionDetail: () => void;
 }
@@ -107,7 +103,6 @@ export const initialAuthModals: AuthModalsSlice['authModals'] = {
 };
 
 export const initialSessionModals: SessionModalsSlice['sessionModals'] = {
-  healthCheck: { open: false, checking: false },
   activeDetail: null,
 };
 

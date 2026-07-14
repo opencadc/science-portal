@@ -80,21 +80,6 @@ export const useAppStore = create<AppStore>()(
 
         sessionModals: initialSessionModals,
 
-        openHealthCheck: () =>
-          set((state) => {
-            state.sessionModals.healthCheck.open = true;
-          }),
-
-        closeHealthCheck: () =>
-          set((state) => {
-            state.sessionModals.healthCheck = { open: false, checking: false };
-          }),
-
-        setHealthCheckChecking: (checking) =>
-          set((state) => {
-            state.sessionModals.healthCheck.checking = checking;
-          }),
-
         openSessionDetail: (activeDetail) =>
           set((state) => {
             state.sessionModals.activeDetail = activeDetail;
@@ -139,7 +124,6 @@ export function resetAppUiState(): void {
   const state = useAppStore.getState();
   state.resetSessionUi();
   state.closeAllAuthModals();
-  state.closeHealthCheck();
   state.closeSessionDetail();
   state.closeMobileDrawer();
   state.resetStorageUi();

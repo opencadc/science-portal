@@ -17,9 +17,6 @@ export const useOidcLoginPending = () => useAppStore((s) => s.authModals.oidcLog
 
 export const useLaunchRequest = () => useAppStore((s) => s.launchRequest);
 
-export const useSessionHealthCheck = () =>
-  useAppStore((s) => s.sessionModals.healthCheck);
-
 export const useMobileDrawerOpen = () => useAppStore((s) => s.mobileDrawerOpen);
 
 // Action-bundle selectors return a new object literal per call, so they MUST
@@ -50,9 +47,8 @@ export const useAuthModalActions = () =>
 export const useSessionModalsActions = () =>
   useAppStore(
     useShallow((s) => ({
-      openHealthCheck: s.openHealthCheck,
-      closeHealthCheck: s.closeHealthCheck,
-      setHealthCheckChecking: s.setHealthCheckChecking,
+      openSessionDetail: s.openSessionDetail,
+      closeSessionDetail: s.closeSessionDetail,
     })),
   );
 

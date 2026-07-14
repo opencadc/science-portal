@@ -26,7 +26,7 @@ describe('useAppStore', () => {
   it('resetAppUiState clears client UI slices', () => {
     useAppStore.getState().markOperating('session-b');
     useAppStore.getState().openLogin('manual');
-    useAppStore.getState().openHealthCheck();
+    useAppStore.getState().openSessionDetail({ sessionId: 's-1', kind: 'events' });
     useAppStore.getState().openMobileDrawer();
     useAppStore.getState().setLaunchRequest({
       status: 'requesting',
