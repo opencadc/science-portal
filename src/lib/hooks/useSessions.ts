@@ -21,8 +21,10 @@ import {
   getSessionEvents,
   type Session,
   type SessionLaunchParams,
+  type SessionStatus,
 } from '@/lib/api/skaha';
 import { useAppStore } from '@/lib/stores';
+import { LAUNCH_PENDING_PLACEHOLDER_ID } from '@/lib/sessions/sessionQuota';
 
 /**
  * Query keys for sessions
@@ -197,20 +199,44 @@ export function useLaunchSession(
   options?: UseMutationOptions<Session, Error, SessionLaunchParams>,
 ) {
   const queryClient = useQueryClient();
-  const { onSuccess: userOnSuccess, ...restOptions } = options || {};
+  const { onSuccess: userOnSuccess, onError: userOnError, ...restOptions } = options || {};
 
   return useMutation({
     ...restOptions,
     mutationFn: launchSession,
-    onSuccess: (newSession, variables, ...rest) => {
-      // Optimistically add the new pending session to the list
-      const currentSessions = queryClient.getQueryData<Session[]>(sessionKeys.list()) || [];
-      const updatedSessions = [...currentSessions, newSession];
-      queryClient.setQueryData(sessionKeys.list(), updatedSessions);
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
+      const previousSessions = queryClient.getQueryData<Session[]>(sessionKeys.list()) || [];
 
-      // Call user's onSuccess callback with the new session
-      // The callback will handle starting the polling
-      userOnSuccess?.(newSession, variables, ...rest);
+      const placeholder: Session = {
+        id: LAUNCH_PENDING_PLACEHOLDER_ID,
+        sessionType: variables.sessionType,
+        sessionName: variables.sessionName,
+        status: 'Pending' as SessionStatus,
+        containerImage: variables.containerImage,
+        startedTime: '',
+        expiresTime: '',
+        memoryAllocated: '',
+        cpuAllocated: '',
+      };
+
+      queryClient.setQueryData(sessionKeys.list(), [...previousSessions, placeholder]);
+      return { previousSessions };
+    },
+    onError: (error, variables, context, mutation) => {
+      if (context?.previousSessions) {
+        queryClient.setQueryData(sessionKeys.list(), context.previousSessions);
+      }
+      userOnError?.(error, variables, context, mutation);
+    },
+    onSuccess: (newSession, variables, context, mutation) => {
+      const currentSessions = queryClient.getQueryData<Session[]>(sessionKeys.list()) || [];
+      const withoutPlaceholder = currentSessions.filter(
+        (s) => s.id !== LAUNCH_PENDING_PLACEHOLDER_ID,
+      );
+      queryClient.setQueryData(sessionKeys.list(), [...withoutPlaceholder, newSession]);
+
+      userOnSuccess?.(newSession, variables, context, mutation);
     },
   });
 }

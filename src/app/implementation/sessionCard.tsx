@@ -32,6 +32,7 @@ dayjs.extend(utc);
 import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
 import Image from 'next/image';
 import { useSessionModalsActions } from '@/lib/stores';
+import { hasAssignedSessionId } from '@/lib/sessions/sessionQuota';
 
 const ICON_SIZE = 22;
 
@@ -254,14 +255,17 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
     const { openSessionModal } = useSessionModalsActions();
 
     const openModal = (kind: 'events' | 'logs' | 'extend' | 'delete') => {
-      const apiSessionId = id || sessionName;
-      openSessionModal({ sessionId: apiSessionId, sessionName, kind });
+      if (!hasAssignedSessionId(id)) return;
+      openSessionModal({ sessionId: id!, sessionName, kind });
     };
 
     // While terminating, the server may still report the pre-delete status
     // (Running/Pending) for a few polls — surface Terminating instead.
     const displayStatus: SessionStatus = isTerminating ? 'Terminating' : status;
     const isConnectable = status === 'Running' && !isTerminating && !!connectUrl;
+    const sessionIdAssigned = hasAssignedSessionId(id);
+    const actionsDisabled = isTerminating || !sessionIdAssigned;
+    const awaitingIdTooltip = 'Session is still being created';
 
     const handleCardClick = () => {
       if (isConnectable) {
@@ -488,60 +492,63 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           >
             {/* Extra overlay for the actions row, terminating case only: the
                 content backdrop deliberately leaves the footer clickable (so
-                Pending sessions can still be deleted), but a terminating
-                session must not accept any further actions. */}
+                Pending sessions with a real id can still be deleted), but a
+                terminating session or launch placeholder must not accept actions. */}
             {isTerminating && <Backdrop open sx={backdropSx(theme)} />}
-            {/* Footer buttons stay active for Pending/operating sessions (a
-                stuck Pending session must remain deletable) and are only
-                disabled while the session is terminating. */}
             <Tooltip
-              title={status === 'Pending' ? 'Cannot extend a pending session' : 'Extend time'}
+              title={
+                !sessionIdAssigned
+                  ? awaitingIdTooltip
+                  : status === 'Pending'
+                    ? 'Cannot extend a pending session'
+                    : 'Extend time'
+              }
             >
               <span>
                 <IconButton
                   size="small"
                   onClick={handleExtendClick}
                   aria-label="Extend time"
-                  disabled={status === 'Pending' || isTerminating}
+                  disabled={actionsDisabled || status === 'Pending'}
                   sx={actionButtonSx(theme)}
                 >
                   <ExtendIcon fontSize="small" />
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title="View session logs">
+            <Tooltip title={!sessionIdAssigned ? awaitingIdTooltip : 'View session logs'}>
               <span>
                 <IconButton
                   size="small"
                   onClick={handleShowLogs}
                   aria-label="View logs"
-                  disabled={isTerminating}
+                  disabled={actionsDisabled}
                   sx={actionButtonSx(theme)}
                 >
                   <LogsIcon fontSize="small" />
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title="View launch info">
+            <Tooltip title={!sessionIdAssigned ? awaitingIdTooltip : 'View launch info'}>
               <span>
                 <IconButton
                   size="small"
                   onClick={handleShowEvents}
                   aria-label="View events"
-                  disabled={isTerminating}
+                  disabled={actionsDisabled}
                   sx={actionButtonSx(theme)}
                 >
                   <FlagIcon fontSize="small" />
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title="Delete session">
+            <Tooltip title={!sessionIdAssigned ? awaitingIdTooltip : 'Delete session'}>
               <span>
                 <IconButton
                   size="small"
                   onClick={handleDeleteClick}
                   aria-label="Delete session"
-                  disabled={isTerminating}
+                  disabled={actionsDisabled}
                   sx={actionButtonSx(theme)}
                 >
                   <DeleteIcon fontSize="small" />

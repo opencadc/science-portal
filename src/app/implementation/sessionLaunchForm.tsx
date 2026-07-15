@@ -97,10 +97,31 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       isLoading = false,
       errorMessage,
       activeSessions = [],
+      canLaunch = true,
+      launchDisabledReason,
     },
     ref,
   ) => {
     const theme = useTheme();
+
+    const renderLaunchButton = (formIncomplete: boolean) => {
+      const disabled = isLoading || !canLaunch || formIncomplete;
+      const button = (
+        <Button type="submit" variant="contained" size="small" disabled={disabled}>
+          Launch
+        </Button>
+      );
+
+      if (!canLaunch && launchDisabledReason) {
+        return (
+          <Tooltip title={launchDisabledReason}>
+            <span>{button}</span>
+          </Tooltip>
+        );
+      }
+
+      return button;
+    };
 
     // URL query parameters for deep linking
     const [urlParams, setUrlParams] = useQueryStates(
@@ -1008,14 +1029,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                   <Grid size={{ xs: 12, sm: 4 }}>{/* Empty grid for alignment */}</Grid>
                   <Grid size={{ xs: 12, sm: 8 }}>
                     <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                      <Button
-                        type="submit"
-                        variant="contained"
-                        size="small"
-                        disabled={isLoading || !formData.project || !formData.containerImage}
-                      >
-                        Launch
-                      </Button>
+                      {renderLaunchButton(!formData.project || !formData.containerImage)}
                       <Button
                         type="button"
                         variant="outlined"
@@ -1324,9 +1338,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                     <Grid size={{ xs: 12, sm: 4 }}>{/* Empty grid for alignment */}</Grid>
                     <Grid size={{ xs: 12, sm: 8 }}>
                       <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                        <Button type="submit" variant="contained" size="small" disabled={isLoading}>
-                          Launch
-                        </Button>
+                        {renderLaunchButton(false)}
                         <Button
                           type="button"
                           variant="outlined"

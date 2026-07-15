@@ -8,6 +8,8 @@ import { SessionLaunchForm } from '@/app/components/SessionLaunchForm/SessionLau
 import { SessionRequestModal } from '@/app/components/SessionRequestModal/SessionRequestModal';
 import { SessionFormData } from '@/app/types/SessionLaunchFormProps';
 import { useLaunchRequest, useSessionUiActions } from '@/lib/stores';
+import { useSessionLaunchQuota } from '@/lib/hooks/useSessionLaunchQuota';
+import { SESSION_QUOTA_REACHED_MESSAGE } from '@/lib/sessions/sessionQuota';
 
 export function LaunchFormWidgetImpl({
   isLoading = false,
@@ -27,9 +29,14 @@ export function LaunchFormWidgetImpl({
 }: LaunchFormWidgetProps) {
   const launchRequest = useLaunchRequest();
   const { setLaunchRequest } = useSessionUiActions();
+  const quota = useSessionLaunchQuota(activeSessions, launchRequest?.status);
 
   const handleLaunch = useCallback(
     async (formData: SessionFormData) => {
+      if (!quota.canLaunch) {
+        return;
+      }
+
       setLaunchRequest({ status: 'requesting', sessionData: formData });
 
       try {
@@ -73,7 +80,7 @@ export function LaunchFormWidgetImpl({
         });
       }
     },
-    [launchSessionFn, onLaunch, setLaunchRequest],
+    [launchSessionFn, onLaunch, quota.canLaunch, setLaunchRequest],
   );
 
   const handleModalClose = useCallback(() => {
@@ -81,10 +88,10 @@ export function LaunchFormWidgetImpl({
   }, [setLaunchRequest]);
 
   const handleRetry = useCallback(() => {
-    if (launchRequest?.sessionData) {
+    if (launchRequest?.sessionData && quota.canLaunch) {
       void handleLaunch(launchRequest.sessionData);
     }
-  }, [launchRequest?.sessionData, handleLaunch]);
+  }, [launchRequest?.sessionData, quota.canLaunch, handleLaunch]);
 
   return (
     <DashboardWidget
@@ -110,6 +117,8 @@ export function LaunchFormWidgetImpl({
           isLoading={isLoading}
           repositoryHosts={repositoryHosts}
           activeSessions={activeSessions}
+          canLaunch={quota.canLaunch}
+          launchDisabledReason={SESSION_QUOTA_REACHED_MESSAGE}
         />
       </Box>
 

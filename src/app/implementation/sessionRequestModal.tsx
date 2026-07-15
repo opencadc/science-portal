@@ -5,6 +5,7 @@ import { Button, Typography, Box } from '@mui/material';
 import { ErrorOutline as ErrorIcon, RocketLaunch as RequestIcon } from '@mui/icons-material';
 import { PortalModal } from '@/app/components/PortalModal/PortalModal';
 import { SessionRequestModalProps } from '../types/SessionRequestModalProps';
+import { formatMaxSessionsMessage } from '@/lib/sessions/sessionQuota';
 
 /**
  * Parse and format error messages for better user experience
@@ -29,8 +30,7 @@ const parseErrorMessage = (error: string | undefined): string => {
 
   const maxSessionsMatch = errorText.match(/reached the maximum of (\d+) active sessions/i);
   if (maxSessionsMatch) {
-    const maxSessions = maxSessionsMatch[1];
-    return `You have reached the maximum limit of ${maxSessions} active sessions. Please delete an existing session before creating a new one.`;
+    return formatMaxSessionsMessage(Number(maxSessionsMatch[1]));
   }
 
   if (errorText.match(/insufficient|not enough|unavailable/i)) {

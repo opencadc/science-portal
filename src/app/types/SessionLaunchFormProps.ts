@@ -36,4 +36,8 @@ export interface SessionLaunchFormProps {
   isLoading?: boolean;
   errorMessage?: string | null;
   activeSessions?: Session[];
+  /** When false, Launch is disabled (session quota reached). */
+  canLaunch?: boolean;
+  /** Shown when Launch is disabled due to quota. */
+  launchDisabledReason?: string;
 }

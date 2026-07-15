@@ -6,6 +6,7 @@ import { SessionRenewModal } from '@/app/components/SessionRenewModal/SessionRen
 import { EventsModal } from '@/app/components/EventsModal/EventsModal';
 import { useDeleteSession, useRenewSession } from '@/lib/hooks/useSessions';
 import { useSessionModalActive, useSessionModalsActions, useSessionUiActions } from '@/lib/stores';
+import { hasAssignedSessionId } from '@/lib/sessions/sessionQuota';
 
 const RENEW_HOURS = 12;
 
@@ -37,6 +38,7 @@ export function SessionModalsHost() {
 
   const handleDeleteConfirm = useCallback(() => {
     if (!active || active.kind !== 'delete') return;
+    if (!hasAssignedSessionId(active.sessionId)) return;
     markOperating(active.sessionId, 'delete');
     deleteSession(active.sessionId);
     closeSessionModal();
@@ -47,6 +49,8 @@ export function SessionModalsHost() {
       extendTriggeredForRef.current = null;
       return;
     }
+
+    if (!hasAssignedSessionId(active.sessionId)) return;
 
     if (extendTriggeredForRef.current === active.sessionId) return;
     extendTriggeredForRef.current = active.sessionId;
