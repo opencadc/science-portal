@@ -23,7 +23,7 @@ import {
   Stack,
 } from '@mui/material';
 import { HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
-import { useQueryStates, parseAsString, parseAsInteger } from 'nuqs';
+import { useQueryStates, parseAsString, parseAsInteger, createParser } from 'nuqs';
 import { Select } from '@/app/components/Select/Select';
 import { TextField } from '@/app/components/TextField/TextField';
 import { Card, CardContent } from '@/app/components/Card';
@@ -32,6 +32,7 @@ import {
   SessionLaunchFormProps,
   SessionFormData,
   SessionType,
+  type LaunchFormTab,
 } from '@/app/types/SessionLaunchFormProps';
 import {
   getProjectNames,
@@ -50,6 +51,54 @@ import {
   NOTEBOOK_TYPE,
   SKAHA_PROJECT,
 } from '@/lib/config/constants';
+
+/** MUI Tabs indices — Standard / Advanced keep independent form drafts. */
+const LAUNCH_TAB = {
+  STANDARD: 0,
+  ADVANCED: 1,
+} as const;
+
+type LaunchTabIndex = (typeof LAUNCH_TAB)[keyof typeof LAUNCH_TAB];
+
+type FormsByTab = Record<LaunchTabIndex, SessionFormData>;
+type ResourceTypeByTab = Record<LaunchTabIndex, 'flexible' | 'fixed'>;
+type DirtyByTab = Record<LaunchTabIndex, boolean>;
+
+/**
+ * Shareable launch-form tab: `?tab=standard` | `?tab=advanced`.
+ * Also accepts legacy `0` / `1` from older links.
+ * Auth username/secret are intentionally never URL state.
+ */
+const parseAsLaunchTab = createParser<LaunchFormTab>({
+  parse(query) {
+    if (query === 'standard' || query === '0') return 'standard';
+    if (query === 'advanced' || query === '1') return 'advanced';
+    return null;
+  },
+  serialize(value) {
+    return value;
+  },
+})
+  .withDefault('standard')
+  // Keep `?tab=standard` visible so users can bookmark/share the active tab.
+  .withOptions({ clearOnDefault: false });
+
+function isLaunchTabIndex(value: number): value is LaunchTabIndex {
+  return value === LAUNCH_TAB.STANDARD || value === LAUNCH_TAB.ADVANCED;
+}
+
+function sourceTabForIndex(tab: LaunchTabIndex): LaunchFormTab {
+  return tab === LAUNCH_TAB.ADVANCED ? 'advanced' : 'standard';
+}
+
+function tabIndexFromSource(tab: LaunchFormTab): LaunchTabIndex {
+  return tab === 'advanced' ? LAUNCH_TAB.ADVANCED : LAUNCH_TAB.STANDARD;
+}
+
+function defaultRepositoryHost(repositoryHosts: string[]): string {
+  const rh = repositoryHosts.filter((host) => host && typeof host === 'string');
+  return rh[0] || '';
+}
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -123,13 +172,17 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       return button;
     };
 
-    // URL query parameters for deep linking
+    // URL query parameters for deep linking / sharing.
+    //
+    // `tab` is always written (`standard` | `advanced`) so links open the
+    // intended panel. Catalog fields (`project`, `image`) are Standard-only.
+    // Advanced registry username/secret are never synced to the URL.
     const [urlParams, setUrlParams] = useQueryStates(
       {
-        tab: parseAsInteger.withDefault(0), // 0 = Standard, 1 = Advanced
+        tab: parseAsLaunchTab,
         type: parseAsString.withDefault(defaultValues.type || NOTEBOOK_TYPE),
         project: parseAsString.withDefault(defaultValues.project || SKAHA_PROJECT),
-        image: parseAsString.withDefault(defaultValues.containerImage || ''), // Will be auto-selected
+        image: parseAsString.withDefault(defaultValues.containerImage || ''), // Standard catalog image id
         name: parseAsString.withDefault(defaultValues.sessionName || ''),
         memory: parseAsInteger, // Nullable - only present for Fixed resources
         cores: parseAsInteger, // Nullable - only present for Fixed resources
@@ -140,15 +193,48 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       },
     );
 
-    // Initialize tab from URL parameter
-    const [tabValue, setTabValue] = useState(urlParams.tab);
+    // Initialize tab from URL parameter (`?tab=standard` | `?tab=advanced`)
+    const [tabValue, setTabValue] = useState(() => tabIndexFromSource(urlParams.tab));
+    const activeTab: LaunchTabIndex = isLaunchTabIndex(tabValue)
+      ? tabValue
+      : LAUNCH_TAB.STANDARD;
+    const isAdvancedTab = activeTab === LAUNCH_TAB.ADVANCED;
 
     // Initialize resource type based on presence of cores/memory/gpus in URL
     const initialResourceType =
       urlParams.cores !== null || urlParams.memory !== null || urlParams.gpus !== null
         ? 'fixed'
         : 'flexible';
-    const [resourceType, setResourceType] = useState<'flexible' | 'fixed'>(initialResourceType);
+
+    // Independent drafts per tab — switching tabs must not leak Advanced
+    // image/auth into a Standard launch (or vice versa).
+    const [formsByTab, setFormsByTab] = useState<FormsByTab>(() => {
+      const initial: SessionFormData = {
+        type: urlParams.type as SessionType,
+        project: urlParams.project,
+        containerImage: urlParams.image,
+        sessionName: urlParams.name || defaultValues.sessionName || 'notebook1',
+        memory: urlParams.memory ?? defaultValues.memory ?? DEFAULT_RAM_NUMBER,
+        cores: urlParams.cores ?? defaultValues.cores ?? DEFAULT_CORES_NUMBER,
+        gpus: urlParams.gpus ?? defaultValues.gpus ?? 0,
+        resourceType: initialResourceType,
+        repositoryHost: defaultRepositoryHost(repositoryHosts),
+        // Advanced-only fields start empty on both tabs so Standard never
+        // inherits a leftover custom image/auth from a previous Advanced visit.
+        image: '',
+        repositoryAuthUsername: '',
+        repositoryAuthSecret: '',
+      };
+      return {
+        [LAUNCH_TAB.STANDARD]: { ...initial },
+        [LAUNCH_TAB.ADVANCED]: { ...initial },
+      };
+    });
+
+    const [resourceTypeByTab, setResourceTypeByTab] = useState<ResourceTypeByTab>(() => ({
+      [LAUNCH_TAB.STANDARD]: initialResourceType,
+      [LAUNCH_TAB.ADVANCED]: initialResourceType,
+    }));
 
     // Dirty = the user explicitly edited some field (project, image, name,
     // registry, resources…). Changing the session *type* alone doesn't count:
@@ -156,30 +242,73 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     // while on a dirty form it must respect the user's project choice when
     // that project also exists for the new type. Cleared on Reset. A deep link
     // with a non-default project is treated as dirty — it's an explicit choice.
-    const [isFormDirty, setIsFormDirty] = useState(
-      () => urlParams.project !== (defaultValues.project || SKAHA_PROJECT),
+    const [dirtyByTab, setDirtyByTab] = useState<DirtyByTab>(() => {
+      const fromUrl = urlParams.project !== (defaultValues.project || SKAHA_PROJECT);
+      return {
+        [LAUNCH_TAB.STANDARD]: fromUrl,
+        [LAUNCH_TAB.ADVANCED]: false,
+      };
+    });
+
+    const formData = formsByTab[activeTab];
+    const standardForm = formsByTab[LAUNCH_TAB.STANDARD];
+    const resourceType = resourceTypeByTab[activeTab];
+    const isFormDirty = dirtyByTab[activeTab];
+
+    // Ensure `?tab=` is present for bookmarking/sharing (including default `standard`).
+    useEffect(() => {
+      void setUrlParams({ tab: sourceTabForIndex(activeTab) });
+    }, [activeTab, setUrlParams]);
+
+    /** Patch only the active tab's draft (event handlers + active-tab effects). */
+    const setFormData = useCallback(
+      (updater: SessionFormData | ((prev: SessionFormData) => SessionFormData)) => {
+        setFormsByTab((prev) => {
+          const current = prev[activeTab];
+          const next = typeof updater === 'function' ? updater(current) : updater;
+          if (next === current) return prev;
+          return { ...prev, [activeTab]: next };
+        });
+      },
+      [activeTab],
     );
 
-    const [formData, setFormData] = useState<SessionFormData>({
-      type: urlParams.type as SessionType,
-      project: urlParams.project,
-      containerImage: urlParams.image,
-      sessionName: urlParams.name || defaultValues.sessionName || 'notebook1',
-      memory: urlParams.memory ?? defaultValues.memory ?? DEFAULT_RAM_NUMBER,
-      cores: urlParams.cores ?? defaultValues.cores ?? DEFAULT_CORES_NUMBER,
-      gpus: urlParams.gpus ?? defaultValues.gpus ?? 0,
-      resourceType: initialResourceType, // Track resource type
-      // Advanced tab fields
-      repositoryHost: (() => {
-        const rh = repositoryHosts.filter((host) => host && typeof host === 'string');
-        // Always default to the first available registry so dependent fields
-        // (project, image) can populate immediately.
-        return rh[0] || '';
-      })(),
-      image: '',
-      repositoryAuthUsername: '',
-      repositoryAuthSecret: '',
-    });
+    const setIsFormDirty = useCallback(
+      (dirty: boolean) => {
+        setDirtyByTab((prev) =>
+          prev[activeTab] === dirty ? prev : { ...prev, [activeTab]: dirty },
+        );
+      },
+      [activeTab],
+    );
+
+    const setResourceType = useCallback(
+      (next: 'flexible' | 'fixed') => {
+        setResourceTypeByTab((prev) =>
+          prev[activeTab] === next ? prev : { ...prev, [activeTab]: next },
+        );
+      },
+      [activeTab],
+    );
+
+    const syncUrlFromForm = useCallback(
+      (tab: LaunchTabIndex, data: SessionFormData, resources: 'flexible' | 'fixed') => {
+        const isAdvanced = tab === LAUNCH_TAB.ADVANCED;
+        setUrlParams({
+          tab: sourceTabForIndex(tab),
+          type: data.type,
+          name: data.sessionName,
+          // Catalog project/image are Standard-only; omit them on Advanced so
+          // shared Advanced links open the tab without implying a catalog pick.
+          project: isAdvanced ? null : data.project,
+          image: isAdvanced ? null : data.containerImage,
+          cores: resources === 'fixed' ? data.cores : null,
+          memory: resources === 'fixed' ? data.memory : null,
+          gpus: resources === 'fixed' ? (data.gpus ?? 0) : null,
+        });
+      },
+      [setUrlParams],
+    );
 
     const validHosts = useMemo(
       () => repositoryHosts.filter((h): h is string => typeof h === 'string' && h.length > 0),
@@ -255,81 +384,133 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         sessionName: newSessionName,
       }));
       setUrlParams({ name: newSessionName });
-    }, [activeSessionsCount, generateSessionName, formData.type, setUrlParams]);
+    }, [activeSessionsCount, generateSessionName, formData.type, setFormData, setUrlParams]);
 
-    // Keep project in sync with selected registry / session type (must exist in filtered map)
+    // Keep Standard catalog project in sync with that tab's registry / type —
+    // even while Advanced is active — so Standard stays ready on switch-back.
     useEffect(() => {
-      if (!effectiveRegistry) {
+      const host =
+        standardForm.repositoryHost && validHosts.includes(standardForm.repositoryHost)
+          ? standardForm.repositoryHost
+          : validHosts[0];
+      if (!host) {
         return;
       }
-      const names = getProjectNames(imagesByTypeForRegistry);
+      const imagesForType = imagesByType[standardForm.type];
+      if (!imagesForType) {
+        return;
+      }
+      const byProject = filterImagesByProjectForRegistry(imagesForType, host);
+      const names = getProjectNames(byProject);
       if (names.length === 0) {
         return;
       }
-      if (!formData.project || !names.includes(formData.project)) {
-        const next = names.includes(SKAHA_PROJECT) ? SKAHA_PROJECT : names[0];
-        setFormData((prev) => ({
-          ...prev,
-          project: next,
-          containerImage: '',
-        }));
-        setUrlParams({ project: next, image: '' });
-      }
-    }, [effectiveRegistry, imagesByTypeForRegistry, formData.project, formData.type, setUrlParams]);
-
-    // Auto-select an image for the current project within the effective registry.
-    // Prefer the per-session-type default (DEFAULT_IMAGE_NAMES, mirrors legacy
-    // science-portal/src/react/utilities/constants.js) when an image with that
-    // exact `name` is present; otherwise fall back to a tag-agnostic match on
-    // `imageName`; otherwise the first available image.
-    useEffect(() => {
-      if (!effectiveRegistry || availableImages.length === 0) {
+      if (standardForm.project && names.includes(standardForm.project)) {
         return;
       }
-      const currentValid = availableImages.some((img) => img.id === formData.containerImage);
-      if (!formData.containerImage || !currentValid) {
-        const desired =
-          DEFAULT_IMAGE_NAMES[formData.type as keyof typeof DEFAULT_IMAGE_NAMES];
-        const desiredBase = desired?.split(':')[0];
-        const exactMatch = desired
-          ? availableImages.find((img) => img.name === desired)
-          : undefined;
-        const baseMatch =
-          !exactMatch && desiredBase
-            ? availableImages.find((img) => img.imageName === desiredBase)
-            : undefined;
-        const picked = exactMatch ?? baseMatch ?? availableImages[0];
-        setFormData((prev) => ({
-          ...prev,
-          containerImage: picked.id,
-        }));
-        setUrlParams({ image: picked.id });
+      const nextProject = names.includes(SKAHA_PROJECT) ? SKAHA_PROJECT : names[0];
+      setFormsByTab((prev) => ({
+        ...prev,
+        [LAUNCH_TAB.STANDARD]: {
+          ...prev[LAUNCH_TAB.STANDARD],
+          project: nextProject,
+          containerImage: '',
+        },
+      }));
+      if (activeTab === LAUNCH_TAB.STANDARD) {
+        setUrlParams({ project: nextProject, image: '' });
       }
     }, [
-      effectiveRegistry,
-      availableImages,
-      formData.containerImage,
-      formData.project,
-      formData.type,
+      standardForm.repositoryHost,
+      standardForm.type,
+      standardForm.project,
+      imagesByType,
+      validHosts,
+      activeTab,
       setUrlParams,
     ]);
 
-    // Always mirror a valid host: single registry pins to it, multiple registries
-    // fall back to the first available when the current selection is missing/invalid.
+    // Auto-select a catalog image on the Standard draft only.
+    useEffect(() => {
+      const host =
+        standardForm.repositoryHost && validHosts.includes(standardForm.repositoryHost)
+          ? standardForm.repositoryHost
+          : validHosts[0];
+      if (!host) {
+        return;
+      }
+      const imagesForType = imagesByType[standardForm.type];
+      if (!imagesForType) {
+        return;
+      }
+      const byProject = filterImagesByProjectForRegistry(imagesForType, host);
+      const images = standardForm.project ? byProject[standardForm.project] || [] : [];
+      if (images.length === 0) {
+        return;
+      }
+      const currentValid = images.some((img) => img.id === standardForm.containerImage);
+      if (standardForm.containerImage && currentValid) {
+        return;
+      }
+      const desired =
+        DEFAULT_IMAGE_NAMES[standardForm.type as keyof typeof DEFAULT_IMAGE_NAMES];
+      const desiredBase = desired?.split(':')[0];
+      const exactMatch = desired ? images.find((img) => img.name === desired) : undefined;
+      const baseMatch =
+        !exactMatch && desiredBase
+          ? images.find((img) => img.imageName === desiredBase)
+          : undefined;
+      const picked = exactMatch ?? baseMatch ?? images[0];
+      setFormsByTab((prev) => ({
+        ...prev,
+        [LAUNCH_TAB.STANDARD]: {
+          ...prev[LAUNCH_TAB.STANDARD],
+          containerImage: picked.id,
+        },
+      }));
+      if (activeTab === LAUNCH_TAB.STANDARD) {
+        setUrlParams({ image: picked.id });
+      }
+    }, [
+      standardForm.repositoryHost,
+      standardForm.type,
+      standardForm.project,
+      standardForm.containerImage,
+      imagesByType,
+      validHosts,
+      activeTab,
+      setUrlParams,
+    ]);
+
+    // Always mirror a valid host on *both* tabs: single registry pins to it,
+    // multiple registries fall back to the first available when invalid.
     useEffect(() => {
       if (validHosts.length === 0) {
         return;
       }
-      const current = formData.repositoryHost;
-      if (current && validHosts.includes(current)) {
+      setFormsByTab((prev) => {
+        let changed = false;
+        const next: FormsByTab = { ...prev };
+        ([LAUNCH_TAB.STANDARD, LAUNCH_TAB.ADVANCED] as LaunchTabIndex[]).forEach((tab) => {
+          const current = prev[tab].repositoryHost;
+          if (current && validHosts.includes(current)) {
+            return;
+          }
+          next[tab] = { ...prev[tab], repositoryHost: validHosts[0] };
+          changed = true;
+        });
+        return changed ? next : prev;
+      });
+    }, [validHosts]);
+
+    const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+      if (!isLaunchTabIndex(newValue)) {
         return;
       }
-      setFormData((prev) => ({ ...prev, repositoryHost: validHosts[0] }));
-    }, [validHosts, formData.repositoryHost]);
-
-    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
       setTabValue(newValue);
-      setUrlParams({ tab: newValue });
+      // Keep the URL aligned with the tab the user is looking at, without
+      // copying field values between the two drafts.
+      syncUrlFromForm(newValue, formsByTab[newValue], resourceTypeByTab[newValue]);
     };
 
     const handleFieldChange = useCallback(
@@ -346,12 +527,12 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
             [field]: value,
           }));
 
-          // Sync session name to URL
+          // Sync session name to URL (never sync Advanced auth username/secret)
           if (field === 'sessionName') {
             setUrlParams({ name: value as string });
           }
         },
-      [setUrlParams],
+      [setUrlParams, setFormData, setIsFormDirty],
     );
 
     const handleSelectChange = useCallback(
@@ -406,28 +587,48 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
           return newData;
         });
 
-        // Update URL parameters
+        // URL updates — catalog project/image only while on Standard.
+        // Advanced username/secret are never written here (text fields only).
         if (field === 'type') {
           const newType = value as string;
-          // If switching to firefly or desktop, clear resource params
           if (newType === FIREFLY_TYPE || newType === DESKTOP_TYPE) {
+            setUrlParams(
+              isAdvancedTab
+                ? {
+                    tab: 'advanced',
+                    type: newType,
+                    cores: null,
+                    memory: null,
+                    gpus: null,
+                  }
+                : {
+                    tab: 'standard',
+                    type: newType,
+                    project: nextProject,
+                    image: '',
+                    cores: null,
+                    memory: null,
+                    gpus: null,
+                  },
+            );
+            setResourceType('flexible');
+          } else if (isAdvancedTab) {
+            setUrlParams({ tab: 'advanced', type: newType });
+          } else {
             setUrlParams({
+              tab: 'standard',
               type: newType,
               project: nextProject,
               image: '',
-              cores: null,
-              memory: null,
-              gpus: null,
             });
-            setResourceType('flexible'); // Reset to flexible
-          } else {
-            setUrlParams({ type: newType, project: nextProject, image: '' });
           }
         } else if (field === 'repositoryHost') {
-          setUrlParams({ project: '', image: '' });
-        } else if (field === 'project') {
+          if (!isAdvancedTab) {
+            setUrlParams({ project: '', image: '' });
+          }
+        } else if (field === 'project' && !isAdvancedTab) {
           setUrlParams({ project: value as string, image: '' });
-        } else if (field === 'containerImage') {
+        } else if (field === 'containerImage' && !isAdvancedTab) {
           setUrlParams({ image: value as string });
         } else if (field === 'memory') {
           setUrlParams({ memory: value as number });
@@ -450,6 +651,10 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         effectiveRegistry,
         isFormDirty,
         formData.project,
+        setFormData,
+        setIsFormDirty,
+        setResourceType,
+        isAdvancedTab,
       ],
     );
 
@@ -457,15 +662,19 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       async (event: React.FormEvent) => {
         event.preventDefault();
         if (onLaunch) {
-          await onLaunch(formData);
+          await onLaunch({
+            ...formData,
+            resourceType,
+            sourceTab: sourceTabForIndex(activeTab),
+          });
         }
       },
-      [formData, onLaunch],
+      [formData, resourceType, activeTab, onLaunch],
     );
 
     const handleReset = useCallback(() => {
-      setIsFormDirty(false);
-      setFormData({
+      const resetHost = defaultRepositoryHost(repositoryHosts);
+      const resetForm: SessionFormData = {
         type: defaultValues.type || NOTEBOOK_TYPE,
         project: defaultValues.project || SKAHA_PROJECT,
         containerImage: '', // Will be auto-selected by useEffect
@@ -473,27 +682,30 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         memory: defaultValues.memory || DEFAULT_RAM_NUMBER,
         cores: defaultValues.cores || DEFAULT_CORES_NUMBER,
         gpus: defaultValues.gpus ?? 0,
-        // Advanced tab fields
-        repositoryHost: (() => {
-          const rh = repositoryHosts.filter((host) => host && typeof host === 'string');
-          if (rh.length === 1) {
-            return rh[0];
-          }
-          if (rh.length > 1) {
-            return '';
-          }
-          return rh[0] || '';
-        })(),
+        resourceType: 'flexible',
+        repositoryHost: resetHost,
         image: '',
         repositoryAuthUsername: '',
         repositoryAuthSecret: '',
-      });
-      setResourceType('flexible');
-      setTabValue(0);
+      };
 
-      // Reset URL parameters to defaults
+      setDirtyByTab({
+        [LAUNCH_TAB.STANDARD]: false,
+        [LAUNCH_TAB.ADVANCED]: false,
+      });
+      setFormsByTab({
+        [LAUNCH_TAB.STANDARD]: { ...resetForm },
+        [LAUNCH_TAB.ADVANCED]: { ...resetForm },
+      });
+      setResourceTypeByTab({
+        [LAUNCH_TAB.STANDARD]: 'flexible',
+        [LAUNCH_TAB.ADVANCED]: 'flexible',
+      });
+      setTabValue(LAUNCH_TAB.STANDARD);
+
+      // Reset URL parameters to defaults (never write auth credentials)
       setUrlParams({
-        tab: 0,
+        tab: 'standard',
         type: defaultValues.type || NOTEBOOK_TYPE,
         project: defaultValues.project || SKAHA_PROJECT,
         image: '', // Will be auto-selected by useEffect
@@ -536,7 +748,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         setFormData((prev) => ({ ...prev, memory: value }));
         setUrlParams({ memory: value });
       },
-      [setUrlParams],
+      [setUrlParams, setFormData, setIsFormDirty],
     );
     const handleCoresChange = useCallback(
       (value: number) => {
@@ -544,7 +756,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         setFormData((prev) => ({ ...prev, cores: value }));
         setUrlParams({ cores: value });
       },
-      [setUrlParams],
+      [setUrlParams, setFormData, setIsFormDirty],
     );
     const handleGpusChange = useCallback(
       (value: number) => {
@@ -552,7 +764,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         setFormData((prev) => ({ ...prev, gpus: value }));
         setUrlParams({ gpus: value });
       },
-      [setUrlParams],
+      [setUrlParams, setFormData, setIsFormDirty],
     );
 
     // Helper component for the help icon tooltip

@@ -155,7 +155,7 @@ src/lib/stores/
 |-------|--------|------|
 | `/` | session filters, pagination (future) | Add when list UX needs shareable URLs |
 | `/storage` | `path`, `sort`, `order` | `useStorageUrlState.ts` (feature track S1) |
-| Launch form | tab, image, resources | `sessionLaunchForm.tsx` (nuqs direct) |
+| Launch form | `tab=standard\|advanced`, type, name, Standard catalog `project`/`image`, fixed resources | `sessionLaunchForm.tsx` (nuqs). Never: registry username/secret. |
 
 ### Rules
 

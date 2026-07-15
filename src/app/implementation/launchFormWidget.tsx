@@ -40,7 +40,13 @@ export function LaunchFormWidgetImpl({
       setLaunchRequest({ status: 'requesting', sessionData: formData });
 
       try {
-        const imageToUse = formData.image
+        // Prefer explicit sourceTab from the form; fall back to inferring from
+        // Advanced-only fields for older callers / retries.
+        const isAdvancedLaunch =
+          formData.sourceTab === 'advanced' ||
+          (formData.sourceTab !== 'standard' && Boolean(formData.image?.trim()));
+
+        const imageToUse = isAdvancedLaunch
           ? `${formData.repositoryHost}/${formData.image}`
           : formData.containerImage;
 
@@ -53,7 +59,8 @@ export function LaunchFormWidgetImpl({
             ram: formData.memory,
             ...(formData.gpus && formData.gpus > 0 && { gpus: formData.gpus }),
           }),
-          ...(formData.repositoryAuthUsername &&
+          ...(isAdvancedLaunch &&
+            formData.repositoryAuthUsername &&
             formData.repositoryAuthSecret && {
               registryUsername: formData.repositoryAuthUsername,
               registrySecret: formData.repositoryAuthSecret,
