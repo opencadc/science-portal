@@ -19,7 +19,7 @@ export const SessionRenewModalImpl = React.forwardRef<HTMLDivElement, SessionRen
         titleId="extend-session-dialog-title"
       >
         <Typography id="extend-session-dialog-description" gutterBottom>
-          Extending session time by 12 hours.
+          Extending this session using the platform&apos;s configured session lifetime.
         </Typography>
         {sessionName && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

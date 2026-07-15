@@ -123,8 +123,7 @@ const hasResourceModeBadge = (isFixedResources: boolean | undefined): isFixedRes
 
 /**
  * Corner badge for the session's resource mode. Rendered inside CardContent
- * (without a z-index) so the operating/terminating backdrop dims it along
- * with the rest of the content.
+ * (without a z-index) so the busy overlay dims it with the rest of the content.
  */
 const ResourceModeChip = ({ isFixedResources }: { isFixedResources: boolean }) => {
   const theme = useTheme();
@@ -204,16 +203,31 @@ const formatTimestamp = (timestamp: string): string => {
 
 // --- Hoisted styles (static, or theme-derived via sx callbacks) ---
 
-// No borderRadius: the card root has overflow:hidden, so it clips the
-// backdrop to its own radius. (Careful when tempted to add one back — in sx,
-// numeric borderRadius values are multiplied by theme.shape.borderRadius, so
-// `borderRadius: theme.shape.borderRadius` renders 16px on a 6px card.)
-const backdropSx = (theme: Theme) => ({
-  position: 'absolute',
-  inset: 0,
-  zIndex: 1,
-  backgroundColor: alpha(theme.palette.background.paper, 0.7),
-});
+/**
+ * Card busy overlay — MUI Backdrop + CircularProgress, scoped to the card.
+ *
+ * Use `color="inherit"` (same as our Button loading spinner) with an explicit
+ * `color` on the Backdrop: the `primary` palette variant on CircularProgress
+ * has been unreliable here, while inherit from the parent always paints.
+ * `transitionDuration={0}` avoids Fade leaving the spinner at opacity 0 on
+ * first paint when the overlay mounts already open.
+ */
+const BusyOverlay = () => (
+  <Backdrop
+    open
+    aria-hidden={false}
+    transitionDuration={0}
+    sx={(theme) => ({
+      position: 'absolute',
+      inset: 0,
+      zIndex: 2,
+      color: theme.palette.primary.main,
+      backgroundColor: alpha(theme.palette.background.paper, 0.72),
+    })}
+  >
+    <CircularProgress color="inherit" size={32} disableShrink />
+  </Backdrop>
+);
 
 const actionButtonSx = (theme: Theme) => ({
   [theme.breakpoints.down('sm')]: {
@@ -266,6 +280,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
     const sessionIdAssigned = hasAssignedSessionId(id);
     const actionsDisabled = isTerminating || !sessionIdAssigned;
     const awaitingIdTooltip = 'Session is still being created';
+    const showContentBusyOverlay = isOperating && !isTerminating;
 
     const handleCardClick = () => {
       if (isConnectable) {
@@ -390,14 +405,8 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           >
             {showResourceMode && <ResourceModeChip isFixedResources={isFixedResources} />}
 
-            {/* Operating overlay covers the content only; the actions row below
-                stays visible and clickable (e.g. delete) during operations.
-                Terminating gets a dedicated actions-row backdrop instead. */}
-            {(isOperating || isTerminating) && (
-              <Backdrop open sx={backdropSx(theme)}>
-                <CircularProgress size={32} />
-              </Backdrop>
-            )}
+            {/* Pending / renew: dim content only so footer actions (e.g. delete) stay usable. */}
+            {showContentBusyOverlay && <BusyOverlay />}
 
             <Box display="flex" alignItems="center" gap={1} mb={1} minWidth={0}>
               <Box sx={{ color: theme.palette.primary.main, display: 'flex', flexShrink: 0 }}>
@@ -490,11 +499,6 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
               py: 0.5,
             }}
           >
-            {/* Extra overlay for the actions row, terminating case only: the
-                content backdrop deliberately leaves the footer clickable (so
-                Pending sessions with a real id can still be deleted), but a
-                terminating session or launch placeholder must not accept actions. */}
-            {isTerminating && <Backdrop open sx={backdropSx(theme)} />}
             <Tooltip
               title={
                 !sessionIdAssigned
@@ -556,6 +560,9 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
               </span>
             </Tooltip>
           </CardActions>
+
+          {/* Terminating: cover the whole card (content + actions) with one spinner. */}
+          {isTerminating && <BusyOverlay />}
         </MuiCard>
     );
   },

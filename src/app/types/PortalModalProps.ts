@@ -37,8 +37,13 @@ export interface PortalModalProps {
   refreshTooltip?: string;
   /** Extra controls in the title row (in addition to refresh). */
   headerActions?: ReactNode;
-  /** Footer action buttons. When omitted, a single Close button is rendered. */
-  actions?: ReactNode;
+  /**
+   * Footer action buttons.
+   * - omitted / `undefined` → default Close button
+   * - `false` → hide the footer actions entirely
+   * - otherwise → render the provided nodes
+   */
+  actions?: ReactNode | false;
   /** Label for the default footer Close button. @default 'Close' */
   closeLabel?: string;
   /** Show the linear status bar under the title. @default true */

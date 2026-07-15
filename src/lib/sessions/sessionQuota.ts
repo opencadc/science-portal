@@ -40,18 +40,16 @@ export function countQuotaSessions(sessions: Session[]): number {
 }
 
 /**
- * Effective quota while launching: sessions in the query cache plus one in-flight
- * slot when `launchRequest` is requesting and the optimistic placeholder is
- * not yet in the list.
+ * Effective quota while launching: interactive sessions from the query cache
+ * plus one reserved slot when a launch request is in flight (`launchRequest`).
  */
 export function getSessionLaunchQuota(
   sessions: Session[],
   hasInFlightLaunch: boolean,
   max: number = MAX_INTERACTIVE_SESSIONS,
 ): SessionLaunchQuota {
-  const used = countQuotaSessions(sessions);
-  const hasPlaceholder = sessions.some(isLaunchPendingPlaceholder);
-  const inFlight = hasInFlightLaunch && !hasPlaceholder ? 1 : 0;
+  const used = countQuotaSessions(sessions.filter((s) => !isLaunchPendingPlaceholder(s)));
+  const inFlight = hasInFlightLaunch ? 1 : 0;
   const effectiveUsed = used + inFlight;
   const remaining = Math.max(0, max - effectiveUsed);
   const atLimit = effectiveUsed >= max;

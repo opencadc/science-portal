@@ -77,6 +77,10 @@ export const SessionRequestModalImpl: React.FC<SessionRequestModalProps> = ({
       icon={<RequestIcon />}
       isFetching={isBusy}
       error={isError ? parsedError : undefined}
+      // While the request is in flight the modal is non-dismissible so the user
+      // cannot start another launch; only the error state allows Close / Retry.
+      disableClose={isBusy}
+      showCloseButton={isError}
       actions={
         isError ? (
           <>
@@ -89,7 +93,9 @@ export const SessionRequestModalImpl: React.FC<SessionRequestModalProps> = ({
               </Button>
             )}
           </>
-        ) : undefined
+        ) : (
+          false
+        )
       }
     >
       <Box display="flex" flexDirection="column" alignItems="center" textAlign="center" py={2}>

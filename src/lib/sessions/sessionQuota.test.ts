@@ -58,22 +58,22 @@ describe('getSessionLaunchQuota', () => {
     expect(quota.remaining).toBe(0);
   });
 
-  it('reserves one slot for in-flight launch before placeholder lands', () => {
+  it('reserves one slot for an in-flight launch request', () => {
     const quota = getSessionLaunchQuota([interactive('1'), interactive('2')], true);
     expect(quota.canLaunch).toBe(false);
     expect(quota.inFlight).toBe(1);
     expect(quota.used).toBe(2);
   });
 
-  it('does not double-count when optimistic placeholder is already in the list', () => {
+  it('ignores leftover launch placeholders when counting used sessions', () => {
     const sessions = [
       interactive('1'),
       interactive('2'),
       interactive(LAUNCH_PENDING_PLACEHOLDER_ID, { status: 'Pending' }),
     ];
     const quota = getSessionLaunchQuota(sessions, true);
-    expect(quota.used).toBe(3);
-    expect(quota.inFlight).toBe(0);
+    expect(quota.used).toBe(2);
+    expect(quota.inFlight).toBe(1);
     expect(quota.canLaunch).toBe(false);
   });
 

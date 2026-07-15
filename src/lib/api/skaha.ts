@@ -392,22 +392,20 @@ export async function getSessionEvents(sessionId: string): Promise<string> {
 }
 
 /**
- * Extend session expiry time
+ * Extend session expiry time.
  *
- * Note: SKAHA API uses the configured expiry time in skaha.sessionexpiry
- * The hours parameter is optional and currently not used by SKAHA
+ * Proxies to Skaha `POST /v1/session/{id}` with `action=renew`, which resets
+ * expiry from the server-configured `skaha.sessionexpiry` (not a client hours value).
  */
-export async function renewSession(sessionId: string, additionalHours?: number): Promise<Session> {
+export async function renewSession(sessionId: string): Promise<Session> {
   const authHeaders = getAuthHeader();
   const response = await fetch(`${sessionsApiRoot()}/${sessionId}/renew`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       Accept: 'application/json',
       ...authHeaders,
     },
     credentials: 'include',
-    body: JSON.stringify({ hours: additionalHours }),
   });
 
   if (!response.ok) {

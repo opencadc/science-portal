@@ -8,8 +8,6 @@ import { useDeleteSession, useRenewSession } from '@/lib/hooks/useSessions';
 import { useSessionModalActive, useSessionModalsActions, useSessionUiActions } from '@/lib/stores';
 import { hasAssignedSessionId } from '@/lib/sessions/sessionQuota';
 
-const RENEW_HOURS = 12;
-
 /**
  * Single mount point for session modals driven by the `sessionModals` store slice.
  */
@@ -26,11 +24,11 @@ export function SessionModalsHost() {
   });
 
   const { mutate: renewSession, isPending: isRenewing } = useRenewSession({
-    onSuccess: (_data, { sessionId }) => {
+    onSuccess: (_data, sessionId) => {
       clearOperating(sessionId);
       closeSessionModal();
     },
-    onError: (_error, { sessionId }) => {
+    onError: (_error, sessionId) => {
       clearOperating(sessionId);
       closeSessionModal();
     },
@@ -56,7 +54,8 @@ export function SessionModalsHost() {
     extendTriggeredForRef.current = active.sessionId;
 
     markOperating(active.sessionId, 'renew');
-    renewSession({ sessionId: active.sessionId, hours: RENEW_HOURS });
+    // Skaha `action=renew` resets expiry from server `skaha.sessionexpiry` — no client hours.
+    renewSession(active.sessionId);
   }, [active, markOperating, renewSession]);
 
   const isDeleteOpen = active?.kind === 'delete';

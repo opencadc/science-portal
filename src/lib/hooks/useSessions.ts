@@ -21,10 +21,9 @@ import {
   getSessionEvents,
   type Session,
   type SessionLaunchParams,
-  type SessionStatus,
 } from '@/lib/api/skaha';
 import { useAppStore } from '@/lib/stores';
-import { LAUNCH_PENDING_PLACEHOLDER_ID } from '@/lib/sessions/sessionQuota';
+import { isLaunchPendingPlaceholder } from '@/lib/sessions/sessionQuota';
 
 /**
  * Query keys for sessions
@@ -56,6 +55,8 @@ export function useSessions(
   return useQuery({
     queryKey: sessionKeys.list(),
     queryFn: getSessions,
+    // Drop any leftover client-only launch placeholders; the list is server-owned.
+    select: (sessions) => sessions.filter((s) => !isLaunchPendingPlaceholder(s)),
     // Only fetch if authenticated (default to true for backward compatibility)
     enabled: isAuthenticated !== false,
     // Avoid long “loading” from default retries when the token is rejected (stale/expired Bearer)
@@ -199,44 +200,27 @@ export function useLaunchSession(
   options?: UseMutationOptions<Session, Error, SessionLaunchParams>,
 ) {
   const queryClient = useQueryClient();
-  const { onSuccess: userOnSuccess, onError: userOnError, ...restOptions } = options || {};
+  const {
+    onSuccess: userOnSuccess,
+    onError: userOnError,
+    onSettled: userOnSettled,
+    ...restOptions
+  } = options || {};
 
   return useMutation({
     ...restOptions,
     mutationFn: launchSession,
-    onMutate: async (variables) => {
-      await queryClient.cancelQueries({ queryKey: sessionKeys.list() });
-      const previousSessions = queryClient.getQueryData<Session[]>(sessionKeys.list()) || [];
-
-      const placeholder: Session = {
-        id: LAUNCH_PENDING_PLACEHOLDER_ID,
-        sessionType: variables.sessionType,
-        sessionName: variables.sessionName,
-        status: 'Pending' as SessionStatus,
-        containerImage: variables.containerImage,
-        startedTime: '',
-        expiresTime: '',
-        memoryAllocated: '',
-        cpuAllocated: '',
-      };
-
-      queryClient.setQueryData(sessionKeys.list(), [...previousSessions, placeholder]);
-      return { previousSessions };
+    // Keep the list server-owned: do not append optimistic rows. In-flight
+    // launch is tracked via `launchRequest` (Zustand) for modal + quota only.
+    onSuccess: (newSession, variables, context, mutation) => {
+      userOnSuccess?.(newSession, variables, context, mutation);
     },
     onError: (error, variables, context, mutation) => {
-      if (context?.previousSessions) {
-        queryClient.setQueryData(sessionKeys.list(), context.previousSessions);
-      }
       userOnError?.(error, variables, context, mutation);
     },
-    onSuccess: (newSession, variables, context, mutation) => {
-      const currentSessions = queryClient.getQueryData<Session[]>(sessionKeys.list()) || [];
-      const withoutPlaceholder = currentSessions.filter(
-        (s) => s.id !== LAUNCH_PENDING_PLACEHOLDER_ID,
-      );
-      queryClient.setQueryData(sessionKeys.list(), [...withoutPlaceholder, newSession]);
-
-      userOnSuccess?.(newSession, variables, context, mutation);
+    onSettled: (data, error, variables, context, mutation) => {
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
+      userOnSettled?.(data, error, variables, context, mutation);
     },
   });
 }
@@ -278,19 +262,17 @@ export function useDeleteSession(options?: UseMutationOptions<void, Error, strin
  * ```tsx
  * const { mutate: renew } = useRenewSession();
  *
- * renew({ sessionId: 'session-123', hours: 2 });
+ * renew('session-123');
  * ```
  */
-export function useRenewSession(
-  options?: UseMutationOptions<Session, Error, { sessionId: string; hours: number }>,
-) {
+export function useRenewSession(options?: UseMutationOptions<Session, Error, string>) {
   const queryClient = useQueryClient();
   const { onSuccess: userOnSuccess, ...restOptions } = options || {};
 
   return useMutation({
     ...restOptions,
-    mutationFn: ({ sessionId, hours }) => renewSession(sessionId, hours),
-    onSuccess: (updatedSession, variables, ...rest) => {
+    mutationFn: (sessionId) => renewSession(sessionId),
+    onSuccess: (updatedSession, sessionId, ...rest) => {
       // Immediately update the session in the list with the new expiry time
       const currentSessions = queryClient.getQueryData<Session[]>(sessionKeys.list()) || [];
       const updatedSessions = currentSessions.map((session) =>
@@ -304,7 +286,7 @@ export function useRenewSession(
       queryClient.setQueryData(sessionKeys.detail(updatedSession.id), updatedSession);
 
       // Call user's onSuccess callback if provided
-      userOnSuccess?.(updatedSession, variables, ...rest);
+      userOnSuccess?.(updatedSession, sessionId, ...rest);
     },
   });
 }

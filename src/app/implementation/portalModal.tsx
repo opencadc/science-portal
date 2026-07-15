@@ -103,7 +103,7 @@ export const PortalModalImpl = React.forwardRef<HTMLDivElement, PortalModalProps
               {refreshButton}
               {showCloseButton && (
                 <IconButton
-                  onClick={onClose}
+                  onClick={handleClose}
                   size="small"
                   aria-label="close modal"
                   disabled={disableClose}
@@ -149,13 +149,15 @@ export const PortalModalImpl = React.forwardRef<HTMLDivElement, PortalModalProps
           {!isLoading && children}
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
-          {actions ?? (
-            <Button onClick={onClose} variant="outlined" disabled={disableClose}>
-              {closeLabel}
-            </Button>
-          )}
-        </DialogActions>
+        {actions !== false && (
+          <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+            {actions ?? (
+              <Button onClick={handleClose} variant="outlined" disabled={disableClose}>
+                {closeLabel}
+              </Button>
+            )}
+          </DialogActions>
+        )}
       </Dialog>
     );
   },

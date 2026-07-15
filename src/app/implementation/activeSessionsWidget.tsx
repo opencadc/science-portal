@@ -81,7 +81,7 @@ export function ActiveSessionsWidgetImpl({
     const isTerminating = operation === 'delete' || session.status === 'Terminating';
     return (
       <SessionCard
-        key={session.sessionName || `session-${index}`}
+        key={session.id || session.sessionName || `session-${index}`}
         {...session}
         isOperating={!!operation || session.status === 'Pending'}
         isTerminating={isTerminating}
