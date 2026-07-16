@@ -46,11 +46,26 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   };
   console.log('📨 Session GET route - final headers:', finalHeaders);
 
-  // `view=interactive` excludes headless batch jobs. Skaha source:
-  // skaha/src/main/java/org/opencadc/skaha/session/GetAction.java —
-  // SESSION_VIEW_INTERACTIVE branch.
+  const sessionType = request.nextUrl.searchParams.get('type');
+  const isHeadlessList = sessionType === 'headless';
+  const statusFilter = request.nextUrl.searchParams.get('status');
+
+  // Interactive: `view=interactive` excludes headless batch jobs (Skaha
+  // SESSION_VIEW_INTERACTIVE). Headless: `type=headless` on the typed list
+  // path — keep Failed/Succeeded/Completed for the batch-jobs widget.
+  // Optional `status` narrows to one Skaha status (Pending, Running, …).
+  let skahaUrl: string;
+  if (isHeadlessList) {
+    skahaUrl = `${serverApiConfig.skaha.baseUrl}/v1/session?type=headless`;
+    if (statusFilter) {
+      skahaUrl += `&status=${encodeURIComponent(statusFilter)}`;
+    }
+  } else {
+    skahaUrl = `${serverApiConfig.skaha.baseUrl}/v1/session?view=interactive`;
+  }
+
   const response = await fetchExternalApi(
-    `${serverApiConfig.skaha.baseUrl}/v1/session?view=interactive`,
+    skahaUrl,
     {
       method: 'GET',
       headers: finalHeaders,
@@ -68,11 +83,24 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     return errorResponse('Failed to fetch sessions', response.status, errorText);
   }
 
+  const all: SkahaSessionResponse[] = await response.json();
+
+  if (isHeadlessList) {
+    logger.info(
+      `Retrieved ${all.length} headless session(s)${statusFilter ? ` status=${statusFilter}` : ''}`,
+    );
+    logger.logSuccess(HTTP_STATUS.OK, {
+      count: all.length,
+      type: 'headless',
+      ...(statusFilter ? { status: statusFilter } : {}),
+    });
+    return successResponse(all);
+  }
+
   // Skaha marks a session `Failed` once its lifetime elapses (an expired
   // session). These linger in the list for some time after they stop being
   // useful; drop them so the active-sessions widget only shows sessions
   // the user can actually interact with.
-  const all: SkahaSessionResponse[] = await response.json();
   const sessions = all.filter((s) => s.status !== 'Failed');
   logger.info(
     `Retrieved ${all.length} interactive session(s), ${sessions.length} after dropping expired`,

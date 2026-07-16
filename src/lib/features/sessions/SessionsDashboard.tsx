@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
 import { ActiveSessionsWidget } from '@/app/components/ActiveSessionsWidget/ActiveSessionsWidget';
 import { UserStorageWidget } from '@/app/components/UserStorageWidget/UserStorageWidget';
+import { HeadlessSessionsWidget } from '@/app/components/HeadlessSessionsWidget/HeadlessSessionsWidget';
 import { LaunchFormWidget } from '@/app/components/LaunchFormWidget/LaunchFormWidget';
 import { PlatformLoad } from '@/app/components/PlatformLoad/PlatformLoad';
 import { Footer } from '@/app/components/Footer/Footer';
@@ -10,9 +11,10 @@ import { Box } from '@/app/components/Box/Box';
 import { Container, Typography, useMediaQuery } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import type { SessionCardProps } from '@/app/types/SessionCardProps';
+import type { HeadlessAutoRefreshSettings } from '@/app/types/HeadlessSessionsWidgetProps';
 import { useAuthStatus } from '@/lib/hooks/useAuth';
 import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
-import { useSessions, useLaunchSession } from '@/lib/hooks/useSessions';
+import { useSessions, useHeadlessSessionsSplit, useLaunchSession } from '@/lib/hooks/useSessions';
 import { useContainerImages, useImageRepositories, useContext } from '@/lib/hooks/useImages';
 import { useUserStorageSummary } from '@/lib/hooks/useUserStorage';
 import { STATIC_PLATFORM_LOAD_DATA } from '@/lib/config/static-platform-load';
@@ -27,6 +29,7 @@ import {
 } from '@/lib/config/site-config';
 import { useOperatingSessionIds, useSessionUiActions } from '@/lib/stores';
 import { SessionModalsHost } from '@/lib/features/sessions/SessionModalsHost';
+import { isInteractiveSession } from '@/lib/sessions/sessionQuota';
 
 export function SessionsDashboard() {
   const theme = useTheme();
@@ -43,12 +46,37 @@ export function SessionsDashboard() {
   const operatingSessionIds = useOperatingSessionIds();
   const { clearOperating } = useSessionUiActions();
 
+  // Headless fetch is opt-in: off until "Fetch now" or auto-refresh is enabled.
+  const [headlessFetchEnabled, setHeadlessFetchEnabled] = useState(false);
+  const [headlessAutoRefresh, setHeadlessAutoRefresh] = useState<HeadlessAutoRefreshSettings>({
+    enabled: false,
+    intervalSec: 45,
+  });
+
+  const headlessQueryEnabled =
+    isAuthenticated && (headlessFetchEnabled || headlessAutoRefresh.enabled);
+
   const {
     data: sessions = [],
     isLoading: isLoadingSessionsQuery,
     isFetching: isFetchingSessions,
     refetch: refetchSessions,
   } = useSessions(isAuthenticated);
+
+  const {
+    sessions: headlessSessions,
+    isLoading: isLoadingHeadlessQuery,
+    isFetching: isFetchingHeadless,
+    isFetched: isHeadlessFetched,
+    refetch: refetchHeadless,
+    groupLoading: headlessGroupLoading,
+    groupLoaded: headlessGroupLoaded,
+  } = useHeadlessSessionsSplit({
+    enabled: headlessQueryEnabled,
+    refetchInterval: headlessAutoRefresh.enabled
+      ? headlessAutoRefresh.intervalSec * 1000
+      : false,
+  });
 
   const {
     data: imagesByType = {},
@@ -92,6 +120,8 @@ export function SessionsDashboard() {
   // isLoading = initial load, no data yet → widgets render skeletons.
   // isFetching = background refetch → widgets keep content, status bar animates.
   const isLoadingSessions = authLoading || (isAuthenticated && isLoadingSessionsQuery);
+  // Headless stays idle until the user fetches or enables auto-refresh.
+  const isLoadingHeadless = headlessQueryEnabled && isLoadingHeadlessQuery;
 
   const isLoadingLaunchForm =
     authLoading ||
@@ -101,44 +131,58 @@ export function SessionsDashboard() {
 
   const isLoadingUserStorage = authLoading || (isAuthenticated && isLoadingStorageSummary);
 
-  // A deleted session keeps its "Terminating" card state until the server
-  // confirms it's gone, i.e. the session no longer appears in the refetched
-  // list. (Renew marks are cleared by the mutation callbacks instead.)
+  // A deleted session keeps its "Terminating" state until the server confirms
+  // it's gone from either the interactive or headless list.
   useEffect(() => {
     operatingSessionIds.forEach((operation, sessionId) => {
-      if (operation === 'delete' && !sessions.some((s) => s.id === sessionId)) {
+      if (operation !== 'delete') return;
+      const stillInteractive = sessions.some((s) => s.id === sessionId);
+      const stillHeadless = headlessSessions.some((s) => s.id === sessionId);
+      if (!stillInteractive && !stillHeadless) {
         clearOperating(sessionId);
       }
     });
-  }, [sessions, operatingSessionIds, clearOperating]);
+  }, [sessions, headlessSessions, operatingSessionIds, clearOperating]);
 
   const activeSessions: SessionCardProps[] = useMemo(() => {
-    return sessions
-      .filter(
-        (session: Session) =>
-          session.sessionType !== 'headless' && session.sessionType !== 'desktop-app',
-      )
-      .map((session: Session) => ({
-        id: session.id,
-        sessionType: session.sessionType,
-        sessionName: session.sessionName,
-        status: session.status,
-        containerImage: session.containerImage,
-        startedTime: session.startedTime,
-        expiresTime: session.expiresTime,
-        memoryUsage: session.memoryUsage,
-        memoryAllocated: session.memoryAllocated,
-        cpuUsage: session.cpuUsage,
-        cpuAllocated: session.cpuAllocated,
-        gpuAllocated: session.gpuAllocated,
-        isFixedResources: session.isFixedResources,
-        connectUrl: session.connectUrl,
-      }));
+    return sessions.filter(isInteractiveSession).map((session: Session) => ({
+      id: session.id,
+      sessionType: session.sessionType as SessionCardProps['sessionType'],
+      sessionName: session.sessionName,
+      status: session.status as SessionCardProps['status'],
+      containerImage: session.containerImage,
+      startedTime: session.startedTime,
+      expiresTime: session.expiresTime,
+      memoryUsage: session.memoryUsage,
+      memoryAllocated: session.memoryAllocated,
+      cpuUsage: session.cpuUsage,
+      cpuAllocated: session.cpuAllocated,
+      gpuAllocated: session.gpuAllocated,
+      isFixedResources: session.isFixedResources,
+      connectUrl: session.connectUrl,
+    }));
   }, [sessions]);
 
   const handleSessionsRefresh = useCallback(() => {
     refetchSessions();
   }, [refetchSessions]);
+
+  const handleHeadlessRefresh = useCallback(() => {
+    if (!headlessQueryEnabled) {
+      // Enabling the query triggers the initial fetch on the next render.
+      setHeadlessFetchEnabled(true);
+      return;
+    }
+    void refetchHeadless();
+  }, [headlessQueryEnabled, refetchHeadless]);
+
+  const handleHeadlessAutoRefreshSettings = useCallback((settings: HeadlessAutoRefreshSettings) => {
+    setHeadlessAutoRefresh(settings);
+    // Turning auto-refresh on also opts into fetching (no separate Fetch now required).
+    if (settings.enabled) {
+      setHeadlessFetchEnabled(true);
+    }
+  }, []);
 
   const handleStorageRefresh = useCallback(() => {
     void refetchStorage();
@@ -257,6 +301,20 @@ export function SessionsDashboard() {
                   />
                 </Box>
               </Box>
+            </Container>
+
+            <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
+              <HeadlessSessionsWidget
+                sessions={headlessSessions}
+                operatingSessionIds={operatingSessionIds}
+                isLoading={isLoadingHeadless}
+                isFetching={headlessQueryEnabled && isFetchingHeadless}
+                hasLoaded={isHeadlessFetched}
+                groupLoading={headlessGroupLoading}
+                groupLoaded={headlessGroupLoaded}
+                onRefresh={handleHeadlessRefresh}
+                onAutoRefreshSettingsChange={handleHeadlessAutoRefreshSettings}
+              />
             </Container>
 
             <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>

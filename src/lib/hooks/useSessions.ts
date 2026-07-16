@@ -6,13 +6,16 @@
 
 import {
   useQuery,
+  useQueries,
   useMutation,
   useQueryClient,
   type UseQueryOptions,
   type UseMutationOptions,
 } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
 import {
   getSessions,
+  getHeadlessSessions,
   getSession,
   launchSession,
   deleteSession,
@@ -21,9 +24,16 @@ import {
   getSessionEvents,
   type Session,
   type SessionLaunchParams,
+  type SessionStatus,
 } from '@/lib/api/skaha';
 import { useAppStore } from '@/lib/stores';
 import { isLaunchPendingPlaceholder } from '@/lib/sessions/sessionQuota';
+import {
+  HEADLESS_ACTIVE_STATUSES,
+  HEADLESS_TERMINAL_STATUSES,
+  type HeadlessJobGroup,
+  headlessStatusesForGroup,
+} from '@/lib/sessions/headlessJobs';
 
 /**
  * Query keys for sessions
@@ -32,6 +42,11 @@ export const sessionKeys = {
   all: ['sessions'] as const,
   lists: () => [...sessionKeys.all, 'list'] as const,
   list: () => [...sessionKeys.lists()] as const,
+  headlessLists: () => [...sessionKeys.all, 'headless', 'list'] as const,
+  /** Legacy unfiltered headless list key (full `?type=headless`). */
+  headlessList: () => [...sessionKeys.headlessLists()] as const,
+  headlessByStatus: (status: SessionStatus | string) =>
+    [...sessionKeys.headlessLists(), status] as const,
   details: () => [...sessionKeys.all, 'detail'] as const,
   detail: (id: string) => [...sessionKeys.details(), id] as const,
   logs: (id: string) => [...sessionKeys.all, 'logs', id] as const,
@@ -96,6 +111,173 @@ export function useSessions(
     refetchIntervalInBackground: false,
     ...options,
   });
+}
+
+/**
+ * Headless (batch) sessions — single unfiltered query (legacy / tests).
+ * Prefer `useHeadlessSessionsSplit` for the dashboard widget.
+ */
+export function useHeadlessSessions(
+  isAuthenticated?: boolean,
+  options?: Omit<UseQueryOptions<Session[]>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery({
+    queryKey: sessionKeys.headlessList(),
+    queryFn: () => getHeadlessSessions(),
+    enabled: isAuthenticated !== false,
+    retry(failureCount, error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (/\b401\b/.test(msg)) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+    refetchIntervalInBackground: false,
+    ...options,
+  });
+}
+
+export interface UseHeadlessSessionsSplitOptions {
+  /** When false, no status queries run (opt-in Fetch now / auto-refresh). */
+  enabled?: boolean;
+  /** Polling interval in ms; false/undefined disables. Applied to enabled status queries. */
+  refetchInterval?: number | false;
+}
+
+export interface HeadlessSessionsSplitResult {
+  sessions: Session[];
+  isLoading: boolean;
+  isFetching: boolean;
+  /** True after at least one active-status query has settled. */
+  isFetched: boolean;
+  refetch: () => Promise<unknown>;
+  /** Per-tab: true while that group's status queries are still on first load. */
+  groupLoading: Record<HeadlessJobGroup, boolean>;
+  /** Per-tab: true once every status query for that group has settled at least once. */
+  groupLoaded: Record<HeadlessJobGroup, boolean>;
+}
+
+function headlessRetry(failureCount: number, error: Error) {
+  const msg = error.message;
+  if (/\b401\b/.test(msg)) {
+    return false;
+  }
+  return failureCount < 3;
+}
+
+/**
+ * Headless sessions split by Skaha `status` — active statuses first, then terminal.
+ * Progressive: Pending/Running tabs fill before Completed/Failed requests start.
+ */
+export function useHeadlessSessionsSplit(
+  options: UseHeadlessSessionsSplitOptions = {},
+): HeadlessSessionsSplitResult {
+  const { enabled = false, refetchInterval = false } = options;
+
+  const activeQueries = useQueries({
+    queries: HEADLESS_ACTIVE_STATUSES.map((status) => ({
+      queryKey: sessionKeys.headlessByStatus(status),
+      queryFn: () => getHeadlessSessions({ status }),
+      enabled,
+      retry: headlessRetry,
+      refetchInterval: enabled ? refetchInterval : false,
+      refetchIntervalInBackground: false,
+    })),
+  });
+
+  const activeSettled =
+    enabled && activeQueries.length > 0 && activeQueries.every((q) => q.isFetched);
+
+  const terminalQueries = useQueries({
+    queries: HEADLESS_TERMINAL_STATUSES.map((status) => ({
+      queryKey: sessionKeys.headlessByStatus(status),
+      queryFn: () => getHeadlessSessions({ status }),
+      enabled: enabled && activeSettled,
+      retry: headlessRetry,
+      refetchInterval: enabled && activeSettled ? refetchInterval : false,
+      refetchIntervalInBackground: false,
+    })),
+  });
+
+  const allQueries = useMemo(
+    () => [...activeQueries, ...terminalQueries],
+    [activeQueries, terminalQueries],
+  );
+
+  const sessions = useMemo(() => {
+    const byId = new Map<string, Session>();
+    for (const q of allQueries) {
+      for (const s of q.data ?? []) {
+        byId.set(s.id, s);
+      }
+    }
+    return Array.from(byId.values());
+  }, [allQueries]);
+
+  const lookupStatusQuery = useCallback(
+    (status: SessionStatus) => {
+      const activeIdx = HEADLESS_ACTIVE_STATUSES.indexOf(status);
+      if (activeIdx >= 0) return activeQueries[activeIdx];
+      const terminalIdx = HEADLESS_TERMINAL_STATUSES.indexOf(status);
+      if (terminalIdx >= 0) return terminalQueries[terminalIdx];
+      return undefined;
+    },
+    [activeQueries, terminalQueries],
+  );
+
+  const groupLoaded = useMemo(() => {
+    const loaded = (group: HeadlessJobGroup) =>
+      Boolean(enabled) &&
+      headlessStatusesForGroup(group).every((status) => lookupStatusQuery(status)?.isFetched === true);
+
+    return {
+      pending: loaded('pending'),
+      running: loaded('running'),
+      completed: loaded('completed'),
+      failed: loaded('failed'),
+    } satisfies Record<HeadlessJobGroup, boolean>;
+  }, [enabled, lookupStatusQuery]);
+
+  const groupLoading = useMemo(() => {
+    const loading = (group: HeadlessJobGroup) => {
+      if (!enabled) return false;
+      const statuses = headlessStatusesForGroup(group);
+      const isTerminal = group === 'completed' || group === 'failed';
+      if (isTerminal && !activeSettled) return true;
+      return statuses.some((status) => {
+        const q = lookupStatusQuery(status);
+        return Boolean(q && !q.isFetched && (q.isLoading || q.isPending || q.isFetching));
+      });
+    };
+    return {
+      pending: loading('pending'),
+      running: loading('running'),
+      completed: loading('completed'),
+      failed: loading('failed'),
+    } satisfies Record<HeadlessJobGroup, boolean>;
+  }, [enabled, activeSettled, lookupStatusQuery]);
+
+  const isFetched = Boolean(enabled && activeQueries.some((q) => q.isFetched));
+  const isLoading =
+    Boolean(enabled) && !isFetched && activeQueries.some((q) => q.isLoading || q.isPending);
+  const isFetching = allQueries.some((q) => q.isFetching);
+
+  const refetch = useCallback(async () => {
+    await Promise.all(activeQueries.map((q) => q.refetch()));
+    if (activeSettled) {
+      await Promise.all(terminalQueries.map((q) => q.refetch()));
+    }
+  }, [activeQueries, terminalQueries, activeSettled]);
+
+  return {
+    sessions,
+    isLoading,
+    isFetching,
+    isFetched,
+    refetch,
+    groupLoading,
+    groupLoaded,
+  };
 }
 
 /**
@@ -251,6 +433,7 @@ export function useDeleteSession(options?: UseMutationOptions<void, Error, strin
       // state via the sessionUi slice in the meantime).
       queryClient.removeQueries({ queryKey: sessionKeys.detail(sessionId) });
       queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
+      queryClient.invalidateQueries({ queryKey: sessionKeys.headlessLists() });
     },
   });
 }
