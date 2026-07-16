@@ -1,0 +1,59 @@
+/* Portal theme overrides for react-grid-layout (base CSS imported from DashboardGrid.tsx) */
+
+.dashboard-grid-root .dashboard-grid-item {
+  height: 100%;
+  min-height: 0;
+}
+
+.dashboard-grid-root .dashboard-grid-item > * {
+  height: 100%;
+  min-height: 0;
+}
+
+.dashboard-grid-root .react-grid-item.react-grid-placeholder {
+  background: var(--dashboard-grid-placeholder, rgba(25, 118, 210, 0.35));
+  opacity: 0.35;
+  border-radius: 8px;
+}
+
+.dashboard-grid-root.dashboard-grid--editing .react-grid-item {
+  outline: 1px dashed var(--dashboard-grid-outline, rgba(0, 0, 0, 0.12));
+  outline-offset: -1px;
+  border-radius: 8px;
+}
+
+.dashboard-grid-root.dashboard-grid--editing .react-grid-item > .react-resizable-handle {
+  opacity: 0.85;
+}
+
+.dashboard-grid-root .react-grid-item > .react-resizable-handle::after {
+  border-color: var(--dashboard-grid-resize, rgba(0, 0, 0, 0.45));
+}
+
+/* Widen east/south hit targets so independent axis resize is easier. */
+.dashboard-grid-root .react-grid-item > .react-resizable-handle-e {
+  width: 12px;
+  right: 0;
+  top: 12px;
+  bottom: 12px;
+  height: auto;
+  cursor: ew-resize;
+}
+
+.dashboard-grid-root .react-grid-item > .react-resizable-handle-s {
+  height: 12px;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  width: auto;
+  cursor: ns-resize;
+}
+
+.dashboard-widget-drag-handle {
+  cursor: grab;
+  touch-action: none;
+}
+
+.dashboard-widget-drag-handle:active {
+  cursor: grabbing;
+}

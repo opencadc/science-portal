@@ -12,9 +12,22 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Refresh as RefreshIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
+import {
+  Refresh as RefreshIcon,
+  HelpOutline as HelpOutlineIcon,
+  DragIndicator as DragIndicatorIcon,
+  VisibilityOff as VisibilityOffIcon,
+} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import type { DashboardWidgetProps, DashboardWidgetHelp } from '@/app/types/DashboardWidgetProps';
+import {
+  useDashboardLayoutEdit,
+  useDashboardWidgetId,
+} from '@/lib/features/sessions/DashboardLayoutEditContext';
+import {
+  DASHBOARD_DRAG_HANDLE_CLASS,
+  DASHBOARD_WIDGET_LABELS,
+} from '@/lib/features/sessions/dashboardLayout';
 
 function HelpAffordance({ help, widgetTitle }: { help: DashboardWidgetHelp; widgetTitle: React.ReactNode }) {
   const theme = useTheme();
@@ -93,6 +106,8 @@ export function DashboardWidgetImpl({
   statusValue = 100,
   footer,
   fillHeight = false,
+  showDragHandle,
+  dragHandleAriaLabel,
   maxWidth,
   sx,
   className,
@@ -100,6 +115,19 @@ export function DashboardWidgetImpl({
   children,
 }: DashboardWidgetProps) {
   const theme = useTheme();
+  const { isEditing, canHideWidget, hideWidget } = useDashboardLayoutEdit();
+  const widgetId = useDashboardWidgetId();
+  const dragHandleVisible = showDragHandle ?? isEditing;
+  const showHideControl = isEditing && widgetId !== null;
+  const resolvedDragHandleLabel =
+    dragHandleAriaLabel ??
+    (typeof title === 'string'
+      ? `Drag to rearrange ${title}`
+      : 'Drag to rearrange widget');
+  const hideLabel =
+    widgetId !== null
+      ? `Hide ${DASHBOARD_WIDGET_LABELS[widgetId]}`
+      : 'Hide widget';
 
   // isLoading = initial load (skeleton children); isFetching = background
   // refetch (content stays). Both animate the status bar and block refresh.
@@ -139,7 +167,7 @@ export function DashboardWidgetImpl({
           display: 'flex',
           flexDirection: 'column',
           ...(maxWidth !== undefined && { maxWidth }),
-          ...(fillHeight && { height: '100%', flex: 1 }),
+          ...(fillHeight && { height: '100%', flex: 1, minHeight: 0 }),
           [theme.breakpoints.down('sm')]: {
             padding: theme.spacing(1.5),
           },
@@ -169,7 +197,46 @@ export function DashboardWidgetImpl({
           },
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', minWidth: 0 }}>
+          {dragHandleVisible && (
+            <Box
+              component="span"
+              className={DASHBOARD_DRAG_HANDLE_CLASS}
+              aria-label={resolvedDragHandleLabel}
+              title={resolvedDragHandleLabel}
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                color: 'text.secondary',
+                borderRadius: 1,
+                p: 0.25,
+                '&:hover': { color: 'text.primary', bgcolor: 'action.hover' },
+              }}
+            >
+              <DragIndicatorIcon fontSize="small" aria-hidden />
+            </Box>
+          )}
+          {showHideControl && (
+            <Tooltip
+              title={
+                canHideWidget ? hideLabel : 'At least one widget must stay visible'
+              }
+            >
+              <Box component="span" sx={{ display: 'inline-flex' }}>
+                <IconButton
+                  size="small"
+                  aria-label={hideLabel}
+                  disabled={!canHideWidget}
+                  onClick={() => {
+                    if (widgetId) hideWidget(widgetId);
+                  }}
+                  sx={{ p: 0.25, color: 'text.secondary' }}
+                >
+                  <VisibilityOffIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Tooltip>
+          )}
           <Typography
             variant="h6"
             component="h2"
@@ -221,6 +288,7 @@ export function DashboardWidgetImpl({
           display: 'flex',
           flexDirection: 'column',
           minHeight: 0,
+          overflow: fillHeight ? 'auto' : undefined,
         }}
       >
         {children}

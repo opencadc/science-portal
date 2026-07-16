@@ -54,4 +54,6 @@ export interface PlatformLoadProps {
    * When true, shows a warning overlay over blurred placeholder metrics and disables refresh (CADC-15555).
    */
   showDisabledOverlay?: boolean;
+  /** Stretch to fill the dashboard grid cell. */
+  fillHeight?: boolean;
 }

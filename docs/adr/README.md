@@ -16,6 +16,8 @@ Each ADR follows a structured format:
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0001](./0001-client-state-management.md) | Client State Management with Zustand | Proposed |
+| [0002](./0002-portal-modal-unification.md) | Portal Modal Unification | Proposed |
+| [0003](./0003-dashboard-grid-layout.md) | Dashboard Widget Grid Layout with react-grid-layout | Proposed |
 
 ## Related guides
 

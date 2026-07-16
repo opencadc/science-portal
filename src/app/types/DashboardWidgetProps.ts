@@ -62,6 +62,16 @@ export interface DashboardWidgetProps {
   footer?: ReactNode;
   /** Stretch to fill the parent's height (flex column layout). */
   fillHeight?: boolean;
+  /**
+   * Show a drag handle in the header for dashboard grid rearrange.
+   * When omitted, follows `useDashboardLayoutEdit().isEditing`.
+   */
+  showDragHandle?: boolean;
+  /**
+   * Accessible name for the drag handle.
+   * @default `Drag to rearrange ${title}` when title is a string
+   */
+  dragHandleAriaLabel?: string;
   /** Optional cap on the widget width (e.g. 600 for the storage widget). */
   maxWidth?: number | string;
   /** Extra styles merged onto the Paper root. */

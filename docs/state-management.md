@@ -15,7 +15,8 @@ Developer reference for the Science Portal. Architectural rationale and decision
 | Deploy-time config | **React Context** | `useCanfar`, `serviceUrls`, `basePath` |
 | Bookmarkable / shareable | **nuqs** | File path `?path=`, session filters |
 | Cross-route UI, not in URL | **Zustand** | Upload queue, auth modals, multi-select |
-| Single component, ephemeral | **local `useState`** | Form fields, MUI `anchorEl` |
+| Route-owned UI preference (browser) | **Feature-local `localStorage`** | Dashboard widget grid layout |
+| Single component, ephemeral | **local `useState`** | Form fields, MUI `anchorEl`, layout edit mode |
 
 ---
 
@@ -138,6 +139,37 @@ src/lib/stores/
 3. Compose in `app-store.ts`
 4. Export selector hook in `selectors.ts`
 5. Unit test actions and reset behavior
+
+---
+
+## Feature-local preferences (`localStorage`)
+
+### When to use
+
+- Preference belongs to **one route/feature**, not cross-route orchestration
+- Value should survive reload in the same browser
+- Not shareable via URL and not server-backed (yet)
+
+### Dashboard layout
+
+The sessions dashboard (`src/lib/features/sessions/`) persists widget positions with:
+
+| Piece | Role |
+|-------|------|
+| `dashboardLayout.ts` | Widget ids, defaults, breakpoints, CSS class constants |
+| `dashboardGridUi.tsx` | Shared skeleton + keyed grid-item factory |
+| `dashboardLayoutStorage.ts` | `localStorage` key derived from layout version |
+| `useDashboardLayout.ts` | Load + debounced save + reset + hide/show widgets |
+
+Rules:
+
+1. **Do not** put dashboard layout in Zustand or nuqs.
+2. **Do not** clear layout on logout (browser preference, not session secret).
+3. Always merge saved layouts with defaults so new widgets get a slot.
+4. Persist `hidden` widget ids with the layout blob; at least one widget stays visible.
+5. Ephemeral “Customize layout” toggle stays in component `useState`.
+
+See [ADR 0003](./adr/0003-dashboard-grid-layout.md).
 
 ---
 

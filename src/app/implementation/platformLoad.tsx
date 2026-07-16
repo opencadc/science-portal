@@ -19,6 +19,7 @@ export const PlatformLoadImpl: React.FC<PlatformLoadProps> = ({
   className,
   title = 'Platform Load',
   showDisabledOverlay = false,
+  fillHeight = false,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -114,6 +115,7 @@ export const PlatformLoadImpl: React.FC<PlatformLoadProps> = ({
       isLoading={effectiveLoading}
       onRefresh={showDisabledOverlay ? undefined : onRefresh}
       footer={lastUpdateFooter || undefined}
+      fillHeight={fillHeight}
     >
       {/* Content - Responsive MetricBlock layout; blurred when live stats disabled (CADC-15555) */}
       <Box sx={{ marginBottom: theme.spacing(2), position: 'relative' }}>

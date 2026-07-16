@@ -268,7 +268,7 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
         showStatusBar={showProgressIndicator}
         statusValue={progressPercentage > 0 ? progressPercentage : 100}
         fillHeight={fillHeight}
-        maxWidth={600}
+        maxWidth={fillHeight ? undefined : 600}
       >
         {/* Storage Cards or Empty State */}
         {!displayData && !isLoading ? (
