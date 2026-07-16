@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
 import { ThemeProvider } from '@/app/theme/ThemeContext';
 import { SkipNavigation } from '@/app/components/SkipNavigation/SkipNavigation';
 import { PortalLayout } from '@/app/components/PortalLayout/PortalLayout';
@@ -28,20 +29,22 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <PublicRuntimeConfigProvider value={publicRuntimeConfig}>
-          <QueryProvider>
-            <NuqsProvider>
-              <AuthProvider>
-                <ThemeProvider>
-                  <ClientErrorBoundary>
-                    <SkipNavigation />
-                    <PortalLayout>{children}</PortalLayout>
-                  </ClientErrorBoundary>
-                </ThemeProvider>
-              </AuthProvider>
-            </NuqsProvider>
-          </QueryProvider>
-        </PublicRuntimeConfigProvider>
+        <AppRouterCacheProvider>
+          <PublicRuntimeConfigProvider value={publicRuntimeConfig}>
+            <QueryProvider>
+              <NuqsProvider>
+                <AuthProvider>
+                  <ThemeProvider>
+                    <ClientErrorBoundary>
+                      <SkipNavigation />
+                      <PortalLayout>{children}</PortalLayout>
+                    </ClientErrorBoundary>
+                  </ThemeProvider>
+                </AuthProvider>
+              </NuqsProvider>
+            </QueryProvider>
+          </PublicRuntimeConfigProvider>
+        </AppRouterCacheProvider>
       </body>
     </html>
   );

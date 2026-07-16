@@ -36,6 +36,13 @@ import { hasAssignedSessionId } from '@/lib/sessions/sessionQuota';
 
 const ICON_SIZE = 22;
 
+/** Explicit CSS size so global `img { height: auto }` doesn't fight next/image. */
+const sessionIconStyle: React.CSSProperties = {
+  width: ICON_SIZE,
+  height: ICON_SIZE,
+  objectFit: 'contain',
+};
+
 const getSessionIcon = (basePath: string, type: SessionType): React.ReactNode => {
   switch (type) {
     case 'notebook':
@@ -46,7 +53,7 @@ const getSessionIcon = (basePath: string, type: SessionType): React.ReactNode =>
           alt="Notebook"
           width={ICON_SIZE}
           height={ICON_SIZE}
-          style={{ objectFit: 'contain' }}
+          style={sessionIconStyle}
         />
       );
     case 'desktop':
@@ -57,7 +64,7 @@ const getSessionIcon = (basePath: string, type: SessionType): React.ReactNode =>
           alt="Desktop"
           width={ICON_SIZE}
           height={ICON_SIZE}
-          style={{ objectFit: 'contain' }}
+          style={sessionIconStyle}
         />
       );
     case 'carta':
@@ -67,7 +74,7 @@ const getSessionIcon = (basePath: string, type: SessionType): React.ReactNode =>
           alt="CARTA"
           width={ICON_SIZE}
           height={ICON_SIZE}
-          style={{ objectFit: 'contain' }}
+          style={sessionIconStyle}
         />
       );
     case 'contributed':
@@ -77,7 +84,7 @@ const getSessionIcon = (basePath: string, type: SessionType): React.ReactNode =>
           alt="Contributed"
           width={ICON_SIZE}
           height={ICON_SIZE}
-          style={{ objectFit: 'contain' }}
+          style={sessionIconStyle}
         />
       );
     case 'firefly':
@@ -87,7 +94,7 @@ const getSessionIcon = (basePath: string, type: SessionType): React.ReactNode =>
           alt="Firefly"
           width={ICON_SIZE}
           height={ICON_SIZE}
-          style={{ objectFit: 'contain' }}
+          style={sessionIconStyle}
         />
       );
     default:
