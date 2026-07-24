@@ -12,11 +12,11 @@ export type SessionType =
   | 'contributeddesktop';
 export type SessionStatus = 'Running' | 'Pending' | 'Failed' | 'Terminating' | 'Error' | 'Unknown';
 
-export interface SessionCardProps extends Omit<CardProps, 'onClick'> {
+export interface SessionCardProps extends Omit<CardProps, 'onClick' | 'id'> {
+  /** Skaha session id — drives modal API calls (logs/events/delete/renew). */
   id?: string;
   sessionType: SessionType;
   sessionName: string;
-  sessionId?: string; // Optional session ID for API calls
   status: SessionStatus;
   containerImage: string;
   startedTime: string; // UTC timestamp
@@ -28,17 +28,12 @@ export interface SessionCardProps extends Omit<CardProps, 'onClick'> {
   gpuAllocated?: string; // e.g., "0" or "1"
   isFixedResources?: boolean; // True if resources are fixed, false if flexible
   connectUrl?: string; // optional to match API
-  requestedRAM?: string;
-  requestedCPU?: string;
-  requestedGPU?: string;
-  onDelete?: () => void;
-  onShowEvents?: () => void;
-  onShowLogs?: () => void;
-  onExtendTime?: () => void;
-  onClick?: () => void;
   loading?: boolean; // Full skeleton loading state (initial load)
   isOperating?: boolean; // Overlay spinner during operations (delete/renew)
-  disableHover?: boolean;
-  /** Dense layout for the Active Sessions widget panel */
-  compact?: boolean;
+  /**
+   * Session is being torn down (delete requested, or Skaha reports
+   * Terminating). Shows a "Terminating" chip, covers the card — including the
+   * actions row — with a backdrop and disables all actions.
+   */
+  isTerminating?: boolean;
 }

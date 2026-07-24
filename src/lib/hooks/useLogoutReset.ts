@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { resetAppUiState } from '@/lib/stores';
 
 /**
  * Detect a true→false transition of `isAuthenticated` and reset the app.
@@ -27,6 +28,7 @@ export function useLogoutReset(isAuthenticated: boolean): void {
     }
 
     // True logout transition: drop everything.
+    resetAppUiState();
     queryClient.invalidateQueries({
       predicate: (query) => !query.queryKey.includes('auth'),
     });

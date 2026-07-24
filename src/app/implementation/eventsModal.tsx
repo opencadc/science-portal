@@ -2,20 +2,14 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Table,
   TableHead,
   TableBody,
   TableRow,
   TableCell,
-  IconButton,
   Typography,
   Box,
   Chip,
-  CircularProgress,
   Alert,
   Button,
   Tooltip,
@@ -25,65 +19,23 @@ import {
   useTheme,
   useMediaQuery,
 } from '@mui/material';
-import { useApiRoutes } from '@/lib/hooks/useApiRoutes';
 import {
-  Close as CloseIcon,
-  Refresh as RefreshIcon,
   Error as ErrorIcon,
   Schedule as ScheduleIcon,
   CloudDownload as CloudDownloadIcon,
   CloudDone as CloudDoneIcon,
   PlayCircle as PlayCircleIcon,
   Flag as FlagIcon,
+  Description as LogsIcon,
 } from '@mui/icons-material';
 import type {
   EventsModalProps,
-  SessionEvent,
   EventType,
   EventReason,
-  UseSessionEventsReturn,
 } from '@/app/types/EventsModalProps';
-import { getAuthHeader } from '@/lib/auth/token-storage';
-
-/**
- * Parse raw log data into structured events
- */
-const parseEventLog = (logData: string): { events: SessionEvent[]; hasParseErrors: boolean } => {
-  const lines = logData.trim().split('\n');
-  if (lines.length < 2) return { events: [], hasParseErrors: false };
-
-  const events: SessionEvent[] = [];
-  let hasParseErrors = false;
-
-  // Skip header line and parse data lines
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    // Parse the log line - format: TYPE REASON MESSAGE FIRST-TIME LAST-TIME
-    // Using regex to handle spaces in message
-    const match = line.match(/^(\S+)\s+(\S+)\s+(.*?)\s+(\S+|<nil>)\s+(\S+|<nil>)$/);
-
-    if (match) {
-      const [, type, reason, message, firstTime, lastTime] = match;
-
-      events.push({
-        id: `event-${i}-${Date.now()}`,
-        type: type as EventType,
-        reason: reason as EventReason,
-        message: message.trim(),
-        firstTime: firstTime === '<nil>' ? null : firstTime,
-        lastTime: lastTime === '<nil>' ? null : lastTime,
-      });
-    } else {
-      // Mark that we had parsing errors but continue trying to parse other lines
-      hasParseErrors = true;
-      console.warn(`Failed to parse event line ${i}: ${line}`);
-    }
-  }
-
-  return { events, hasParseErrors };
-};
+import { PortalModal } from '@/app/components/PortalModal/PortalModal';
+import { useSessionEventLog } from '@/lib/hooks/useSessions';
+import { parseEventLog } from '@/lib/sessions/parseEventLog';
 
 /**
  * Format timestamp for display
@@ -143,90 +95,6 @@ const getEventTypeColor = (type: EventType): 'success' | 'warning' | 'error' | '
 };
 
 /**
- * Custom hook for fetching session events
- */
-const useSessionEvents = (
-  sessionId: string,
-  open: boolean,
-  eventsEndpoint?: string,
-  initialEvents?: SessionEvent[],
-): UseSessionEventsReturn => {
-  const apiRoutes = useApiRoutes();
-  const [events, setEvents] = useState<SessionEvent[]>(initialEvents || []);
-  const [rawData, setRawData] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!initialEvents);
-  const [error, setError] = useState<string | null>(null);
-  const [parseError, setParseError] = useState(false);
-
-  const fetchEvents = useCallback(async () => {
-    if (!sessionId || !open) return;
-
-    setLoading(true);
-    setError(null);
-    setParseError(false);
-
-    try {
-      const endpoint = eventsEndpoint || apiRoutes.sessions.logs(sessionId);
-
-      const authHeaders = getAuthHeader();
-
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        headers: {
-          Accept: 'text/plain',
-          ...authHeaders,
-        },
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch events: ${response.statusText}`);
-      }
-
-      const data = await response.text();
-      setRawData(data); // Store raw data for raw view
-
-      const { events: parsedEvents, hasParseErrors } = parseEventLog(data);
-      setEvents(parsedEvents);
-      setParseError(hasParseErrors);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch events');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId, open, eventsEndpoint, apiRoutes.sessions]);
-
-  useEffect(() => {
-    if (open && !initialEvents) {
-      fetchEvents();
-    }
-  }, [open, fetchEvents, initialEvents]);
-
-  // Set initial raw data if initialEvents provided (for Storybook)
-  useEffect(() => {
-    if (initialEvents && !rawData) {
-      // Generate mock raw data from initial events
-      const header =
-        'TYPE     REASON      MESSAGE                                                                                                                        FIRST-TIME             LAST-TIME';
-      const lines = initialEvents.map(
-        (e) =>
-          `${e.type}   ${e.reason}   ${e.message}   ${e.firstTime || '<nil>'}   ${e.lastTime || '<nil>'}`,
-      );
-      setRawData([header, ...lines].join('\n'));
-    }
-  }, [initialEvents, rawData]);
-
-  return {
-    events,
-    rawData,
-    loading,
-    error,
-    parseError,
-    refresh: fetchEvents,
-  };
-};
-
-/**
  * EventsModal implementation
  */
 export const EventsModalImpl: React.FC<EventsModalProps> = ({
@@ -234,28 +102,39 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
   sessionId,
   sessionName = 'Session',
   onClose,
-  onRefresh,
-  eventsEndpoint,
-  initialEvents,
+  logView = 'events',
   maxEvents = 100,
   showRefreshButton = true,
-  autoScroll = false,
   forceRawView = false,
   defaultView = 'table',
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [showRawView, setShowRawView] = useState(forceRawView || defaultView === 'raw');
 
-  const { events, rawData, loading, error, parseError, refresh } = useSessionEvents(
-    sessionId,
-    open,
-    eventsEndpoint,
-    initialEvents,
-  );
+  const {
+    data: rawData,
+    isLoading,
+    isFetching,
+    error: queryError,
+    refetch,
+  } = useSessionEventLog(sessionId, logView, open);
 
-  // Sort events by timestamp (most recent first)
+  // Whitespace-only bodies (e.g. "\n") count as empty — the endpoint returns
+  // 200 before the container has produced output.
+  const hasRawContent = !!rawData?.trim();
+
+  const { events, hasParseErrors: parseError } = useMemo(() => {
+    if (!rawData) return { events: [], hasParseErrors: false };
+    return parseEventLog(rawData);
+  }, [rawData]);
+
+  const error = queryError?.message ?? null;
+
+  const handleRefresh = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
   const sortedEvents = useMemo(() => {
     return [...events]
       .sort((a, b) => {
@@ -266,104 +145,71 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
       .slice(0, maxEvents);
   }, [events, maxEvents]);
 
-  const handleRefresh = useCallback(() => {
-    refresh();
-    onRefresh?.();
-  }, [refresh, onRefresh]);
-
-  // Auto-scroll to bottom when new events arrive
-  useEffect(() => {
-    if (autoScroll && open) {
-      const content = document.getElementById('events-modal-content');
-      if (content) {
-        content.scrollTop = content.scrollHeight;
-      }
-    }
-  }, [sortedEvents, autoScroll, open]);
-
-  // Auto-switch to raw view if parsing errors detected
   useEffect(() => {
     if (parseError && !showRawView) {
       setShowRawView(true);
     }
   }, [parseError, showRawView]);
 
+  // Same convention as DashboardWidget:
+  // - isLoading: initial fetch, nothing cached yet → spinner + progress bar
+  // - isFetching: background refetch → keep stale content visible + progress bar
+  const isLogsView = logView === 'logs';
+  const titleLabel = isLogsView ? 'Container Logs' : 'Container Events';
+
   return (
-    <Dialog
+    <PortalModal
       open={open}
       onClose={onClose}
+      title={`${titleLabel} - ${sessionName}`}
+      icon={isLogsView ? <LogsIcon /> : <FlagIcon />}
+      isLoading={isLoading}
+      isFetching={isFetching}
       maxWidth="lg"
-      fullWidth
-      fullScreen={isMobile}
-      aria-labelledby="events-modal-title"
-    >
-      <DialogTitle id="events-modal-title">
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Box display="flex" alignItems="center" gap={1}>
-            <FlagIcon />
-            <Typography variant="h6">Container Events - {sessionName}</Typography>
-          </Box>
-          <Box display="flex" alignItems="center" gap={1}>
-            {showRefreshButton && !loading && (
-              <Tooltip title="Refresh events">
-                <IconButton onClick={handleRefresh} size="small" aria-label="refresh events">
-                  <RefreshIcon />
-                </IconButton>
-              </Tooltip>
-            )}
-            <IconButton onClick={onClose} size="small" aria-label="close modal">
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent id="events-modal-content" dividers>
-        {/* View toggle and parse error warning */}
-        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={showRawView}
-                onChange={(e) => setShowRawView(e.target.checked)}
-                color="primary"
-                disabled={forceRawView}
-              />
-            }
-            label={forceRawView ? 'Raw view (parsing disabled)' : 'Raw view'}
-          />
-          {parseError && !showRawView && !forceRawView && (
-            <Alert severity="warning" sx={{ flex: 1, ml: 2 }}>
-              Some events could not be parsed. Enable raw view to see all data.
-            </Alert>
-          )}
-        </Box>
-
-        {loading && (
-          <Box display="flex" justifyContent="center" alignItems="center" py={4}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {error && !loading && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+      titleId="events-modal-title"
+      onRefresh={showRefreshButton ? handleRefresh : undefined}
+      refreshAriaLabel={isLogsView ? 'refresh logs' : 'refresh events'}
+      refreshTooltip={isLogsView ? 'Refresh logs' : 'Refresh events'}
+      error={
+        error && !isLoading ? (
+          <>
             {error}
             <Button size="small" onClick={handleRefresh} sx={{ ml: 2 }}>
               Retry
             </Button>
-          </Alert>
+          </>
+        ) : undefined
+      }
+    >
+        {/* View toggle and parse error warning (hidden when parsing is disabled) */}
+        {!forceRawView && (
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showRawView}
+                  onChange={(e) => setShowRawView(e.target.checked)}
+                  color="primary"
+                />
+              }
+              label="Raw view"
+            />
+            {parseError && !showRawView && (
+              <Alert severity="warning" sx={{ flex: 1, ml: 2 }}>
+                Some events could not be parsed. Enable raw view to see all data.
+              </Alert>
+            )}
+          </Box>
         )}
 
         {/* Raw view display */}
-        {!loading && !error && showRawView && rawData && (
+        {!isLoading && showRawView && hasRawContent && (
           <Paper
             variant="outlined"
             sx={{
               p: 2,
-              backgroundColor: theme.palette.grey[50],
-              ...(theme.palette.mode === 'dark' && {
-                backgroundColor: theme.palette.grey[900],
-              }),
+              backgroundColor:
+                theme.palette.mode === 'dark' ? theme.palette.grey[900] : theme.palette.grey[50],
             }}
           >
             <Typography
@@ -383,8 +229,24 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
           </Paper>
         )}
 
+        {/* Raw view empty state: the endpoint can return 200 with an empty body
+            (e.g. logs of a container that hasn't started), which would otherwise
+            leave the modal blank. */}
+        {!isLoading && !error && showRawView && !hasRawContent && (
+          <Box display="flex" flexDirection="column" alignItems="center" py={4}>
+            <Typography variant="h6" gutterBottom>
+              {isLogsView ? 'No logs available' : 'No events available'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {isLogsView
+                ? 'The container has not produced any output yet.'
+                : 'No container events have been recorded for this session yet.'}
+            </Typography>
+          </Box>
+        )}
+
         {/* Table view display */}
-        {!loading && !error && !showRawView && sortedEvents.length === 0 && (
+        {!isLoading && !error && !showRawView && sortedEvents.length === 0 && (
           <Box display="flex" flexDirection="column" alignItems="center" py={4}>
             <Typography variant="h6" gutterBottom>
               No events available
@@ -395,7 +257,7 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
           </Box>
         )}
 
-        {!loading && !error && !showRawView && sortedEvents.length > 0 && (
+        {!isLoading && !showRawView && sortedEvents.length > 0 && (
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small" stickyHeader>
               <TableHead>
@@ -457,13 +319,6 @@ export const EventsModalImpl: React.FC<EventsModalProps> = ({
             </Table>
           </Box>
         )}
-      </DialogContent>
-
-      <DialogActions>
-        <Button onClick={onClose} variant="outlined">
-          Close
-        </Button>
-      </DialogActions>
-    </Dialog>
+    </PortalModal>
   );
 };

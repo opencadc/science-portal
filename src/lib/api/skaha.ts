@@ -51,7 +51,6 @@ export interface SkahaSessionResponse {
 // Normalized session interface for internal use
 export interface Session {
   id: string;
-  sessionId?: string;
   sessionType: SessionType;
   sessionName: string;
   status: SessionStatus;
@@ -168,7 +167,6 @@ export interface SessionLaunchParams {
 function transformSkahaSession(skahaSession: SkahaSessionResponse): Session {
   return {
     id: skahaSession.id,
-    sessionId: skahaSession.id,
     sessionType: skahaSession.type as SessionType,
     sessionName: skahaSession.name,
     status: skahaSession.status as SessionStatus,
@@ -271,7 +269,6 @@ export async function launchSession(params: SessionLaunchParams): Promise<Sessio
     const sessionId = (result.sessionId || result.id).trim(); // Remove any whitespace/newlines
     return {
       id: sessionId,
-      sessionId: sessionId,
       sessionType: params.sessionType,
       sessionName: result.sessionName || params.sessionName,
       status: 'Pending' as SessionStatus,
@@ -376,25 +373,14 @@ export async function getSessionLogs(sessionId: string): Promise<string> {
   return response.text();
 }
 
-// Session event type
-export interface SessionEvent {
-  type?: string;
-  reason?: string;
-  message?: string;
-  count?: number;
-  firstTimestamp?: string;
-  lastTimestamp?: string;
-  [key: string]: unknown;
-}
-
 /**
- * Get session events
+ * Get session container events log (plain text, parsed by UI).
  */
-export async function getSessionEvents(sessionId: string): Promise<SessionEvent[]> {
+export async function getSessionEvents(sessionId: string): Promise<string> {
   const authHeaders = getAuthHeader();
   const response = await fetch(`${sessionsApiRoot()}/${sessionId}/events`, {
     method: 'GET',
-    headers: { Accept: 'application/json', ...authHeaders },
+    headers: { Accept: 'text/plain', ...authHeaders },
     credentials: 'include',
   });
 
@@ -402,26 +388,24 @@ export async function getSessionEvents(sessionId: string): Promise<SessionEvent[
     throw new Error(`Failed to fetch events for session ${sessionId}: ${response.status}`);
   }
 
-  return response.json();
+  return response.text();
 }
 
 /**
- * Extend session expiry time
+ * Extend session expiry time.
  *
- * Note: SKAHA API uses the configured expiry time in skaha.sessionexpiry
- * The hours parameter is optional and currently not used by SKAHA
+ * Proxies to Skaha `POST /v1/session/{id}` with `action=renew`, which resets
+ * expiry from the server-configured `skaha.sessionexpiry` (not a client hours value).
  */
-export async function renewSession(sessionId: string, additionalHours?: number): Promise<Session> {
+export async function renewSession(sessionId: string): Promise<Session> {
   const authHeaders = getAuthHeader();
   const response = await fetch(`${sessionsApiRoot()}/${sessionId}/renew`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       Accept: 'application/json',
       ...authHeaders,
     },
     credentials: 'include',
-    body: JSON.stringify({ hours: additionalHours }),
   });
 
   if (!response.ok) {

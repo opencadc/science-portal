@@ -1,5 +1,8 @@
 export type SessionType = 'notebook' | 'desktop' | 'carta' | 'contributed' | 'firefly';
 
+/** Which launch-form tab produced a submit payload. */
+export type LaunchFormTab = 'standard' | 'advanced';
+
 export interface SessionFormData {
   type: SessionType;
   project: string;
@@ -14,6 +17,12 @@ export interface SessionFormData {
   image?: string;
   repositoryAuthUsername?: string;
   repositoryAuthSecret?: string;
+  /**
+   * Set on submit so launch uses Standard vs Advanced values explicitly.
+   * Form state is keyed per tab; leftover Advanced fields must not win on Standard.
+   * Mirrors shareable `?tab=standard|advanced` (auth username/secret are never URL state).
+   */
+  sourceTab?: LaunchFormTab;
 }
 
 export interface SessionSettings {
@@ -36,4 +45,8 @@ export interface SessionLaunchFormProps {
   isLoading?: boolean;
   errorMessage?: string | null;
   activeSessions?: Session[];
+  /** When false, Launch is disabled (session quota reached). */
+  canLaunch?: boolean;
+  /** Shown when Launch is disabled due to quota. */
+  launchDisabledReason?: string;
 }

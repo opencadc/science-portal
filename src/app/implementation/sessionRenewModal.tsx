@@ -1,61 +1,33 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  Box,
-  Typography,
-  CircularProgress,
-  useTheme,
-} from '@mui/material';
+import React from 'react';
+import { Typography } from '@mui/material';
+import { Update as ExtendIcon } from '@mui/icons-material';
+import { PortalModal } from '@/app/components/PortalModal/PortalModal';
 import { SessionRenewModalProps } from '@/app/types/SessionRenewModalProps';
 
 export const SessionRenewModalImpl = React.forwardRef<HTMLDivElement, SessionRenewModalProps>(
-  ({ open, sessionName, sessionId, onClose, onConfirm, isRenewing = true }, ref) => {
-    const theme = useTheme();
-
-    // Trigger the renew action when modal opens
-    useEffect(() => {
-      if (open && onConfirm) {
-        onConfirm(12); // Default 12 hours - can be made configurable later
-      }
-    }, [open, onConfirm, sessionId]);
-
+  ({ open, sessionName, sessionId, onClose, isRenewing = false }, ref) => {
     return (
-      <Dialog
+      <PortalModal
         ref={ref}
         open={open}
-        onClose={isRenewing ? undefined : onClose}
-        maxWidth="sm"
-        fullWidth
-        aria-labelledby="renew-session-dialog-title"
-        aria-describedby="renew-session-dialog-description"
+        onClose={onClose}
+        title="Extend Session"
+        icon={<ExtendIcon />}
+        isFetching={isRenewing}
+        titleId="extend-session-dialog-title"
       >
-        <DialogTitle id="renew-session-dialog-title">Renew Session Request</DialogTitle>
-        <DialogContent>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: theme.spacing(2),
-              py: theme.spacing(2),
-            }}
-          >
-            <Typography id="renew-session-dialog-description" variant="body1" sx={{ flex: 1 }}>
-              Extending session time
-            </Typography>
-            <CircularProgress size={24} />
-          </Box>
-          {sessionName && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Session: {sessionName}
-              {sessionId && ` (${sessionId})`}
-            </Typography>
-          )}
-        </DialogContent>
-      </Dialog>
+        <Typography id="extend-session-dialog-description" gutterBottom>
+          Extending this session using the platform&apos;s configured session lifetime.
+        </Typography>
+        {sessionName && (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Session: {sessionName}
+            {sessionId && ` (${sessionId})`}
+          </Typography>
+        )}
+      </PortalModal>
     );
   },
 );

@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { Paper, Typography, IconButton, Box, LinearProgress, Link, Alert } from '@mui/material';
-import { Refresh as RefreshIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
-import { useTheme } from '@mui/material/styles';
+import React, { useCallback } from 'react';
+import { Box, Alert } from '@mui/material';
 import { LaunchFormWidgetProps } from '@/app/types/LaunchFormWidgetProps';
+import { DashboardWidget } from '@/app/components/DashboardWidget/DashboardWidget';
 import { SessionLaunchForm } from '@/app/components/SessionLaunchForm/SessionLaunchForm';
 import { SessionRequestModal } from '@/app/components/SessionRequestModal/SessionRequestModal';
 import { SessionFormData } from '@/app/types/SessionLaunchFormProps';
-import { SessionRequestStatus } from '@/app/types/SessionRequestModalProps';
+import { useLaunchRequest, useSessionUiActions } from '@/lib/stores';
+import { useSessionLaunchQuota } from '@/lib/hooks/useSessionLaunchQuota';
+import { SESSION_QUOTA_REACHED_MESSAGE } from '@/lib/sessions/sessionQuota';
 
 export function LaunchFormWidgetImpl({
   isLoading = false,
+  isFetching = false,
   onRefresh,
   title = 'Launch New Session',
   showProgressIndicator = false,
@@ -25,48 +27,46 @@ export function LaunchFormWidgetImpl({
   onLaunch,
   ...sessionLaunchFormProps
 }: LaunchFormWidgetProps) {
-  const theme = useTheme();
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [requestStatus, setRequestStatus] = useState<SessionRequestStatus>('requesting');
-  const [requestError, setRequestError] = useState<string | undefined>();
-  const [sessionData, setSessionData] = useState<SessionFormData | null>(null);
+  const launchRequest = useLaunchRequest();
+  const { setLaunchRequest } = useSessionUiActions();
+  const quota = useSessionLaunchQuota(activeSessions, launchRequest?.status);
 
   const handleLaunch = useCallback(
     async (formData: SessionFormData) => {
-      setSessionData(formData);
-      setModalOpen(true);
-      setRequestStatus('requesting');
-      setRequestError(undefined);
+      if (!quota.canLaunch) {
+        return;
+      }
+
+      setLaunchRequest({ status: 'requesting', sessionData: formData });
 
       try {
-        // Determine which image to use
-        const imageToUse = formData.image
+        // Prefer explicit sourceTab from the form; fall back to inferring from
+        // Advanced-only fields for older callers / retries.
+        const isAdvancedLaunch =
+          formData.sourceTab === 'advanced' ||
+          (formData.sourceTab !== 'standard' && Boolean(formData.image?.trim()));
+
+        const imageToUse = isAdvancedLaunch
           ? `${formData.repositoryHost}/${formData.image}`
           : formData.containerImage;
 
-        // Build launch parameters
-        // Only include cores, ram, and gpus if resourceType is 'fixed' (not flexible)
         const launchParams = {
           sessionType: formData.type,
           sessionName: formData.sessionName,
           containerImage: imageToUse,
-          // Only include cores and ram for fixed resources
           ...(formData.resourceType === 'fixed' && {
             cores: formData.cores,
             ram: formData.memory,
-            // Only include gpus if > 0 (API doesn't accept 0)
             ...(formData.gpus && formData.gpus > 0 && { gpus: formData.gpus }),
           }),
-          // Include registry auth if provided (for Advanced tab with custom images)
-          ...(formData.repositoryAuthUsername &&
+          ...(isAdvancedLaunch &&
+            formData.repositoryAuthUsername &&
             formData.repositoryAuthSecret && {
               registryUsername: formData.repositoryAuthUsername,
               registrySecret: formData.repositoryAuthSecret,
             }),
         };
 
-        // Launch the session using custom function if provided, otherwise use default API
         if (launchSessionFn) {
           await launchSessionFn(launchParams);
         } else {
@@ -74,148 +74,49 @@ export function LaunchFormWidgetImpl({
           await launchSession(launchParams);
         }
 
-        // Call the original onLaunch if provided
         if (onLaunch) {
           await onLaunch(formData);
         }
 
-        // The 30-second delay in useLaunchSession hook will refetch all sessions
-        setModalOpen(false);
+        setLaunchRequest(null);
       } catch (error) {
-        setRequestStatus('error');
-        setRequestError(error instanceof Error ? error.message : 'An unknown error occurred');
+        setLaunchRequest({
+          status: 'error',
+          sessionData: formData,
+          error: error instanceof Error ? error.message : 'An unknown error occurred',
+        });
       }
     },
-    [launchSessionFn, onLaunch],
+    [launchSessionFn, onLaunch, quota.canLaunch, setLaunchRequest],
   );
 
   const handleModalClose = useCallback(() => {
-    setModalOpen(false);
-  }, []);
+    setLaunchRequest(null);
+  }, [setLaunchRequest]);
 
   const handleRetry = useCallback(() => {
-    if (sessionData) {
-      handleLaunch(sessionData);
+    if (launchRequest?.sessionData && quota.canLaunch) {
+      void handleLaunch(launchRequest.sessionData);
     }
-  }, [sessionData, handleLaunch]);
+  }, [launchRequest?.sessionData, quota.canLaunch, handleLaunch]);
 
   return (
-    <Paper
-      elevation={0}
-      variant="outlined"
-      sx={{
-        position: 'relative',
-        padding: theme.spacing(2),
-        overflow: 'hidden',
-        borderRadius: theme.shape.borderRadius,
-        border: `1px solid ${theme.palette.divider}`,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        // Better mobile padding
-        [theme.breakpoints.down('sm')]: {
-          padding: theme.spacing(1.5),
-          borderRadius: 2,
-        },
-      }}
-      component="div"
+    <DashboardWidget
+      title={title}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      onRefresh={onRefresh}
+      help={helpUrl ? { url: helpUrl } : undefined}
+      statusValue={showProgressIndicator ? progressPercentage : 100}
+      alert={
+        signInAlertMessage ? (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            {signInAlertMessage}
+          </Alert>
+        ) : undefined
+      }
     >
-      {signInAlertMessage ? (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          {signInAlertMessage}
-        </Alert>
-      ) : null}
-
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: theme.spacing(1),
-          // Better mobile layout for header
-          [theme.breakpoints.down('sm')]: {
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            gap: 1,
-          },
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            // Ensure title wraps nicely on very small screens
-            flexWrap: 'wrap',
-          }}
-        >
-          <Typography
-            variant="h6"
-            component="h2"
-            sx={{
-              // Smaller text on mobile if needed
-              [theme.breakpoints.down('sm')]: {
-                fontSize: theme.typography.body1.fontSize,
-                fontWeight: theme.typography.fontWeightBold,
-              },
-            }}
-          >
-            {title}
-          </Typography>
-          {helpUrl && (
-            <Link
-              href={helpUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                textDecoration: 'none',
-                '&:hover': {
-                  textDecoration: 'underline',
-                },
-              }}
-            >
-              <HelpOutlineIcon sx={{ fontSize: theme.spacing(2.5) }} />
-            </Link>
-          )}
-        </Box>
-        {onRefresh && (
-          <IconButton
-            aria-label="refresh"
-            onClick={onRefresh}
-            disabled={isLoading}
-            size="small"
-            sx={{
-              // Position refresh button better on mobile
-              [theme.breakpoints.down('sm')]: {
-                alignSelf: 'flex-end',
-                mt: -1,
-              },
-            }}
-          >
-            <RefreshIcon />
-          </IconButton>
-        )}
-      </Box>
-
-      {/* Loading Bar */}
-      <LinearProgress
-        color={isLoading ? 'primary' : 'success'}
-        variant={isLoading ? 'indeterminate' : 'determinate'}
-        value={isLoading ? undefined : showProgressIndicator ? progressPercentage : 100}
-        sx={{
-          width: '100%',
-          height: 4,
-          marginBottom: theme.spacing(2),
-          borderRadius: 2,
-          '& .MuiLinearProgress-bar': {
-            borderRadius: 2,
-          },
-        }}
-      />
-
-      {/* Content - SessionLaunchForm */}
-      <Box sx={{ marginBottom: theme.spacing(2) }}>
+      <Box sx={{ marginBottom: 2 }}>
         <SessionLaunchForm
           {...sessionLaunchFormProps}
           imagesByType={imagesByType}
@@ -223,19 +124,20 @@ export function LaunchFormWidgetImpl({
           isLoading={isLoading}
           repositoryHosts={repositoryHosts}
           activeSessions={activeSessions}
+          canLaunch={quota.canLaunch}
+          launchDisabledReason={SESSION_QUOTA_REACHED_MESSAGE}
         />
       </Box>
 
-      {/* Session Request Modal */}
       <SessionRequestModal
-        open={modalOpen}
-        sessionName={sessionData?.sessionName || ''}
-        sessionType={sessionData?.type || ''}
-        status={requestStatus}
-        errorMessage={requestError}
+        open={launchRequest !== null}
+        sessionName={launchRequest?.sessionData.sessionName || ''}
+        sessionType={launchRequest?.sessionData.type || ''}
+        status={launchRequest?.status ?? 'requesting'}
+        errorMessage={launchRequest?.error}
         onClose={handleModalClose}
         onRetry={handleRetry}
       />
-    </Paper>
+    </DashboardWidget>
   );
 }

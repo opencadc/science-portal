@@ -25,6 +25,7 @@ import { Typography } from '@/app/components/Typography/Typography';
 import { IconButton } from '@/app/components/IconButton/IconButton';
 import { List } from '@/app/components/List/List';
 import { ListItem } from '@/app/components/List/ListItem';
+import { useMobileDrawerOpen, useNavigationActions } from '@/lib/stores';
 
 export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
   (
@@ -48,11 +49,12 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
   ) => {
     const theme = useMuiTheme() as Theme;
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const mobileDrawerOpen = useMobileDrawerOpen();
+    const { toggleMobileDrawer, closeMobileDrawer } = useNavigationActions();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [linkMenuAnchors, setLinkMenuAnchors] = useState<{
       [key: number]: HTMLElement | null;
     }>({});
-    const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
     const open = Boolean(anchorEl);
 
     // Theme-aware variant styles - MUI v7 compliant
@@ -196,12 +198,12 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
     );
 
     const handleMobileDrawerToggle = useCallback(() => {
-      setMobileDrawerOpen((prev) => !prev);
-    }, []);
+      toggleMobileDrawer();
+    }, [toggleMobileDrawer]);
 
     const handleMobileDrawerClose = useCallback(() => {
-      setMobileDrawerOpen(false);
-    }, []);
+      closeMobileDrawer();
+    }, [closeMobileDrawer]);
 
     // Handle account button click - either open menu or call custom handler
     const handleAccountButtonClick = useCallback(

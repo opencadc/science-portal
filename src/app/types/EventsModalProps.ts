@@ -32,15 +32,6 @@ export interface SessionEvent {
 }
 
 /**
- * API response structure
- */
-export interface EventsApiResponse {
-  events: SessionEvent[];
-  sessionId: string;
-  timestamp: string;
-}
-
-/**
  * Props for the EventsModal component
  */
 export interface EventsModalProps {
@@ -65,24 +56,10 @@ export interface EventsModalProps {
   onClose: () => void;
 
   /**
-   * Optional callback for refresh action
+   * Which Skaha plain-text log to fetch. Also drives the modal title/icon
+   * ("Container Events" vs "Container Logs").
    */
-  onRefresh?: () => void;
-
-  /**
-   * Optional custom endpoint for fetching events
-   */
-  eventsEndpoint?: string;
-
-  /**
-   * Optional initial events data (for testing)
-   */
-  initialEvents?: SessionEvent[];
-
-  /**
-   * Auto-refresh interval in milliseconds
-   */
-  refreshInterval?: number;
+  logView?: 'events' | 'logs';
 
   /**
    * Maximum number of events to display
@@ -95,12 +72,7 @@ export interface EventsModalProps {
   showRefreshButton?: boolean;
 
   /**
-   * Enable auto-scroll to latest events
-   */
-  autoScroll?: boolean;
-
-  /**
-   * Force raw view mode (disable parsing toggle)
+   * Force raw view mode (hides the parsing toggle)
    */
   forceRawView?: boolean;
 
@@ -108,16 +80,4 @@ export interface EventsModalProps {
    * Default view mode (table or raw)
    */
   defaultView?: 'table' | 'raw';
-}
-
-/**
- * Hook return type for session events
- */
-export interface UseSessionEventsReturn {
-  events: SessionEvent[];
-  rawData: string | null;
-  loading: boolean;
-  error: string | null;
-  parseError: boolean;
-  refresh: () => void;
 }

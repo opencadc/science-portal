@@ -13,11 +13,13 @@ import {
 } from '@tanstack/react-query';
 import {
   getUserStorageQuota,
+  getUserStorageSummary,
   listStorageNodes,
   uploadFile,
   deleteStorageNode,
   createDirectory,
   type UserStorageQuota,
+  type UserStorageSummary,
   type StorageNode,
 } from '@/lib/api/storage';
 
@@ -28,6 +30,8 @@ export const storageKeys = {
   all: ['storage'] as const,
   quotas: () => [...storageKeys.all, 'quota'] as const,
   quota: (username: string) => [...storageKeys.quotas(), username] as const,
+  summaries: () => [...storageKeys.all, 'summary'] as const,
+  summary: (username: string) => [...storageKeys.summaries(), username] as const,
   nodes: () => [...storageKeys.all, 'nodes'] as const,
   nodeList: (username: string, path: string) => [...storageKeys.nodes(), username, path] as const,
 };
@@ -54,6 +58,28 @@ export function useUserStorageQuota(
     // Only enable if username is provided and user is authenticated
     enabled: !!username && isAuthenticated !== false,
     // Refresh storage quota every 5 minutes
+    staleTime: 5 * 60 * 1000,
+    ...options,
+  });
+}
+
+/**
+ * Get user home storage summary (used / quota / usage from VOSpace).
+ *
+ * @example
+ * ```tsx
+ * const { data: summary } = useUserStorageSummary('janedoe', authStatus?.authenticated);
+ * ```
+ */
+export function useUserStorageSummary(
+  username: string,
+  isAuthenticated?: boolean,
+  options?: Omit<UseQueryOptions<UserStorageSummary>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery({
+    queryKey: storageKeys.summary(username),
+    queryFn: () => getUserStorageSummary(username),
+    enabled: !!username && username !== 'Login' && isAuthenticated !== false,
     staleTime: 5 * 60 * 1000,
     ...options,
   });

@@ -89,7 +89,7 @@ All workflows assume you are logged in with a CADC account.
 - **Framework:** Next.js 15 with App Router
 - **Language:** TypeScript 5
 - **UI:** Material-UI 7, Tailwind CSS 4
-- **State Management:** Zustand, TanStack React Query
+- **State Management:** Zustand (client UI), TanStack React Query (server data), nuqs (URL state) — see [docs/state-management.md](docs/state-management.md) and [ADR 0001](docs/adr/0001-client-state-management.md)
 - **Authentication:** NextAuth 5 (CANFAR/OIDC modes)
 - **Runtime:** Node.js 22+
 
@@ -161,17 +161,19 @@ src/
 ├── app/                  # Next.js App Router
 │   ├── api/              # API routes (auth, sessions, storage)
 │   ├── components/       # UI components (Material-UI based)
-│   ├── science-portal/   # Main portal pages
 │   ├── providers/        # React context providers
-│   └── contexts/         # Shared state contexts
+│   └── page.tsx          # Route shells (thin)
 ├── lib/                  # Shared libraries
 │   ├── api/              # API client functions
 │   ├── auth/             # Authentication helpers
 │   ├── config/           # Configuration files
-│   ├── hooks/            # Custom React hooks
-│   ├── stores/           # Zustand state stores
+│   ├── features/         # Route feature modules (sessions, storage, …)
+│   ├── hooks/            # TanStack Query domain hooks
+│   ├── stores/           # Zustand client UI store
 │   └── utils/            # Utility functions
-└── types/                # TypeScript definitions
+docs/
+├── adr/                  # Architecture decision records
+└── state-management.md   # State classification guide
 ```
 
 ## Deployment
