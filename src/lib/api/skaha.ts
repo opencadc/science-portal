@@ -24,7 +24,15 @@ export type SessionType =
   | 'firefly'
   | 'contributednotebook'
   | 'contributeddesktop';
-export type SessionStatus = 'Running' | 'Pending' | 'Terminating' | 'Error' | 'Failed' | 'Unknown';
+export type SessionStatus =
+  | 'Running'
+  | 'Pending'
+  | 'Terminating'
+  | 'Error'
+  | 'Failed'
+  | 'Succeeded'
+  | 'Completed'
+  | 'Unknown';
 
 // SKAHA API raw response format
 export interface SkahaSessionResponse {
@@ -200,6 +208,33 @@ export async function getSessions(): Promise<Session[]> {
 
   if (!response.ok) {
     throw new Error(`Failed to fetch sessions: ${response.status}`);
+  }
+
+  const skahaResponse: SkahaSessionResponse[] = await response.json();
+  return skahaResponse.map(transformSkahaSession);
+}
+
+/**
+ * Get headless (batch) sessions for the current user.
+ * Proxied as `GET /api/sessions?type=headless[&status=…]` → Skaha.
+ * Omit `status` for the full typed list; pass one Skaha status to filter.
+ */
+export async function getHeadlessSessions(options?: {
+  status?: SessionStatus | string;
+}): Promise<Session[]> {
+  const authHeaders = getAuthHeader();
+  const params = new URLSearchParams({ type: 'headless' });
+  if (options?.status) {
+    params.set('status', options.status);
+  }
+  const response = await fetch(`${sessionsApiRoot()}?${params.toString()}`, {
+    method: 'GET',
+    headers: { Accept: 'application/json', ...authHeaders },
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch headless sessions: ${response.status}`);
   }
 
   const skahaResponse: SkahaSessionResponse[] = await response.json();
