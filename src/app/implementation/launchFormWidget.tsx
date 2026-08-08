@@ -20,6 +20,7 @@ export function LaunchFormWidgetImpl({
   progressPercentage = 0,
   helpUrl,
   signInAlertMessage,
+  fillHeight = false,
   imagesByType = {},
   repositoryHosts = [],
   activeSessions = [],
@@ -108,6 +109,7 @@ export function LaunchFormWidgetImpl({
       onRefresh={onRefresh}
       help={helpUrl ? { url: helpUrl } : undefined}
       statusValue={showProgressIndicator ? progressPercentage : 100}
+      fillHeight={fillHeight}
       alert={
         signInAlertMessage ? (
           <Alert severity="info" sx={{ mb: 2 }}>

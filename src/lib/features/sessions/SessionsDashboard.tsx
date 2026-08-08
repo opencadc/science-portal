@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { ActiveSessionsWidget } from '@/app/components/ActiveSessionsWidget/ActiveSessionsWidget';
 import { UserStorageWidget } from '@/app/components/UserStorageWidget/UserStorageWidget';
 import { LaunchFormWidget } from '@/app/components/LaunchFormWidget/LaunchFormWidget';
@@ -27,10 +28,34 @@ import {
 } from '@/lib/config/site-config';
 import { useOperatingSessionIds, useSessionUiActions } from '@/lib/stores';
 import { SessionModalsHost } from '@/lib/features/sessions/SessionModalsHost';
+import { DashboardLayoutToolbar } from '@/lib/features/sessions/DashboardLayoutToolbar';
+import { DashboardLayoutEditProvider } from '@/lib/features/sessions/DashboardLayoutEditContext';
+import { useDashboardLayout } from '@/lib/features/sessions/useDashboardLayout';
+import { DASHBOARD_CUSTOMIZE_MIN_BREAKPOINT } from '@/lib/features/sessions/dashboardLayout';
+import {
+  DashboardGridSkeleton,
+  createDashboardGridItem,
+} from '@/lib/features/sessions/dashboardGridUi';
+
+/** Code-split react-grid-layout so it is not on the critical auth/data path. */
+const DashboardGrid = dynamic(
+  () =>
+    import('@/lib/features/sessions/DashboardGrid').then((mod) => ({
+      default: mod.DashboardGrid,
+    })),
+  {
+    ssr: false,
+    loading: () => <DashboardGridSkeleton />,
+  },
+);
+
+const LAUNCH_HELP_URL = 'https://www.opencadc.org/canfar/latest/platform/sessions/';
 
 export function SessionsDashboard() {
   const theme = useTheme();
-  const isDesktopTopRow = useMediaQuery(theme.breakpoints.up('lg'));
+  const canCustomizeLayout = useMediaQuery(
+    theme.breakpoints.up(DASHBOARD_CUSTOMIZE_MIN_BREAKPOINT),
+  );
   const { useCanfar, serviceUrls } = usePublicRuntimeConfig();
   const isOIDCMode = !useCanfar;
 
@@ -42,6 +67,31 @@ export function SessionsDashboard() {
 
   const operatingSessionIds = useOperatingSessionIds();
   const { clearOperating } = useSessionUiActions();
+
+  const [isEditingLayout, setIsEditingLayout] = useState(false);
+  const {
+    layouts,
+    hiddenIds,
+    availableWidgetIds,
+    canHideWidget,
+    layoutEpoch,
+    hydrated,
+    onLayoutChange,
+    onInteractionStart,
+    onInteractionStop,
+    hideWidget,
+    showWidget,
+    resetLayouts,
+  } = useDashboardLayout();
+
+  const hiddenIdSet = useMemo(() => new Set(hiddenIds), [hiddenIds]);
+
+  // Exit edit mode when viewport shrinks below md (drag/resize disabled there).
+  useEffect(() => {
+    if (!canCustomizeLayout && isEditingLayout) {
+      setIsEditingLayout(false);
+    }
+  }, [canCustomizeLayout, isEditingLayout]);
 
   const {
     data: sessions = [],
@@ -136,9 +186,13 @@ export function SessionsDashboard() {
       }));
   }, [sessions]);
 
-  const handleSessionsRefresh = useCallback(() => {
-    refetchSessions();
-  }, [refetchSessions]);
+  const repositoryHosts = useMemo(
+    () =>
+      imageRepositories
+        .map((repo) => repo.host)
+        .filter((host): host is string => Boolean(host)),
+    [imageRepositories],
+  );
 
   const handleStorageRefresh = useCallback(() => {
     void refetchStorage();
@@ -149,6 +203,109 @@ export function SessionsDashboard() {
     refetchRepositories();
     refetchContext();
   }, [refetchImages, refetchRepositories, refetchContext]);
+
+  const handleToggleEditing = useCallback(() => {
+    setIsEditingLayout((prev) => !prev);
+  }, []);
+
+  const coreOptions = context?.cores.options;
+  const memoryOptions = context?.memoryGB.options;
+  const gpuOptions = context?.gpus.options;
+  const storageErrorMessage = storageError?.message;
+  const isFetchingSessionsFlag = isAuthenticated && isFetchingSessions;
+  const isFetchingStorageFlag = isAuthenticated && isFetchingStorageSummary;
+
+  /**
+   * Stable children array (not a Fragment) — react-grid-layout only sees
+   * immediate keyed children; a Fragment would hide all widgets.
+   * Hidden widgets are omitted so RGL collapses their slots.
+   */
+  const gridWidgets = useMemo(() => {
+    const items = [
+      {
+        id: 'active-sessions' as const,
+        node: (
+          <ActiveSessionsWidget
+            sessions={activeSessions}
+            operatingSessionIds={operatingSessionIds}
+            isLoading={isLoadingSessions}
+            isFetching={isFetchingSessionsFlag}
+            onRefresh={refetchSessions}
+            fillHeight
+          />
+        ),
+      },
+      {
+        id: 'user-storage' as const,
+        node: (
+          <UserStorageWidget
+            data={storageSummary ?? null}
+            isLoading={isLoadingUserStorage}
+            isFetching={isFetchingStorageFlag}
+            errorMessage={storageErrorMessage}
+            onRefresh={handleStorageRefresh}
+            fillHeight
+          />
+        ),
+      },
+      {
+        id: 'launch-form' as const,
+        node: (
+          <LaunchFormWidget
+            helpUrl={LAUNCH_HELP_URL}
+            imagesByType={imagesByType}
+            repositoryHosts={repositoryHosts}
+            isLoading={isLoadingLaunchForm}
+            isFetching={isFetchingLaunchForm}
+            onRefresh={handleLaunchFormRefresh}
+            activeSessions={sessions}
+            launchSessionFn={handleLaunchSession}
+            coreOptions={coreOptions}
+            memoryOptions={memoryOptions}
+            gpuOptions={gpuOptions}
+            fillHeight
+          />
+        ),
+      },
+      {
+        id: 'platform-load' as const,
+        node: (
+          <PlatformLoad
+            data={STATIC_PLATFORM_LOAD_DATA}
+            isLoading={false}
+            showDisabledOverlay
+            fillHeight
+          />
+        ),
+      },
+    ];
+
+    return items
+      .filter((item) => !hiddenIdSet.has(item.id))
+      .map((item) => createDashboardGridItem(item.id, item.node));
+  }, [
+    activeSessions,
+    operatingSessionIds,
+    isLoadingSessions,
+    isFetchingSessionsFlag,
+    refetchSessions,
+    storageSummary,
+    isLoadingUserStorage,
+    isFetchingStorageFlag,
+    storageErrorMessage,
+    handleStorageRefresh,
+    imagesByType,
+    repositoryHosts,
+    isLoadingLaunchForm,
+    isFetchingLaunchForm,
+    handleLaunchFormRefresh,
+    sessions,
+    handleLaunchSession,
+    coreOptions,
+    memoryOptions,
+    gpuOptions,
+    hiddenIdSet,
+  ]);
 
   const footerSections = useMemo(
     () => [
@@ -210,102 +367,36 @@ export function SessionsDashboard() {
             </Typography>
           </Container>
         ) : (
-          <>
-            <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'column', lg: 'row' },
-                  gap: 3,
-                  alignItems: { lg: isDesktopTopRow ? 'stretch' : 'flex-start' },
-                }}
-              >
-                <Box
-                  sx={{
-                    flex: { xs: 1, lg: '0 0 80%' },
-                    minWidth: 0,
-                    display: { lg: isDesktopTopRow ? 'flex' : 'block' },
-                    flexDirection: 'column',
-                  }}
+          <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
+            <DashboardLayoutEditProvider
+              isEditing={isEditingLayout && canCustomizeLayout}
+              canHideWidget={canHideWidget}
+              hideWidget={hideWidget}
+            >
+              <DashboardLayoutToolbar
+                isEditing={isEditingLayout}
+                onToggleEditing={handleToggleEditing}
+                onReset={resetLayouts}
+                availableWidgetIds={availableWidgetIds}
+                onShowWidget={showWidget}
+                visible={canCustomizeLayout}
+              />
+              {!hydrated ? (
+                <DashboardGridSkeleton />
+              ) : (
+                <DashboardGrid
+                  layouts={layouts}
+                  layoutEpoch={layoutEpoch}
+                  isEditing={isEditingLayout}
+                  onLayoutChange={onLayoutChange}
+                  onInteractionStart={onInteractionStart}
+                  onInteractionStop={onInteractionStop}
                 >
-                  <ActiveSessionsWidget
-                    sessions={activeSessions}
-                    operatingSessionIds={operatingSessionIds}
-                    isLoading={isLoadingSessions}
-                    isFetching={isAuthenticated && isFetchingSessions}
-                    onRefresh={handleSessionsRefresh}
-                    fillHeight={isDesktopTopRow}
-                  />
-                </Box>
-
-                <Box
-                  sx={{
-                    flex: { xs: 1, lg: '0 0 20%' },
-                    minWidth: 0,
-                    px: { xs: 1, sm: 2 },
-                    display: { lg: isDesktopTopRow ? 'flex' : 'block' },
-                    flexDirection: 'column',
-                  }}
-                >
-                  <UserStorageWidget
-                    data={storageSummary ?? null}
-                    isLoading={isLoadingUserStorage}
-                    isFetching={isAuthenticated && isFetchingStorageSummary}
-                    errorMessage={storageError?.message}
-                    onRefresh={handleStorageRefresh}
-                    fillHeight={isDesktopTopRow}
-                  />
-                </Box>
-              </Box>
-            </Container>
-
-            <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'column', lg: 'row' },
-                  gap: 3,
-                }}
-              >
-                <Box
-                  sx={{
-                    flex: { xs: 1, lg: '0 0 60%' },
-                    minWidth: 0,
-                  }}
-                >
-                  <LaunchFormWidget
-                    helpUrl="https://www.opencadc.org/canfar/latest/platform/sessions/"
-                    imagesByType={imagesByType}
-                    repositoryHosts={imageRepositories
-                      .map((repo) => repo.host)
-                      .filter((host): host is string => Boolean(host))}
-                    isLoading={isLoadingLaunchForm}
-                    isFetching={isFetchingLaunchForm}
-                    onRefresh={handleLaunchFormRefresh}
-                    activeSessions={sessions}
-                    launchSessionFn={handleLaunchSession}
-                    coreOptions={context?.cores.options}
-                    memoryOptions={context?.memoryGB.options}
-                    gpuOptions={context?.gpus.options}
-                  />
-                </Box>
-
-                <Box
-                  sx={{
-                    flex: { xs: 1, lg: '0 0 40%' },
-                    minWidth: 0,
-                    px: { xs: 1, sm: 2 },
-                  }}
-                >
-                  <PlatformLoad
-                    data={STATIC_PLATFORM_LOAD_DATA}
-                    isLoading={false}
-                    showDisabledOverlay
-                  />
-                </Box>
-              </Box>
-            </Container>
-          </>
+                  {gridWidgets}
+                </DashboardGrid>
+              )}
+            </DashboardLayoutEditProvider>
+          </Container>
         )}
       </Box>
 

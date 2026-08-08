@@ -15,4 +15,6 @@ export interface LaunchFormWidgetProps extends SessionLaunchFormProps {
   signInAlertMessage?: string;
   // Optional custom launch function to override default API call
   launchSessionFn?: (params: SessionLaunchParams) => Promise<Session>;
+  /** Stretch to fill the dashboard grid cell. */
+  fillHeight?: boolean;
 }
