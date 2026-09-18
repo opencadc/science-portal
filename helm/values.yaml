@@ -72,6 +72,8 @@ app:
       openstackCloud: ""
     # -- Optional. SRCNet header logo image URL or path (OIDC mode). Maps to `NEXT_PUBLIC_SRCNET_LOGO_URL`. When unset, the app defaults to `{NEXT_PUBLIC_BASE_PATH}/SRCNetLogo.png`.
     srcnetLogoUrl: ""
+    # -- Optional. CADC cred service base (`scheme://host/path`, no `/generate`). Maps to `NEXT_PUBLIC_CERTIFICATE_URL`. Empty uses the app default.
+    certificateUrl: ""
   # useCanfar: true  # boolean: sets NEXT_USE_CANFAR and NEXT_PUBLIC_USE_CANFAR (omit key for image defaults)
   # experimental: false  # boolean -> NEXT_PUBLIC_EXPERIMENTAL
   # enableQueryDevtools: false  # boolean -> NEXT_PUBLIC_ENABLE_QUERY_DEVTOOLS

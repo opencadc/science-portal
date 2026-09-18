@@ -103,6 +103,10 @@ skipNames: map of env var names already set in .Values.env (those win; chart ski
 - name: NEXT_PUBLIC_SRCNET_LOGO_URL
   value: {{ $pub.srcnetLogoUrl | quote }}
 {{- end }}
+{{- if and $pub.certificateUrl (not (hasKey $skip "NEXT_PUBLIC_CERTIFICATE_URL")) }}
+- name: NEXT_PUBLIC_CERTIFICATE_URL
+  value: {{ $pub.certificateUrl | quote }}
+{{- end }}
 {{- if and (kindIs "bool" $root.Values.app.experimental) (not (hasKey $skip "NEXT_PUBLIC_EXPERIMENTAL")) }}
 - name: NEXT_PUBLIC_EXPERIMENTAL
   value: {{ ternary "true" "false" $root.Values.app.experimental | quote }}

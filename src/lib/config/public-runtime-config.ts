@@ -12,6 +12,7 @@ import {
   SCIENCE_PORTAL_URL,
   CADC_SEARCH_URL,
   OPENSTACK_CLOUD_URL,
+  CERTIFICATE_BASE_URL,
 } from '@/lib/config/site-config';
 
 export type ServiceNavUrls = {
@@ -38,6 +39,8 @@ export type PublicRuntimeConfig = {
   apiTimeout: number;
   devtools: boolean;
   serviceUrls: ServiceNavUrls;
+  /** Cred service base (scheme + host + path). CANFAR "Obtain Certificate" uses `/generate`. */
+  certificateUrl: string;
 };
 
 export function getPublicRuntimeConfigFromEnv(): PublicRuntimeConfig {
@@ -62,5 +65,6 @@ export function getPublicRuntimeConfigFromEnv(): PublicRuntimeConfig {
       openstackCloud:
         getProcessEnv('NEXT_PUBLIC_SERVICE_OPENSTACK_CLOUD_URL') || OPENSTACK_CLOUD_URL,
     },
+    certificateUrl: getProcessEnv('NEXT_PUBLIC_CERTIFICATE_URL') || CERTIFICATE_BASE_URL,
   };
 }

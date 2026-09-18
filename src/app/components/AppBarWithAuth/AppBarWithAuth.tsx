@@ -17,6 +17,7 @@ import { PersonOutline, VpnKey, Verified, Logout as LogoutIcon } from '@mui/icon
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { UPDATE_PROFILE_URL, getCertificateUrl } from '@/lib/config/site-config';
 import { saveCredentials, getCredentials, removeCredentials } from '@/lib/auth/token-storage';
+import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
 import {
   useLoginModal,
   useResetPasswordModal,
@@ -54,6 +55,7 @@ export function AppBarWithAuth({
   const { mutate: login, isPending: isLoggingIn, error: loginError } = useLogin();
   const { mutate: logout } = useLogout();
   const { login: oidcLogin, isOIDCMode } = useOIDCLogin();
+  const { certificateUrl } = usePublicRuntimeConfig();
 
   // Sync auth mode from environment
   useAuthModeSync();
@@ -118,14 +120,17 @@ export function AppBarWithAuth({
 
     if (credentials) {
       // Generate certificate URL with HTTP Basic Auth credentials
-      const certificateUrl = getCertificateUrl(credentials.username, credentials.password);
-      window.open(certificateUrl, '_blank', 'noopener,noreferrer');
+      window.open(
+        getCertificateUrl(credentials.username, credentials.password, certificateUrl),
+        '_blank',
+        'noopener,noreferrer',
+      );
     } else {
       // Fallback: if credentials not available, prompt user to re-login
       console.warn('No stored credentials found. Please log in again.');
       alert('Please log in again to obtain a certificate.');
     }
-  }, []);
+  }, [certificateUrl]);
 
   const isAuthenticated = authStatus?.authenticated ?? false;
 

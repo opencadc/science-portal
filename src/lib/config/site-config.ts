@@ -30,8 +30,8 @@ export const RESET_PASSWORD_URL =
   'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/auth/resetPassword.html';
 export const REQUEST_ACCOUNT_URL =
   'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/auth/request.html';
-export const CERTIFICATE_BASE_URL =
-  'https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cred/generate?daysValid=30';
+/** Cred service base (scheme + host + path). Override with NEXT_PUBLIC_CERTIFICATE_URL. */
+export const CERTIFICATE_BASE_URL = 'https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cred';
 
 // =============================================================================
 // CANFAR access service (CANFAR mode only)
@@ -56,11 +56,16 @@ export const ACCESS_LOGIN_PATH = '/access/login';
 export const ACCESS_LOGOUT_PATH = '/access/logout';
 
 /**
- * Generate a certificate URL with HTTP Basic Auth credentials
- * @param username - User's username
- * @param password - User's password
- * @returns URL with embedded credentials for certificate generation
+ * Generate a certificate URL with HTTP Basic Auth credentials.
+ * Appends the `generate` endpoint and a 30-day validity query param.
  */
-export const getCertificateUrl = (username: string, password: string): string => {
-  return `https://${username}:${password}@ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cred/generate?daysValid=30`;
+export const getCertificateUrl = (
+  username: string,
+  password: string,
+  certificateBaseUrl: string = CERTIFICATE_BASE_URL,
+): string => {
+  const url = new URL(`${certificateBaseUrl.replace(/\/+$/, '')}/generate?daysValid=30`);
+  url.username = username;
+  url.password = password;
+  return url.toString();
 };
