@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Slider, Box, useTheme } from '@mui/material';
+import { Slider, Box, useTheme, alpha } from '@mui/material';
 import { CanfarRangeProps } from '@/app/types/CanfarRangeProps';
 
 export const CanfarRangeImpl = React.forwardRef<HTMLDivElement, CanfarRangeProps>(
@@ -51,18 +51,33 @@ export const CanfarRangeImpl = React.forwardRef<HTMLDivElement, CanfarRangeProps
           }}
           sx={{
             color: theme.palette.primary.main,
-            height: 4,
-            py: '10px',
-            px: 0,
-            '& .MuiSlider-track': { border: 'none', height: 4 },
+            boxSizing: 'border-box',
+            display: 'block',
+            width: '100%',
+            height: 5,
+            py: '8px',
+            // Inset the thumb without growing past the column (content-box + 100% overflows).
+            px: '10px',
+            '& .MuiSlider-track': {
+              border: 'none',
+              height: 5,
+              borderRadius: 999,
+              transition: 'none',
+            },
             '& .MuiSlider-thumb': {
-              height: 14,
-              width: 14,
+              height: 20,
+              width: 20,
               backgroundColor: theme.palette.primary.main,
-              border: `2px solid ${theme.palette.background.paper}`,
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.18)',
-              '&:focus, &:hover, &.Mui-active, &.Mui-focusVisible': {
-                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.22)',
+              border: 'none',
+              boxShadow: 'none',
+              // No transform/transition on the thumb — scaling or animating
+              // position while dragging desyncs from the pointer and jumps.
+              transition: 'none',
+              '&:focus, &:hover, &.Mui-focusVisible': {
+                boxShadow: `0 0 0 4px ${alpha(theme.palette.primary.main, 0.16)}`,
+              },
+              '&.Mui-active': {
+                boxShadow: `0 0 0 4px ${alpha(theme.palette.primary.main, 0.22)}`,
               },
               '&:before': { display: 'none' },
             },
@@ -72,11 +87,15 @@ export const CanfarRangeImpl = React.forwardRef<HTMLDivElement, CanfarRangeProps
                   ? theme.palette.grey[700]
                   : theme.palette.grey[300],
               opacity: 1,
-              height: 4,
+              height: 5,
+              borderRadius: 999,
+              // MUI sizes the rail to the padding box, so horizontal padding
+              // otherwise pushes it into the next column.
+              width: 'calc(100% - 20px)',
             },
             '& .MuiSlider-mark': {
               width: 2,
-              height: 4,
+              height: 5,
               borderRadius: 0.5,
               backgroundColor:
                 theme.palette.mode === 'dark'
