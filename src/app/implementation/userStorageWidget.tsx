@@ -483,13 +483,13 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
             aria-expanded={open}
             sx={{
               display: 'inline-flex',
-              flexDirection: 'row',
               alignItems: 'center',
-              gap: 0.75,
-              minHeight: 40,
-              px: 1,
-              py: 0.5,
-              borderRadius: tokens.borderRadius.mdCSS,
+              justifyContent: 'center',
+              width: RING_SIZE,
+              height: RING_SIZE,
+              minHeight: RING_SIZE,
+              p: 0,
+              borderRadius: '50%',
               color: 'text.primary',
               transition: `transform ${tokens.transitions.press.duration} ${tokens.transitions.easing.easeOut}, background-color ${tokens.transitions.duration.fastCSS} ${tokens.transitions.easing.emphasized}`,
               '&:hover': {
@@ -509,17 +509,6 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
               usedColor={errorMessage && !data ? theme.palette.error.main : usedColor}
               trackColor={trackColor}
             />
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 600,
-                fontFamily: tokens.typography.fontFamily.mono,
-                lineHeight: 1,
-                color: errorMessage && !data ? 'error.main' : 'text.secondary',
-              }}
-            >
-              {isLoading ? '…' : errorMessage && !data ? '—' : pctLabel}
-            </Typography>
           </ButtonBase>
         </Tooltip>
 

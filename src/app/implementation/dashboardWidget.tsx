@@ -114,9 +114,22 @@ export function DashboardWidgetImpl({
       disabled={isBusy}
       size="small"
       sx={{
-        [theme.breakpoints.down('sm')]: {
-          alignSelf: 'flex-end',
-          mt: -1,
+        width: 32,
+        height: 32,
+        p: 0,
+        borderRadius: '50%',
+        backgroundColor: theme.palette.primary.main,
+        color: theme.palette.primary.contrastText,
+        '&:hover': {
+          backgroundColor:
+            theme.palette.mode === 'dark' ? theme.palette.primary[400] : theme.palette.primary.dark,
+        },
+        '&.Mui-disabled': {
+          backgroundColor: theme.palette.action.disabledBackground,
+          color: theme.palette.action.disabled,
+        },
+        '& .MuiSvgIcon-root': {
+          fontSize: 18,
         },
       }}
     >
@@ -189,7 +202,7 @@ export function DashboardWidgetImpl({
           </Typography>
           {help && <HelpAffordance help={help} widgetTitle={title} />}
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, ml: 'auto', flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto', flexShrink: 0 }}>
           {headerActions}
           {refreshButton &&
             (refreshTooltip ? (
