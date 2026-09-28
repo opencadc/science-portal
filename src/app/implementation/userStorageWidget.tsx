@@ -15,21 +15,23 @@ import {
   Refresh as RefreshIcon,
   FolderOutlined as StorageIcon,
 } from '@mui/icons-material';
-import { useTheme, type Theme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import {
   UserStorageWidgetProps,
   StorageData,
 } from '@/app/types/UserStorageWidgetProps';
+import { UsageRing } from '@/app/components/UsageRing/UsageRing';
 import { tokens } from '@/app/design-system/tokens';
+import {
+  USAGE_RING_SIZE,
+  usageFillColor,
+  usageTrackColor,
+} from '@/app/design-system/usageMeter';
 import { formatRelativeToNow } from '@/lib/utils/relative-time';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 
 dayjs.extend(utc);
-
-const RING_SIZE = 32;
-const RING_STROKE = 5;
-const RING_ICON_SIZE = 14;
 
 const convertToFileSize = (bytes: number): string => {
   if (!bytes || bytes === 0) return '0 B';
@@ -106,102 +108,10 @@ const formatRelativeStorageModified = (raw: string, nowMs: number): string => {
   return formatRelativeToNow(instant.valueOf(), nowMs);
 };
 
-const USAGE_WARN_PCT = 70;
-const USAGE_CRITICAL_PCT = 90;
-
 function displayStoragePath(path: string): string {
   const trimmed = path.trim();
   if (!trimmed) return '';
   return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
-}
-
-function usageFillColor(usage: number, theme: Theme) {
-  if (usage > USAGE_CRITICAL_PCT) return theme.palette.error.main;
-  if (usage >= USAGE_WARN_PCT) return theme.palette.warning.main;
-  return theme.palette.success.light;
-}
-
-function StorageRing({
-  usage,
-  isLoading,
-  usedColor,
-  trackColor,
-  size = RING_SIZE,
-}: {
-  usage: number;
-  isLoading: boolean;
-  usedColor: string;
-  trackColor: string;
-  size?: number;
-}) {
-  const clamped = Math.min(100, Math.max(0, usage));
-  const radius = (size - RING_STROKE) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const dash = (clamped / 100) * circumference;
-  const center = size / 2;
-
-  return (
-    <Box
-      sx={{
-        position: 'relative',
-        width: size,
-        height: size,
-        flexShrink: 0,
-      }}
-    >
-      <Box
-        component="svg"
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        aria-hidden
-        sx={{
-          display: 'block',
-          transform: 'rotate(-90deg)',
-          ...(isLoading && {
-            animation: 'spin 1s linear infinite',
-            '@keyframes spin': {
-              to: { transform: 'rotate(270deg)' },
-            },
-            '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-          }),
-        }}
-      >
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke={trackColor}
-          strokeWidth={RING_STROKE}
-        />
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke={usedColor}
-          strokeWidth={RING_STROKE}
-          strokeLinecap="round"
-          strokeDasharray={isLoading ? `${circumference * 0.25} ${circumference}` : `${dash} ${circumference}`}
-        />
-      </Box>
-      <StorageIcon
-        aria-hidden
-        sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: RING_ICON_SIZE,
-          height: RING_ICON_SIZE,
-          marginTop: `${-RING_ICON_SIZE / 2}px`,
-          marginLeft: `${-RING_ICON_SIZE / 2}px`,
-          color: usedColor,
-          pointerEvents: 'none',
-        }}
-      />
-    </Box>
-  );
 }
 
 type StorageDetailsPanelProps = {
@@ -233,8 +143,7 @@ function StorageDetailsPanel({
   const displayData = isLoading ? null : data;
   const usage = displayData?.usage ?? 0;
   const usedColor = usageFillColor(usage, theme);
-  const trackColor =
-    theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[300];
+  const trackColor = usageTrackColor(theme);
   const usedPct = Math.min(100, Math.max(0, usage));
   const pathLabel = displayData?.path ? displayStoragePath(displayData.path) : null;
 
@@ -453,8 +362,7 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
 
     const usage = data?.usage ?? 0;
     const usedColor = usageFillColor(usage, theme);
-    const trackColor =
-      theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[300];
+    const trackColor = usageTrackColor(theme);
     const usedLabel = fileSizeFormatter(data?.size ?? 0);
     const quotaLabel = fileSizeFormatter(data?.quota ?? 0);
     const pctLabel = `${usage.toFixed(usage < 10 ? 1 : 0)}%`;
@@ -485,9 +393,9 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: RING_SIZE,
-              height: RING_SIZE,
-              minHeight: RING_SIZE,
+              width: USAGE_RING_SIZE,
+              height: USAGE_RING_SIZE,
+              minHeight: USAGE_RING_SIZE,
               p: 0,
               borderRadius: '50%',
               color: 'text.primary',
@@ -503,11 +411,12 @@ export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorag
               },
             }}
           >
-            <StorageRing
+            <UsageRing
               usage={errorMessage && !data ? 0 : usage}
               isLoading={isLoading}
               usedColor={errorMessage && !data ? theme.palette.error.main : usedColor}
               trackColor={trackColor}
+              icon={<StorageIcon />}
             />
           </ButtonBase>
         </Tooltip>

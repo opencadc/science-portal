@@ -2,6 +2,7 @@
 
 import { useMemo, useCallback, useEffect } from 'react';
 import { ActiveSessionsWidget } from '@/app/components/ActiveSessionsWidget/ActiveSessionsWidget';
+import { SessionQuotaWidget } from '@/app/components/SessionQuotaWidget/SessionQuotaWidget';
 import { UserStorageWidget } from '@/app/components/UserStorageWidget/UserStorageWidget';
 import { LaunchFormWidget } from '@/app/components/LaunchFormWidget/LaunchFormWidget';
 import { PlatformLoad } from '@/app/components/PlatformLoad/PlatformLoad';
@@ -162,8 +163,8 @@ export function SessionsDashboard() {
       {
         title: 'Resources',
         links: [
-          { label: 'Documentation', href: DOCS_URL, external: true },
           { label: 'About', href: ABOUT_URL, external: true },
+          { label: 'Documentation', href: DOCS_URL, external: true },
           { label: 'Open Source', href: OPEN_SOURCE_URL, external: true },
         ],
       },
@@ -263,13 +264,22 @@ export function SessionsDashboard() {
                   errorMessage={sessionsErrorMessage}
                   onRefresh={handleSessionsRefresh}
                   headerActions={
-                    <UserStorageWidget
-                      data={storageSummary ?? null}
-                      isLoading={isLoadingUserStorage}
-                      isFetching={isAuthenticated && isFetchingStorageSummary}
-                      errorMessage={storageErrorMessage}
-                      onRefresh={handleStorageRefresh}
-                    />
+                    <>
+                      <SessionQuotaWidget
+                        count={activeSessions.length}
+                        isLoading={isLoadingSessions}
+                        isFetching={isAuthenticated && isFetchingSessions}
+                        errorMessage={sessionsErrorMessage}
+                        onRefresh={handleSessionsRefresh}
+                      />
+                      <UserStorageWidget
+                        data={storageSummary ?? null}
+                        isLoading={isLoadingUserStorage}
+                        isFetching={isAuthenticated && isFetchingStorageSummary}
+                        errorMessage={storageErrorMessage}
+                        onRefresh={handleStorageRefresh}
+                      />
+                    </>
                   }
                 />
 

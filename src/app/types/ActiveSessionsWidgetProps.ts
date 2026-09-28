@@ -13,10 +13,9 @@ export interface ActiveSessionsWidgetProps {
   errorMessage?: string;
   onRefresh?: () => void;
   title?: string;
-  showSessionCount?: boolean;
   maxSessionsToShow?: number;
   emptyMessage?: string;
-  /** Extra header controls (e.g. home-storage ring). */
+  /** Extra header controls (e.g. session quota + home-storage rings). */
   headerActions?: ReactNode;
   /** When true, stretch to match a sibling panel height on desktop. */
   fillHeight?: boolean;
