@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { MetricSeries } from './MetricBlockProps';
 
 /**
@@ -32,12 +33,16 @@ export interface PlatformLoadProps {
   /**
    * Platform load data to display
    */
-  data: PlatformLoadData;
+  data?: PlatformLoadData | null;
   /**
    * Whether the component is currently loading
    * @default false
    */
   isLoading?: boolean;
+  /** Background refetch while stats are already shown. */
+  isFetching?: boolean;
+  /** Fetch error shown above the widget header. */
+  error?: ReactNode;
   /**
    * Callback function when refresh button is clicked
    */

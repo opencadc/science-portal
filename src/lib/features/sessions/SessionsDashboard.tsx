@@ -12,10 +12,9 @@ import { Button, Container, Typography } from '@mui/material';
 import type { SessionCardProps } from '@/app/types/SessionCardProps';
 import { useAuthStatus } from '@/lib/hooks/useAuth';
 import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
-import { useSessions, useLaunchSession } from '@/lib/hooks/useSessions';
+import { useSessions, useLaunchSession, usePlatformLoad } from '@/lib/hooks/useSessions';
 import { useContainerImages, useImageRepositories, useContext } from '@/lib/hooks/useImages';
 import { useUserStorageSummary } from '@/lib/hooks/useUserStorage';
-import { STATIC_PLATFORM_LOAD_DATA } from '@/lib/config/static-platform-load';
 import type { Session, SessionLaunchParams } from '@/lib/api/skaha';
 import {
   DOCS_URL,
@@ -87,6 +86,18 @@ export function SessionsDashboard() {
   const sessionsErrorMessage = queryErrorMessage(sessionsError);
   const storageErrorMessage = queryErrorMessage(storageError);
   const launchFormErrorMessage = joinQueryErrors([imagesError, repositoriesError, contextError]);
+
+  const {
+    data: platformLoad,
+    isLoading: isLoadingPlatformLoadQuery,
+    isFetching: isFetchingPlatformLoad,
+    error: platformLoadError,
+    refetch: refetchPlatformLoad,
+  } = usePlatformLoad(isAuthenticated);
+
+  const handlePlatformLoadRefresh = useCallback(() => {
+    void refetchPlatformLoad();
+  }, [refetchPlatformLoad]);
 
   const { mutateAsync: launchSessionAsync } = useLaunchSession();
 
@@ -164,7 +175,6 @@ export function SessionsDashboard() {
         title: 'Resources',
         links: [
           { label: 'About', href: ABOUT_URL, external: true },
-          { label: 'Documentation', href: DOCS_URL, external: true },
           { label: 'Open Source', href: OPEN_SOURCE_URL, external: true },
         ],
       },
@@ -196,21 +206,23 @@ export function SessionsDashboard() {
         layout: 'cards' as const,
         links: [
           {
-            label: 'Email Support',
-            href: SUPPORT_EMAIL,
-            description: 'support@canfar.net',
+            label: 'Guides & Docs',
+            href: DOCS_URL,
+            external: true,
           },
           {
-            label: 'Discord',
+            label: 'Community Discord',
             href: DISCORD_URL,
             external: true,
-            description: 'Community chat',
           },
           {
-            label: 'Platform status',
+            label: 'Platform Status',
             href: STATUS_PAGE_URL,
             external: true,
-            description: 'Uptime and incidents',
+          },
+          {
+            label: 'Email Support',
+            href: SUPPORT_EMAIL,
           },
         ],
       },
@@ -308,9 +320,11 @@ export function SessionsDashboard() {
                     gpuOptions={context?.gpus.options}
                   />
                   <PlatformLoad
-                    data={STATIC_PLATFORM_LOAD_DATA}
-                    isLoading={false}
-                    showDisabledOverlay
+                    data={platformLoad}
+                    isLoading={authLoading || (isAuthenticated && isLoadingPlatformLoadQuery)}
+                    isFetching={isAuthenticated && isFetchingPlatformLoad && !isLoadingPlatformLoadQuery}
+                    error={queryErrorMessage(platformLoadError)}
+                    onRefresh={handlePlatformLoadRefresh}
                   />
                 </Box>
               </Box>

@@ -3,12 +3,7 @@ import { MetricBlockProps } from '../../types/MetricBlockProps';
 import { MetricBlockImpl } from '../../implementation/metricBlock';
 
 /**
- * MetricBlock component for displaying metric data with horizontal bar chart
- *
- * Features:
- * - Displays metric label and data using BarChartHorizontal
- * - Consistent styling with the design system
- * - Used as building block for dashboard widgets
+ * MetricBlock: labeled usage meter (CPUs / Memory) with percent fill.
  *
  * @example
  * ```tsx

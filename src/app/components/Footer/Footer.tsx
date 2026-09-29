@@ -5,7 +5,6 @@ import {
   Box,
   Container,
   Link as MuiLink,
-  Stack,
   SvgIcon,
   Typography,
   type SvgIconProps,
@@ -50,7 +49,6 @@ function GitHubIcon(props: SvgIconProps) {
 }
 
 const LINK_ICONS: Record<string, React.ReactElement<SvgIconProps>> = {
-  Documentation: <DescriptionOutlined />,
   About: <InfoOutlined />,
   'Open Source': <GitHubIcon />,
   'Storage Management': <FolderOutlined />,
@@ -60,8 +58,9 @@ const LINK_ICONS: Record<string, React.ReactElement<SvgIconProps>> = {
   'CADC Search': <SearchOutlined />,
   'OpenStack Cloud': <CloudOutlined />,
   'Email Support': <MailOutlined />,
-  Discord: <DiscordIcon />,
-  'Platform status': <MonitorHeartOutlined />,
+  'Platform Status': <MonitorHeartOutlined />,
+  'Community Discord': <DiscordIcon />,
+  'Guides & Docs': <DescriptionOutlined />,
 };
 
 function linkIcon(label: string, fontSize: number) {
@@ -112,9 +111,10 @@ function FooterSupportCard({ link }: { link: FooterLink }) {
       underline="none"
       sx={(theme) => ({
         display: 'flex',
-        alignItems: 'flex-start',
-        gap: 1.25,
-        p: 1.25,
+        alignItems: 'center',
+        gap: 1,
+        px: 1,
+        py: 0.75,
         borderRadius: 1.5,
         border: '1px solid',
         borderColor: 'divider',
@@ -131,22 +131,31 @@ function FooterSupportCard({ link }: { link: FooterLink }) {
         sx={(theme) => ({
           display: 'grid',
           placeItems: 'center',
-          width: 36,
-          height: 36,
+          width: 28,
+          height: 28,
           flexShrink: 0,
           borderRadius: 1,
           color: 'primary.main',
           bgcolor: alpha(theme.palette.primary.main, 0.1),
         })}
       >
-        {linkIcon(link.label, 20)}
+        {linkIcon(link.label, 16)}
       </Box>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, minWidth: 0 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3, whiteSpace: 'nowrap' }}>
           {link.label}
         </Typography>
         {link.description ? (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+          <Typography component="span" variant="caption" color="text.disabled" aria-hidden>
+            ·
+          </Typography>
+        ) : null}
+        {link.description ? (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ lineHeight: 1.3, whiteSpace: 'nowrap' }}
+          >
             {link.description}
           </Typography>
         ) : null}
@@ -164,7 +173,7 @@ export const Footer: React.FC<FooterProps> = ({
       component="footer"
       sx={(theme) => ({
         mt: 'auto',
-        pt: { xs: 5, md: 6 },
+        pt: { xs: 3, md: 4 },
         bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.05),
         borderTop: `1px solid ${theme.palette.divider}`,
       })}
@@ -173,11 +182,11 @@ export const Footer: React.FC<FooterProps> = ({
         <Box
           sx={{
             display: 'grid',
-            gap: { xs: 4, md: 5 },
-            pb: { xs: 4, md: 5 },
+            gap: { xs: 3, md: 4 },
+            pb: { xs: 3, md: 3 },
             gridTemplateColumns: {
               xs: '1fr',
-              sm: 'repeat(3, minmax(0, 1fr))',
+              md: 'minmax(0, 0.55fr) minmax(0, 1.15fr) minmax(0, 2fr)',
             },
           }}
         >
@@ -196,13 +205,35 @@ export const Footer: React.FC<FooterProps> = ({
                 {section.title}
               </Typography>
               {section.layout === 'cards' ? (
-                <Stack spacing={1}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+                    gap: 0.75,
+                  }}
+                >
                   {section.links.map((link) => (
                     <FooterSupportCard key={link.href} link={link} />
                   ))}
-                </Stack>
+                </Box>
               ) : (
-                <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+                <Box
+                  component="ul"
+                  sx={{
+                    listStyle: 'none',
+                    p: 0,
+                    m: 0,
+                    display: 'grid',
+                    gridTemplateColumns:
+                      section.title === 'Services'
+                        ? { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }
+                        : '1fr',
+                    gridTemplateRows:
+                      section.title === 'Services' ? { sm: 'repeat(3, auto)' } : undefined,
+                    gridAutoFlow: section.title === 'Services' ? { sm: 'column' } : undefined,
+                    columnGap: 3,
+                  }}
+                >
                   {section.links.map((link) => (
                     <Box component="li" key={link.href}>
                       <FooterNavLink link={link} />

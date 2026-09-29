@@ -1,97 +1,111 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { Box, Skeleton } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import React from 'react';
+import { Box, Skeleton, Tooltip, Typography } from '@mui/material';
+import { useTheme, type Theme } from '@mui/material/styles';
 import { MetricBlockProps } from '../types/MetricBlockProps';
-import { BarChartHorizontal } from '../components/BarChartHorizontal/BarChartHorizontal';
+import { tokens } from '@/app/design-system/tokens';
+import { usageTrackColor } from '@/app/design-system/usageMeter';
 
-/**
- * MetricBlock implementation component
- */
-// Memoized to prevent re-renders when parent re-renders
-// MetricBlock only needs to re-render when its props change
+function usageGradient(theme: Theme): string {
+  const green = theme.palette.success.light;
+  const yellow = theme.palette.warning.main;
+  const red = theme.palette.error.main;
+  return `linear-gradient(to right, ${green} 0%, ${green} 70%, ${yellow} 80%, ${red} 90%, ${red} 100%)`;
+}
+
+function formatQuantity(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  const digits = Math.abs(value) >= 100 || Number.isInteger(value) ? 0 : 1;
+  return value.toFixed(digits);
+}
+
 export const MetricBlockImpl: React.FC<MetricBlockProps> = React.memo(
   ({ label, series, max, isLoading = false, className }) => {
     const theme = useTheme();
-
-    // Memoized calculations to prevent recalculation on every render
-    const displayTitle = useMemo(() => {
-      // Format based on label type
-      if (label === 'CPU') {
-        return `Available CPUs: ${series.free} / ${max}`;
-      } else {
-        // RAM - Values are already in GB from the API
-        return `Available RAM: ${series.free}GB / ${max}GB`;
-      }
-    }, [series.free, max, label]);
-
-    // Define colors based on metric type
-    const chartColors = useMemo(() => {
-      const free =
-        theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[300];
-
-      if (label === 'CPU') {
-        return {
-          used: theme.palette.primary.main,
-          free,
-        };
-      }
-
-      if (label === 'RAM') {
-        return {
-          used: theme.palette.warning.main,
-          free,
-        };
-      }
-
-      return {
-        used: theme.palette.primary.dark,
-        free: theme.palette.primary.main,
-        headless: theme.palette.primary.light,
-      };
-    }, [label, theme]);
-
-    // Define legend items based on metric type
-    const legendItems = useMemo(() => {
-      return [
-        { key: 'used', label: 'used', color: chartColors.used },
-        { key: 'free', label: 'free', color: chartColors.free },
-      ];
-    }, [chartColors]);
-
-    // Define stack keys based on metric type
-    const stackKeys = useMemo(() => {
-      return ['used', 'free'];
-    }, []);
+    const isMemory = label === 'RAM';
+    const heading = isMemory ? 'Memory' : 'CPUs';
+    const unit = isMemory ? 'GB' : 'CPUs';
+    const used = series.used;
+    const safeMax = max > 0 ? max : 1;
+    const usedPct = Math.min(100, Math.max(0, (used / safeMax) * 100));
+    const usedPercentLabel = `${Math.round(usedPct)}%`;
+    const hoverLabel = `${formatQuantity(used)} / ${formatQuantity(max)} ${unit}`;
+    const trackColor = usageTrackColor(theme);
 
     return (
-      <Box className={className} sx={{ marginBottom: theme.spacing(2) }}>
+      <Box className={className} sx={{ mb: 2.5 }}>
         {isLoading ? (
-          <Skeleton
-            variant="rectangular"
-            width="100%"
-            height={60}
-            sx={{
-              borderRadius: 1,
-            }}
-          />
+          <Skeleton variant="rectangular" width="100%" height={48} sx={{ borderRadius: 1 }} />
         ) : (
-          <BarChartHorizontal
-            title={displayTitle}
-            data={[series]}
-            total={max}
-            height={60}
-            barSize={25}
-            colors={chartColors}
-            legend={{
-              show: true,
-              position: 'top',
-              items: legendItems,
-            }}
-            stackKeys={stackKeys}
-            margin={{ top: 5, right: 10, left: 20, bottom: 5 }}
-          />
+          <>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 1.5,
+                mb: 0.75,
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                {heading}
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontFamily: tokens.typography.fontFamily.mono,
+                  fontVariantNumeric: 'tabular-nums',
+                  fontSize: '0.8125rem',
+                  color: 'text.secondary',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {usedPercentLabel}
+              </Typography>
+            </Box>
+
+            <Tooltip
+              title={hoverLabel}
+              placement="top"
+              enterDelay={200}
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    fontFamily: tokens.typography.fontFamily.mono,
+                    fontVariantNumeric: 'tabular-nums',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    px: 1,
+                    py: 0.5,
+                  },
+                },
+              }}
+            >
+              <Box
+                role="img"
+                aria-label={`${heading}: ${usedPercentLabel} used (${hoverLabel})`}
+                sx={{
+                  height: 8,
+                  borderRadius: tokens.borderRadius.fullCSS,
+                  overflow: 'hidden',
+                  backgroundColor: trackColor,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: `${usedPct}%`,
+                    minWidth: usedPct > 0 ? 4 : 0,
+                    height: '100%',
+                    borderRadius: tokens.borderRadius.fullCSS,
+                    backgroundImage: usageGradient(theme),
+                    backgroundSize: usedPct > 0 ? `${10000 / usedPct}% 100%` : '100% 100%',
+                    backgroundRepeat: 'no-repeat',
+                  }}
+                />
+              </Box>
+            </Tooltip>
+          </>
         )}
       </Box>
     );

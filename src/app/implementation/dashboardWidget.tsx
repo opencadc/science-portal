@@ -12,7 +12,11 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Refresh as RefreshIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
+import {
+  Refresh as RefreshIcon,
+  HelpOutline as HelpOutlineIcon,
+  OpenInNew as OpenInNewIcon,
+} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import type { DashboardWidgetProps, DashboardWidgetHelp } from '@/app/types/DashboardWidgetProps';
 import { tokens } from '@/app/design-system/tokens';
@@ -29,21 +33,25 @@ function HelpAffordance({ help, widgetTitle }: { help: DashboardWidgetHelp; widg
     setAnchorEl(null);
   }, []);
 
+  // URL help: trailing external-link arrow (Launch New Session and any future
+  // docs links). Popover help keeps the circled ? below.
   if (help.url) {
     return (
       <Link
         href={help.url}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="help"
+        aria-label="Open documentation"
         sx={{
           display: 'inline-flex',
           alignItems: 'center',
+          color: 'inherit',
+          opacity: 0.7,
           textDecoration: 'none',
-          '&:hover': { textDecoration: 'underline' },
+          '&:hover': { opacity: 1 },
         }}
       >
-        <HelpOutlineIcon sx={{ fontSize: theme.spacing(2.5) }} />
+        <OpenInNewIcon sx={{ fontSize: theme.spacing(2) }} />
       </Link>
     );
   }

@@ -32,6 +32,7 @@ import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvi
 import Image from 'next/image';
 import { useSessionModalsActions } from '@/lib/stores';
 import { hasAssignedSessionId } from '@/lib/sessions/sessionQuota';
+import { tokens } from '@/app/design-system/tokens';
 
 dayjs.extend(utc);
 
@@ -182,25 +183,41 @@ const parseImagePath = (fullImagePath: string): { project: string; image: string
   return { project: 'N/A', image: parts[0] };
 };
 
+/** Round UP to exactly 2 decimal places (e.g. 0.002 → "0.01"). */
+const formatCeil2 = (n: number): string => (Math.ceil(n * 100) / 100).toFixed(2);
+
+const formatCeil2Resource = (value: string | undefined): string => {
+  if (!value || value === '<none>') return 'N/A';
+  const num = parseFloat(value);
+  if (!Number.isFinite(num)) return value;
+  return formatCeil2(num);
+};
+
 /**
  * Skaha returns memory either as bare GB numbers ("1.4", "16") or, occasionally,
  * with a unit suffix ("8G"). Render with a "GB" suffix. Falsy / "<none>" → "N/A".
  */
 const formatMemoryUnit = (value: string | undefined): string => {
   if (!value || value === '<none>') return 'N/A';
-  if (/[KMGT]$/.test(value)) return `${value}B`;
-  if (/^\d+(\.\d+)?$/.test(value)) return `${value}GB`;
+  if (/[KMGT]$/.test(value)) {
+    const num = parseFloat(value);
+    if (!Number.isFinite(num)) return `${value}B`;
+    return `${formatCeil2(num)}${value.slice(-1)}B`;
+  }
+  if (/^\d+(\.\d+)?$/.test(value)) return `${formatCeil2(parseFloat(value))}GB`;
   return value;
 };
 
 /**
  * Strip any unit suffix; used for the usage side of "usage / allocated" so the
- * unit appears only once at the end (e.g. "1.4 / 16GB").
+ * unit appears only once at the end (e.g. "1.40 / 16.00GB").
  */
 const stripMemoryUnit = (value: string | undefined): string => {
   if (!value || value === '<none>') return 'N/A';
-  return value.replace(/[KMGT]B?$/, '');
+  return formatCeil2Resource(value.replace(/[KMGT]B?$/, ''));
 };
+
+const resourceMonoSx = { fontFamily: tokens.typography.fontFamily.mono } as const;
 
 const parseSessionUtc = (raw: string): dayjs.Dayjs | null => {
   const trimmed = raw?.trim();
@@ -402,7 +419,9 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
         ? formatMemoryUnit(memoryUsage)
         : `${stripMemoryUnit(memoryUsage)} / ${formatMemoryUnit(memoryAllocated)}`;
     const cpuDisplay =
-      isFixedResources === false ? cpuUsage || 'N/A' : `${cpuUsage || 'N/A'} / ${cpuAllocated}`;
+      isFixedResources === false
+        ? formatCeil2Resource(cpuUsage)
+        : `${formatCeil2Resource(cpuUsage)} / ${formatCeil2Resource(cpuAllocated)}`;
     const showGpu = !!(gpuAllocated && gpuAllocated !== '0');
     const showResourceMode = hasResourceModeBadge(isFixedResources);
 
@@ -518,12 +537,16 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
                 <Box component="span" sx={detailLabelSx}>
                   Memory:{' '}
                 </Box>
-                {memoryDisplay}
+                <Box component="span" sx={resourceMonoSx}>
+                  {memoryDisplay}
+                </Box>
                 {' · '}
                 <Box component="span" sx={detailLabelSx}>
                   CPU:{' '}
                 </Box>
-                {cpuDisplay}
+                <Box component="span" sx={resourceMonoSx}>
+                  {cpuDisplay}
+                </Box>
                 {showGpu && (
                   <>
                     {' · '}
