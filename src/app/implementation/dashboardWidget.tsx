@@ -130,7 +130,7 @@ export function DashboardWidgetImpl({
         color: theme.palette.primary.contrastText,
         '&:hover': {
           backgroundColor:
-            theme.palette.mode === 'dark' ? theme.palette.primary[400] : theme.palette.primary.dark,
+            theme.palette.mode === 'dark' ? theme.palette.primary.light : theme.palette.primary.dark,
         },
         '&.Mui-disabled': {
           backgroundColor: theme.palette.action.disabledBackground,

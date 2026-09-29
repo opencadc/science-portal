@@ -969,8 +969,8 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       async (event: React.FormEvent) => {
         event.preventDefault();
         const advanced = activeTab === LAUNCH_TAB.ADVANCED;
-        const project = formData.project.trim();
-        const image = formData.image.trim();
+        const project = (formData.project ?? '').trim();
+        const image = (formData.image ?? '').trim();
         if (advanced && (!project || !image)) {
           setAdvancedError('Project and image are required.');
           return;
@@ -1466,7 +1466,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                         fullWidth
                         size="sm"
                         placeholder="example"
-                        error={Boolean(advancedError) && !formData.project.trim()}
+                        error={Boolean(advancedError) && !(formData.project ?? '').trim()}
                         InputProps={{ sx: hintFieldSx }}
                       />
                     </LaunchField>
@@ -1483,7 +1483,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                         fullWidth
                         size="sm"
                         placeholder="container:latest"
-                        error={Boolean(advancedError) && !formData.image.trim()}
+                        error={Boolean(advancedError) && !(formData.image ?? '').trim()}
                         InputProps={{ sx: hintFieldSx }}
                       />
                     </LaunchField>
@@ -1557,7 +1557,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                 </Alert>
               )}
 
-              {actionRow(renderLaunchButton(!formData.project.trim() || !formData.image.trim()))}
+              {actionRow(renderLaunchButton(!(formData.project ?? '').trim() || !(formData.image ?? '').trim()))}
             </TabPanel>
           </form>
         )}

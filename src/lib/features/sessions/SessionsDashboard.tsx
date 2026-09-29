@@ -156,12 +156,9 @@ export function SessionsDashboard() {
   }, [sessions]);
 
   const handleSessionsRefresh = useCallback(() => {
-    refetchSessions();
-  }, [refetchSessions]);
-
-  const handleStorageRefresh = useCallback(() => {
+    void refetchSessions();
     void refetchStorage();
-  }, [refetchStorage]);
+  }, [refetchSessions, refetchStorage]);
 
   const handleLaunchFormRefresh = useCallback(() => {
     refetchImages();
@@ -272,7 +269,9 @@ export function SessionsDashboard() {
                   sessions={activeSessions}
                   operatingSessionIds={operatingSessionIds}
                   isLoading={isLoadingSessions}
-                  isFetching={isAuthenticated && isFetchingSessions}
+                  isFetching={
+                    isAuthenticated && (isFetchingSessions || isFetchingStorageSummary)
+                  }
                   errorMessage={sessionsErrorMessage}
                   onRefresh={handleSessionsRefresh}
                   headerActions={
@@ -282,14 +281,12 @@ export function SessionsDashboard() {
                         isLoading={isLoadingSessions}
                         isFetching={isAuthenticated && isFetchingSessions}
                         errorMessage={sessionsErrorMessage}
-                        onRefresh={handleSessionsRefresh}
                       />
                       <UserStorageWidget
                         data={storageSummary ?? null}
                         isLoading={isLoadingUserStorage}
                         isFetching={isAuthenticated && isFetchingStorageSummary}
                         errorMessage={storageErrorMessage}
-                        onRefresh={handleStorageRefresh}
                       />
                     </>
                   }

@@ -123,7 +123,7 @@ export const PlatformLoadImpl: React.FC<PlatformLoadProps> = ({
   error,
   onRefresh,
   className,
-  title = 'Platform Load',
+  title = 'Platform Usage',
   showDisabledOverlay = false,
 }) => {
   const theme = useTheme();

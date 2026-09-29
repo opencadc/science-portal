@@ -52,7 +52,7 @@ export interface PlatformLoadProps {
    */
   className?: string;
   /**
-   * Optional custom title (defaults to "Platform Load")
+   * Optional custom title (defaults to "Platform Usage")
    */
   title?: string;
   /**
