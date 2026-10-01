@@ -167,29 +167,18 @@ const ResourceModeChip = ({ isFixedResources }: { isFixedResources: boolean }) =
   );
 };
 
-/**
- * Split a full container image path into project and image name.
- * Example: "images.canfar.net/skaha/firefly:2025.2" -> { project: "skaha", image: "firefly:2025.2" }
- */
-const parseImagePath = (fullImagePath: string): { project: string; image: string } => {
-  if (!fullImagePath) return { project: 'N/A', image: 'N/A' };
+/** "images.canfar.net/skaha/astroml:latest" → "skaha/astroml:latest". */
+const containerLabel = (fullImagePath: string): string => {
+  if (!fullImagePath) return 'N/A';
   const parts = fullImagePath.split('/');
-  if (parts.length >= 3) {
-    return { project: parts[1], image: parts.slice(2).join('/') };
-  }
-  if (parts.length === 2) {
-    return { project: parts[0], image: parts[1] };
-  }
-  return { project: 'N/A', image: parts[0] };
+  return (parts.length >= 3 ? parts.slice(1) : parts).join('/');
 };
 
-/** Round up to one decimal (0.17 → "0.2", 1.07 → "1.1"). */
-const formatCeil1 = (n: number): string => (Math.ceil(n * 10) / 10).toFixed(1);
-
-const parseResourceNumber = (value: string | undefined): number | null => {
-  if (!value || value === '<none>') return null;
-  const num = parseFloat(value.replace(/[KMGT]B?$/, ''));
-  return Number.isFinite(num) ? num : null;
+/** Round up to one decimal. "<none>" and non-numbers → "N/A". */
+const formatCeil1 = (raw: string | undefined): string => {
+  if (!raw || raw === '<none>') return 'N/A';
+  const n = parseFloat(raw.replace(/[KMGT]B?$/, ''));
+  return Number.isFinite(n) ? (Math.ceil(n * 10) / 10).toFixed(1) : 'N/A';
 };
 
 /** "0.2/1.1 GB" when a ceiling exists, otherwise "0.2 GB". */
@@ -199,13 +188,8 @@ const formatResourcePair = (
   unit: string,
   flexible: boolean,
 ): string => {
-  const usedNum = parseResourceNumber(used);
-  const usedLabel = usedNum == null ? 'N/A' : formatCeil1(usedNum);
-  const withUnit = (value: string) => (unit ? `${value} ${unit}` : value);
-  if (flexible) return withUnit(usedLabel);
-  const allocatedNum = parseResourceNumber(allocated);
-  const allocatedLabel = allocatedNum == null ? 'N/A' : formatCeil1(allocatedNum);
-  return withUnit(`${usedLabel}/${allocatedLabel}`);
+  const body = flexible ? formatCeil1(used) : `${formatCeil1(used)}/${formatCeil1(allocated)}`;
+  return unit ? `${body} ${unit}` : body;
 };
 
 const resourceMonoSx = { fontFamily: tokens.typography.fontFamily.mono } as const;
@@ -404,13 +388,7 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
       );
     }
 
-    const { project, image } = parseImagePath(containerImage);
-    const containerRef =
-      project !== 'N/A' && image !== 'N/A'
-        ? `${project}/${image}`
-        : image !== 'N/A'
-          ? image
-          : project;
+    const containerRef = containerLabel(containerImage);
     const flexible = isFixedResources === false;
     const memoryDisplay = formatResourcePair(memoryUsage, memoryAllocated, 'GB', flexible);
     const cpuDisplay = formatResourcePair(cpuUsage, cpuAllocated, '', flexible);
