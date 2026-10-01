@@ -20,7 +20,7 @@ import {
 import { serverApiConfig } from '@/app/api/lib/server-config';
 import { createLogger } from '@/app/api/lib/logger';
 import type { SkahaSessionResponse, SessionLaunchParams } from '@/lib/api/skaha';
-import { HTTP_STATUS } from '@/app/api/lib/http-constants';
+import { API_TIMEOUTS, HTTP_STATUS } from '@/app/api/lib/http-constants';
 import { getPublicRuntimeConfigFromEnv } from '@/lib/config/public-runtime-config';
 
 /**
@@ -55,7 +55,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       method: 'GET',
       headers: finalHeaders,
     },
-    serverApiConfig.skaha.timeout,
+    API_TIMEOUTS.DEFAULT,
   );
 
   if (!response.ok) {
@@ -173,7 +173,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       headers,
       body: formData.toString(),
     },
-    serverApiConfig.skaha.timeout,
+    API_TIMEOUTS.DEFAULT,
   );
 
   if (!response.ok) {

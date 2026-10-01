@@ -16,7 +16,7 @@ import {
   methodNotAllowed,
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
-import { HTTP_STATUS } from '@/app/api/lib/http-constants';
+import { API_TIMEOUTS, HTTP_STATUS } from '@/app/api/lib/http-constants';
 
 export interface User {
   username: string;
@@ -53,7 +53,7 @@ export const GET = withErrorHandling(async (request: NextRequest, context: Route
         Accept: 'application/json',
       },
     },
-    serverApiConfig.login.timeout,
+    API_TIMEOUTS.DEFAULT,
   );
 
   if (!response.ok) {

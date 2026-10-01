@@ -13,7 +13,7 @@ import {
   forwardAuthHeader,
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
-import { HTTP_STATUS } from '@/app/api/lib/http-constants';
+import { API_TIMEOUTS, HTTP_STATUS } from '@/app/api/lib/http-constants';
 
 export interface UserStorageQuota {
   name: string;
@@ -43,7 +43,7 @@ export const GET = withErrorHandling(
           Accept: 'application/json',
         },
       },
-      serverApiConfig.storage.timeout,
+      API_TIMEOUTS.DEFAULT,
     );
 
     if (!response.ok) {

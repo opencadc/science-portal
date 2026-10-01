@@ -16,7 +16,7 @@ import {
   methodNotAllowed,
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
-import { HTTP_STATUS } from '@/app/api/lib/http-constants';
+import { API_TIMEOUTS, HTTP_STATUS } from '@/app/api/lib/http-constants';
 
 export interface PermissionCheck {
   granted: boolean;
@@ -67,7 +67,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
         Accept: 'application/json',
       },
     },
-    serverApiConfig.login.timeout,
+    API_TIMEOUTS.DEFAULT,
   );
 
   // Handle permission check failures gracefully
