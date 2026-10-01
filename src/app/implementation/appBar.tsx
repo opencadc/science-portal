@@ -26,6 +26,7 @@ import { IconButton } from '@/app/components/IconButton/IconButton';
 import { List } from '@/app/components/List/List';
 import { ListItem } from '@/app/components/List/ListItem';
 import { useMobileDrawerOpen, useNavigationActions } from '@/lib/stores';
+import { tokens } from '@/app/design-system/tokens';
 
 export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
   (
@@ -127,19 +128,50 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
         default:
           return {
             ...baseStyles,
-            backgroundColor: theme.palette.background.paper,
+            backgroundColor:
+              theme.palette.mode === 'dark'
+                ? tokens.colors.surface.glass.dark
+                : tokens.colors.surface.glass.light,
             color: theme.palette.text.primary,
-            boxShadow: theme.shadows[0],
-            borderBottom: `1px solid ${theme.palette.divider}`,
+            boxShadow: 'none',
+            borderBottom: 'none',
+            backdropFilter: tokens.materials.blur.chrome,
+            WebkitBackdropFilter: tokens.materials.blur.chrome,
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: '1px',
+              pointerEvents: 'none',
+              background:
+                theme.palette.mode === 'dark'
+                  ? tokens.colors.surface.hairline.dark
+                  : tokens.colors.surface.hairline.light,
+            },
+            '@media (prefers-reduced-transparency: reduce)': {
+              backgroundColor: theme.palette.background.paper,
+              backdropFilter: 'none',
+              WebkitBackdropFilter: 'none',
+            },
             '& .MuiLink-root, & .nav-button': {
               color: theme.palette.text.primary,
               '&:hover': {
                 color: theme.palette.primary.main,
                 backgroundColor: theme.palette.action.hover,
               },
+              '&:active': {
+                transform: 'scale(0.97)',
+              },
               '&:focus-visible': {
                 outline: `2px solid ${theme.palette.primary.main}`,
                 outlineOffset: theme.spacing(0.25),
+              },
+              '@media (prefers-reduced-motion: reduce)': {
+                '&:active': {
+                  transform: 'none',
+                },
               },
             },
           };
@@ -197,6 +229,44 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
       [onLogoClick],
     );
 
+    const brand = (
+      <Link
+        href={logoHref}
+        onClick={handleLogoClick}
+        variant="inherit"
+        underline="none"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          color: 'inherit',
+          minWidth: 0,
+        }}
+      >
+        {logo}
+        {typeof wordmark === 'string' ? (
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontSize: {
+                xs: theme.typography.body1.fontSize,
+                sm: theme.typography.h6.fontSize,
+              },
+            }}
+          >
+            {wordmark}
+          </Typography>
+        ) : (
+          wordmark
+        )}
+      </Link>
+    );
+
     const handleMobileDrawerToggle = useCallback(() => {
       toggleMobileDrawer();
     }, [toggleMobileDrawer]);
@@ -250,45 +320,18 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
               display: 'flex',
               alignItems: 'center',
               gap: {
-                xs: 0.5, // Tighter spacing on small screens
-                sm: 1, // Standard spacing on larger screens
+                xs: 0.5,
+                sm: 1,
               },
-              flex: 1, // Take available space
-              minWidth: 0, // Allow shrinking
+              flex: 1,
+              minWidth: 0,
+              '& img': {
+                height: '28px',
+                width: 'auto',
+              },
             }}
           >
-            {logo && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  // Responsive logo sizing in drawer
-                  '& img': {
-                    height: '28px', // Slightly smaller in drawer
-                    width: 'auto',
-                  },
-                }}
-              >
-                {logo}
-              </Box>
-            )}
-            {wordmark && (
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: theme.typography.fontWeightMedium,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  fontSize: {
-                    xs: theme.typography.body1.fontSize,
-                    sm: theme.typography.h6.fontSize,
-                  },
-                }}
-              >
-                {wordmark}
-              </Typography>
-            )}
+            {brand}
           </Box>
           <IconButton
             onClick={handleMobileDrawerClose}
@@ -459,7 +502,7 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <LoginIcon fontSize="small" />
                       </Box>
-                      Login
+                      Sign in
                     </MuiBox>
                   </ListItem>
                 )}
@@ -523,70 +566,18 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                 display: 'flex',
                 alignItems: 'center',
                 flex: isMobile ? 1 : 'none',
-                minWidth: 0, // Allow content to shrink if needed
-                // Ensure proper spacing from hamburger menu
-                ml: isMobile && (links.length > 0 || menuItems.length > 0) ? 0 : 'auto',
+                minWidth: 0,
+                '& img': {
+                  height: {
+                    xs: '32px',
+                    sm: '36px',
+                    md: '40px',
+                  },
+                  width: 'auto',
+                },
               }}
             >
-              {logo && (
-                <Box
-                  sx={{
-                    mr: wordmark ? theme.spacing(1) : 0,
-                    // Responsive logo sizing
-                    '& img': {
-                      height: {
-                        xs: '32px', // 375px and up
-                        sm: '36px', // 600px and up
-                        md: '40px', // 900px and up
-                      },
-                      width: 'auto',
-                      transition: theme.transitions.create('height', {
-                        duration: theme.transitions.duration.short,
-                      }),
-                    },
-                  }}
-                >
-                  <Link
-                    href={logoHref}
-                    onClick={handleLogoClick}
-                    variant="inherit"
-                    underline="none"
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                    }}
-                  >
-                    {logo}
-                  </Link>
-                </Box>
-              )}
-              {wordmark && (
-                <Typography
-                  variant="h6"
-                  sx={{
-                    fontWeight: theme.typography.fontWeightMedium,
-                    color: 'inherit',
-                    textDecoration: 'none',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    // Responsive font sizing
-                    fontSize: {
-                      xs: theme.typography.body1.fontSize, // Smaller on mobile
-                      sm: theme.typography.h6.fontSize, // Standard size on tablet+
-                    },
-                    // Limit width on very small screens
-                    maxWidth: {
-                      xs: '150px', // Limit width on mobile
-                      sm: 'none', // No limit on larger screens
-                    },
-                  }}
-                  component={logo ? 'span' : Link}
-                  {...(logo ? {} : { href: logoHref, onClick: handleLogoClick })}
-                >
-                  {wordmark}
-                </Typography>
-              )}
+              {brand}
             </Box>
 
             {/* Navigation Zone - Primary Navigation (Desktop Only) */}
@@ -773,7 +764,7 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                       minHeight: '48px',
                       minWidth: '120px',
                       transition: theme.transitions.create(
-                        ['background-color', 'border-color', 'color', 'opacity'],
+                        ['background-color', 'border-color', 'color', 'opacity', 'transform'],
                         {
                           duration: theme.transitions.duration.short,
                         },
@@ -782,6 +773,9 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                         backgroundColor: theme.palette.action.hover,
                         borderColor: theme.palette.primary.main,
                         color: theme.palette.primary.main,
+                      },
+                      '&:active:not(:disabled)': {
+                        transform: 'scale(0.97)',
                       },
                       '&:focus-visible': {
                         outline: `2px solid ${theme.palette.primary.main}`,
@@ -880,7 +874,7 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                     type="button"
                     disabled={accountActionDisabled}
                     onClick={onAccountButtonClick}
-                    aria-label="Login"
+                    aria-label="Sign in"
                     sx={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -899,10 +893,13 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                       cursor: 'pointer',
                       minHeight: 40,
                       transition: theme.transitions.create(
-                        ['background-color', 'opacity'],
+                        ['background-color', 'opacity', 'transform'],
                         { duration: theme.transitions.duration.short },
                       ),
                       '&:hover': { backgroundColor: theme.palette.primary.dark },
+                      '&:active:not(:disabled)': {
+                        transform: 'scale(0.97)',
+                      },
                       '&:focus-visible': {
                         outline: `2px solid ${theme.palette.primary.dark}`,
                         outlineOffset: theme.spacing(0.25),
@@ -914,7 +911,7 @@ export const AppBarImpl = React.forwardRef<HTMLDivElement, AppBarProps>(
                     }}
                   >
                     <LoginIcon fontSize="small" />
-                    Login
+                    Sign in
                   </MuiBox>
                 )}
             </Box>

@@ -205,6 +205,19 @@ export async function getSessions(): Promise<Session[]> {
   return skahaResponse.map(transformSkahaSession);
 }
 
+/** Live cluster capacity from Skaha `view=stats`, via the portal route. */
+export async function getPlatformLoad(): Promise<PlatformLoad> {
+  const authHeaders = getAuthHeader();
+  const response = await fetch(`${sessionsApiRoot()}/platform-load`, {
+    method: 'GET',
+    headers: { Accept: 'application/json', ...authHeaders },
+    credentials: 'include',
+  });
+
+  await throwIfNotOk(response, 'Failed to fetch platform load');
+  return response.json();
+}
+
 /**
  * Get details for a specific session
  */

@@ -16,23 +16,25 @@ import {
   Backdrop,
 } from '@mui/material';
 import {
-  Delete as DeleteIcon,
-  Flag as FlagIcon,
-  Description as LogsIcon,
-  Schedule as ExtendIcon,
+  DeleteOutlined as DeleteIcon,
+  FlagOutlined as FlagIcon,
+  DescriptionOutlined as LogsIcon,
+  ScheduleOutlined as ExtendIcon,
   Code as CodeIcon,
 } from '@mui/icons-material';
 import { SessionCardProps, SessionType, SessionStatus } from '@/app/types/SessionCardProps';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { alpha, type Theme } from '@mui/material/styles';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-
-dayjs.extend(utc);
+import { formatRelativeToNow } from '@/lib/utils/relative-time';
 import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
 import Image from 'next/image';
 import { useSessionModalsActions } from '@/lib/stores';
 import { hasAssignedSessionId } from '@/lib/sessions/sessionQuota';
+import { tokens } from '@/app/design-system/tokens';
+
+dayjs.extend(utc);
 
 const ICON_SIZE = 22;
 
@@ -155,57 +157,75 @@ const ResourceModeChip = ({ isFixedResources }: { isFixedResources: boolean }) =
           borderRadius: '0 0 8px 0',
           backgroundColor: isFixedResources
             ? theme.palette.primary.dark
-            : theme.palette.success.light,
+            : theme.palette.accent.main,
           color: isFixedResources
             ? theme.palette.primary.contrastText
-            : theme.palette.success.contrastText,
+            : theme.palette.accent.contrastText,
         }}
       />
     </Tooltip>
   );
 };
 
-/**
- * Split a full container image path into project and image name.
- * Example: "images.canfar.net/skaha/firefly:2025.2" -> { project: "skaha", image: "firefly:2025.2" }
- */
-const parseImagePath = (fullImagePath: string): { project: string; image: string } => {
-  if (!fullImagePath) return { project: 'N/A', image: 'N/A' };
+/** "images.canfar.net/skaha/astroml:latest" → "skaha/astroml:latest". */
+const containerLabel = (fullImagePath: string): string => {
+  if (!fullImagePath) return 'N/A';
   const parts = fullImagePath.split('/');
-  if (parts.length >= 3) {
-    return { project: parts[1], image: parts.slice(2).join('/') };
-  }
-  if (parts.length === 2) {
-    return { project: parts[0], image: parts[1] };
-  }
-  return { project: 'N/A', image: parts[0] };
+  return (parts.length >= 3 ? parts.slice(1) : parts).join('/');
 };
 
-/**
- * Skaha returns memory either as bare GB numbers ("1.4", "16") or, occasionally,
- * with a unit suffix ("8G"). Render with a "GB" suffix. Falsy / "<none>" → "N/A".
- */
-const formatMemoryUnit = (value: string | undefined): string => {
-  if (!value || value === '<none>') return 'N/A';
-  if (/[KMGT]$/.test(value)) return `${value}B`;
-  if (/^\d+(\.\d+)?$/.test(value)) return `${value}GB`;
-  return value;
+/** Round up to one decimal. "<none>" and non-numbers → "N/A". */
+const formatCeil1 = (raw: string | undefined): string => {
+  if (!raw || raw === '<none>') return 'N/A';
+  const n = parseFloat(raw.replace(/[KMGT]B?$/, ''));
+  return Number.isFinite(n) ? (Math.ceil(n * 10) / 10).toFixed(1) : 'N/A';
 };
 
-/**
- * Strip any unit suffix; used for the usage side of "usage / allocated" so the
- * unit appears only once at the end (e.g. "1.4 / 16GB").
- */
-const stripMemoryUnit = (value: string | undefined): string => {
-  if (!value || value === '<none>') return 'N/A';
-  return value.replace(/[KMGT]B?$/, '');
+/** "0.2/1.1 GB" when a ceiling exists, otherwise "0.2 GB". */
+const formatResourcePair = (
+  used: string | undefined,
+  allocated: string | undefined,
+  unit: string,
+  flexible: boolean,
+): string => {
+  const body = flexible ? formatCeil1(used) : `${formatCeil1(used)}/${formatCeil1(allocated)}`;
+  return unit ? `${body} ${unit}` : body;
 };
 
-/** Format ISO timestamp as "YYYY-MM-DD HH:mm" in UTC. */
-const formatTimestamp = (timestamp: string): string => {
-  if (!timestamp) return 'Pending...';
-  const d = dayjs.utc(timestamp);
-  return d.isValid() ? d.format('YYYY-MM-DD HH:mm') : 'Pending...';
+const resourceMonoSx = { fontFamily: tokens.typography.fontFamily.mono } as const;
+
+const parseSessionUtc = (raw: string): dayjs.Dayjs | null => {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  const instant = dayjs.utc(trimmed);
+  return instant.isValid() ? instant : null;
+};
+
+const formatSessionDateLocal = (raw: string): string => {
+  const instant = parseSessionUtc(raw);
+  if (!instant) return '';
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZoneName: 'short',
+  }).format(instant.toDate());
+};
+
+const formatStartedRelative = (raw: string, nowMs: number): string => {
+  const instant = parseSessionUtc(raw);
+  if (!instant) return 'Pending...';
+  return `Started ${formatRelativeToNow(instant.valueOf(), nowMs)}`;
+};
+
+const formatExpiresRelative = (raw: string, nowMs: number): string => {
+  const instant = parseSessionUtc(raw);
+  if (!instant) return 'Pending...';
+  const relative = formatRelativeToNow(instant.valueOf(), nowMs);
+  return instant.valueOf() > nowMs ? `Expires ${relative}` : `Expired ${relative}`;
 };
 
 // --- Hoisted styles (static, or theme-derived via sx callbacks) ---
@@ -229,7 +249,9 @@ const BusyOverlay = () => (
       inset: 0,
       zIndex: 2,
       color: theme.palette.primary.main,
-      backgroundColor: alpha(theme.palette.background.paper, 0.72),
+      backgroundColor: alpha(theme.palette.background.paper, 0.48),
+      backdropFilter: 'none',
+      WebkitBackdropFilter: 'none',
     })}
   >
     <CircularProgress color="inherit" size={32} disableShrink />
@@ -274,6 +296,12 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
     const { basePath } = usePublicRuntimeConfig();
     const theme = useTheme();
     const { openSessionModal } = useSessionModalsActions();
+    const [nowMs, setNowMs] = useState(() => Date.now());
+
+    useEffect(() => {
+      const intervalId = window.setInterval(() => setNowMs(Date.now()), 60_000);
+      return () => window.clearInterval(intervalId);
+    }, []);
 
     const openModal = (kind: 'events' | 'logs' | 'extend' | 'delete') => {
       if (!hasAssignedSessionId(id)) return;
@@ -360,13 +388,10 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
       );
     }
 
-    const { project, image } = parseImagePath(containerImage);
-    const memoryDisplay =
-      isFixedResources === false
-        ? formatMemoryUnit(memoryUsage)
-        : `${stripMemoryUnit(memoryUsage)} / ${formatMemoryUnit(memoryAllocated)}`;
-    const cpuDisplay =
-      isFixedResources === false ? cpuUsage || 'N/A' : `${cpuUsage || 'N/A'} / ${cpuAllocated}`;
+    const containerRef = containerLabel(containerImage);
+    const flexible = isFixedResources === false;
+    const memoryDisplay = formatResourcePair(memoryUsage, memoryAllocated, 'GB', flexible);
+    const cpuDisplay = formatResourcePair(cpuUsage, cpuAllocated, '', flexible);
     const showGpu = !!(gpuAllocated && gpuAllocated !== '0');
     const showResourceMode = hasResourceModeBadge(isFixedResources);
 
@@ -385,12 +410,31 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
           sx={[
             {
               cursor: isConnectable ? 'pointer' : 'default',
-              border: `1px solid ${theme.palette.divider}`,
+              border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
               position: 'relative',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
               height: '100%',
+              transition: theme.transitions.create(
+                ['transform', 'border-color', 'box-shadow'],
+                { duration: theme.transitions.duration.shorter },
+              ),
+              ...(isConnectable && {
+                '&:hover': {
+                  borderColor: theme.palette.primary.main,
+                  boxShadow:
+                    theme.palette.mode === 'dark'
+                      ? '0 8px 24px rgba(0,0,0,0.35)'
+                      : '0 8px 24px rgba(0,0,0,0.08)',
+                },
+                '&:active': {
+                  transform: 'scale(0.985)',
+                },
+                '@media (prefers-reduced-motion: reduce)': {
+                  '&:active': { transform: 'none' },
+                },
+              }),
             },
             ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
           ]}
@@ -443,54 +487,67 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
             </Box>
 
             <Stack spacing={0.75} sx={{ minWidth: 0, flex: 1 }}>
-              <Typography variant="body2" color="text.secondary" noWrap title={project}>
+              <Typography variant="body2" color="text.secondary" noWrap title={containerRef}>
                 <Box component="span" sx={detailLabelSx}>
-                  Project:{' '}
+                  Container:{' '}
                 </Box>
-                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  {project}
+                <Box component="span" sx={{ ...resourceMonoSx, color: 'text.primary' }}>
+                  {containerRef}
                 </Box>
               </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap title={image}>
-                <Box component="span" sx={detailLabelSx}>
-                  Image:{' '}
-                </Box>
-                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  {image}
-                </Box>
-              </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap>
-                <Box component="span" sx={detailLabelSx}>
-                  Memory:{' '}
-                </Box>
-                {memoryDisplay}
-                {' · '}
-                <Box component="span" sx={detailLabelSx}>
-                  CPU:{' '}
-                </Box>
-                {cpuDisplay}
-                {showGpu && (
-                  <>
-                    {' · '}
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  columnGap: 1.5,
+                  rowGap: 0.25,
+                }}
+              >
+                {[
+                  { label: 'Memory', value: memoryDisplay },
+                  { label: 'CPU', value: cpuDisplay },
+                  ...(showGpu ? [{ label: 'GPU', value: gpuAllocated }] : []),
+                ].map((metric) => (
+                  <Typography
+                    key={metric.label}
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
                     <Box component="span" sx={detailLabelSx}>
-                      GPU:{' '}
+                      {metric.label}:{' '}
                     </Box>
-                    {gpuAllocated}
-                  </>
-                )}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap>
-                <Box component="span" sx={detailLabelSx}>
-                  Started:{' '}
-                </Box>
-                {formatTimestamp(startedTime)} UTC
-              </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap>
-                <Box component="span" sx={detailLabelSx}>
-                  Expires:{' '}
-                </Box>
-                {formatTimestamp(expiresTime)} UTC
-              </Typography>
+                    <Box component="span" sx={resourceMonoSx}>
+                      {metric.value}
+                    </Box>
+                  </Typography>
+                ))}
+              </Box>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  gap: 1,
+                  minWidth: 0,
+                }}
+              >
+                <Tooltip title={formatSessionDateLocal(startedTime) || 'Unknown'}>
+                  <Typography variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
+                    {formatStartedRelative(startedTime, nowMs)}
+                  </Typography>
+                </Tooltip>
+                <Tooltip title={formatSessionDateLocal(expiresTime) || 'Unknown'}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    noWrap
+                    sx={{ flexShrink: 0, textAlign: 'right' }}
+                  >
+                    {formatExpiresRelative(expiresTime, nowMs)}
+                  </Typography>
+                </Tooltip>
+              </Box>
             </Stack>
           </CardContent>
 
@@ -498,8 +555,8 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
             disableSpacing
             sx={{
               position: 'relative',
-              borderTop: 1,
-              borderColor: 'divider',
+              borderTop: 'none',
+              boxShadow: `inset 0 1px 0 ${theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
               justifyContent: 'flex-end',
               gap: 0.25,
               px: 1.5,

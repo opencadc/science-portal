@@ -1,41 +1,38 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Typography, Box, Grid, Skeleton, Tooltip } from '@mui/material';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  Typography,
+  Box,
+  Skeleton,
+  Tooltip,
+  Popover,
+  IconButton,
+  ButtonBase,
+} from '@mui/material';
+import {
+  Close as CloseIcon,
+  Refresh as RefreshIcon,
+  FolderOutlined as StorageIcon,
+} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import { DashboardWidget } from '@/app/components/DashboardWidget/DashboardWidget';
 import {
   UserStorageWidgetProps,
   StorageData,
-  StorageCardData,
 } from '@/app/types/UserStorageWidgetProps';
+import { UsageRing } from '@/app/components/UsageRing/UsageRing';
+import { tokens } from '@/app/design-system/tokens';
+import {
+  USAGE_RING_SIZE,
+  usageFillColor,
+  usageTrackColor,
+} from '@/app/design-system/usageMeter';
+import { formatRelativeToNow } from '@/lib/utils/relative-time';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import updateLocale from 'dayjs/plugin/updateLocale';
 
 dayjs.extend(utc);
-dayjs.extend(relativeTime);
-dayjs.extend(updateLocale);
-dayjs.updateLocale('en', {
-  relativeTime: {
-    future: 'in %s',
-    past: '%s ago',
-    s: 'a few seconds',
-    m: 'a min',
-    mm: '%d mins',
-    h: 'an hr',
-    hh: '%d hrs',
-    d: 'a day',
-    dd: '%d days',
-    M: 'a month',
-    MM: '%d months',
-    y: 'a year',
-    yy: '%d years',
-  },
-});
 
-// Utility functions
 const convertToFileSize = (bytes: number): string => {
   if (!bytes || bytes === 0) return '0 B';
   const thresh = 1024;
@@ -105,243 +102,350 @@ const formatStorageDateLocalDefault = (raw: string): string => {
   }).format(instant.toDate());
 };
 
-/** Relative time since totals were last modified (API instant → browser “now”). */
 const formatRelativeStorageModified = (raw: string, nowMs: number): string => {
   const instant = parseStorageApiUtc(raw);
   if (!instant) return 'Unknown';
-  return instant.from(dayjs(nowMs));
+  return formatRelativeToNow(instant.valueOf(), nowMs);
 };
 
-// Storage Card Component
-interface StorageCardProps {
-  label: string;
-  value: string;
-  isLoading: boolean;
-  isWarning?: boolean;
+function displayStoragePath(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) return '';
+  return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
 }
 
-const StorageCard: React.FC<StorageCardProps> = ({ label, value, isLoading, isWarning }) => {
+type StorageDetailsPanelProps = {
+  isLoading?: boolean;
+  data?: StorageData | null;
+  emptyMessage?: string;
+  dateFormatter?: (date: string) => string;
+  fileSizeFormatter?: (bytes: number) => string;
+};
+
+function StorageDetailsPanel({
+  isLoading = false,
+  data = null,
+  emptyMessage = 'No storage data available',
+  dateFormatter = formatStorageDateLocalDefault,
+  fileSizeFormatter = convertToFileSize,
+  onClose,
+  onRefresh,
+  isFetching = false,
+  errorMessage,
+}: StorageDetailsPanelProps & {
+  onClose?: () => void;
+  onRefresh?: () => void;
+  isFetching?: boolean;
+  errorMessage?: string;
+}) {
   const theme = useTheme();
+  const [relativeNowMs, setRelativeNowMs] = useState(() => Date.now());
+  const displayData = isLoading ? null : data;
+  const usage = displayData?.usage ?? 0;
+  const usedColor = usageFillColor(usage, theme);
+  const trackColor = usageTrackColor(theme);
+  const usedPct = Math.min(100, Math.max(0, usage));
+  const pathLabel = displayData?.path ? displayStoragePath(displayData.path) : null;
+
+  const sizeTotalsModifiedAbsolute = useMemo(() => {
+    return displayData?.date ? dateFormatter(displayData.date) : null;
+  }, [displayData?.date, dateFormatter]);
+
+  const sizeTotalsModifiedRelative = useMemo(() => {
+    return displayData?.date ? formatRelativeStorageModified(displayData.date, relativeNowMs) : null;
+  }, [displayData?.date, relativeNowMs]);
+
+  useEffect(() => {
+    if (!displayData?.date) return;
+    setRelativeNowMs(Date.now());
+    const intervalId = window.setInterval(() => setRelativeNowMs(Date.now()), 60000);
+    return () => window.clearInterval(intervalId);
+  }, [displayData?.date]);
 
   return (
-    <Box
-      sx={{
-        borderRadius: 2,
-        backgroundColor: 'background.paper',
-        border: `1px solid ${theme.palette.divider}`,
-        p: 2,
-        cursor: 'default',
-        userSelect: 'none',
-      }}
-    >
-      {isLoading ? (
+    <Box sx={{ width: '100%', maxWidth: 320, p: 2 }}>
+      {(pathLabel || onClose || onRefresh) && (
         <Box
           sx={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
             gap: 1,
+            mb: 1.25,
           }}
         >
-          <Skeleton variant="text" width="30%" height={20} />
-          <Skeleton variant="text" width="40%" height={20} />
+          {isLoading ? (
+            <Skeleton width="75%" height={20} sx={{ flex: 1 }} />
+          ) : pathLabel ? (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ minWidth: 0, flex: 1, wordBreak: 'break-all' }}
+            >
+              <Box component="span" sx={{ fontWeight: 600 }}>
+                Path:{' '}
+              </Box>
+              <Box
+                component="span"
+                sx={{
+                  fontFamily: tokens.typography.fontFamily.mono,
+                  fontWeight: 400,
+                  color: 'text.primary',
+                }}
+              >
+                {pathLabel}
+              </Box>
+            </Typography>
+          ) : (
+            <Box sx={{ flex: 1 }} />
+          )}
+          {(onClose || onRefresh) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              {onRefresh && (
+                <Tooltip title="Refresh storage">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={onRefresh}
+                      disabled={isLoading || isFetching}
+                      aria-label="refresh storage"
+                    >
+                      <RefreshIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              )}
+              {onClose && (
+                <IconButton size="small" onClick={onClose} aria-label="close storage details">
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              )}
+            </Box>
+          )}
         </Box>
+      )}
+
+      {errorMessage && !displayData ? (
+        <Typography variant="body2" color="error">
+          {errorMessage}
+        </Typography>
+      ) : !displayData && !isLoading ? (
+        <Typography variant="body2" color="text.secondary">
+          {emptyMessage}
+        </Typography>
       ) : (
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 1,
-          }}
-        >
-          <Typography variant="body1" fontWeight="bold" color="text.primary">
-            {label}:
-          </Typography>
-          <Typography
-            variant="body1"
-            fontWeight="bold"
-            color={isWarning ? 'error.main' : 'primary.main'}
+        <>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 1,
+              mb: 1.25,
+            }}
           >
-            {value}
-          </Typography>
-        </Box>
+            {isLoading ? (
+              <>
+                <Skeleton width={88} height={24} />
+                <Skeleton width={140} height={20} />
+              </>
+            ) : (
+              <>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  {usage.toFixed(usage < 10 ? 1 : 0)}% full
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ fontFamily: tokens.typography.fontFamily.mono }}
+                >
+                  {fileSizeFormatter(displayData?.size ?? 0)} / {fileSizeFormatter(displayData?.quota ?? 0)}
+                </Typography>
+              </>
+            )}
+          </Box>
+
+          <Box
+            aria-hidden
+            sx={{
+              height: 8,
+              borderRadius: tokens.borderRadius.fullCSS,
+              overflow: 'hidden',
+              display: 'flex',
+              backgroundColor: trackColor,
+              mb: 1.25,
+            }}
+          >
+            {isLoading ? (
+              <Skeleton variant="rectangular" width="100%" height={8} />
+            ) : (
+              <Box
+                sx={{
+                  width: `${usedPct}%`,
+                  minWidth: usedPct > 0 ? 4 : 0,
+                  backgroundColor: usedColor,
+                  borderRadius: tokens.borderRadius.fullCSS,
+                }}
+              />
+            )}
+          </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 1,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {[
+                { key: 'used', label: 'Used', color: usedColor },
+                { key: 'available', label: 'Available', color: trackColor },
+              ].map((item) => (
+                <Box key={item.key} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Box
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '2px',
+                      backgroundColor: item.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    {item.label}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+            {sizeTotalsModifiedRelative && sizeTotalsModifiedRelative !== 'Unknown' && !isLoading && (
+              <Tooltip
+                title={sizeTotalsModifiedAbsolute ? `${sizeTotalsModifiedAbsolute}` : 'Unknown'}
+              >
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  noWrap
+                  sx={{ flexShrink: 0, textAlign: 'right' }}
+                >
+                  Modified {sizeTotalsModifiedRelative}
+                </Typography>
+              </Tooltip>
+            )}
+          </Box>
+        </>
       )}
     </Box>
   );
-};
+}
 
 export const UserStorageWidgetImpl = React.forwardRef<HTMLDivElement, UserStorageWidgetProps>(
   (
     {
-      title = 'User Home Storage',
+      title = 'Home Storage',
       isLoading = false,
       isFetching = false,
       data = null,
       errorMessage,
       onRefresh,
       showRefreshButton = true,
-      helpUrl,
-      helpContent,
-      showProgressIndicator = true,
-      progressPercentage = 0,
-      warningThreshold = 90,
       emptyMessage = 'No storage data available',
       dateFormatter = formatStorageDateLocalDefault,
       fileSizeFormatter = convertToFileSize,
-      fillHeight = false,
     },
     ref,
   ) => {
     const theme = useTheme();
+    const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+    const open = Boolean(anchorEl);
 
-    const [relativeNowMs, setRelativeNowMs] = useState(() => Date.now());
+    const usage = data?.usage ?? 0;
+    const usedColor = usageFillColor(usage, theme);
+    const trackColor = usageTrackColor(theme);
+    const usedLabel = fileSizeFormatter(data?.size ?? 0);
+    const quotaLabel = fileSizeFormatter(data?.quota ?? 0);
+    const pctLabel = `${usage.toFixed(usage < 10 ? 1 : 0)}%`;
 
-    const displayData = isLoading ? null : data;
+    const ariaLabel = errorMessage
+      ? `${title} unavailable. ${errorMessage}`
+      : isLoading
+        ? `${title}, loading`
+        : `${title}, ${pctLabel} full, ${usedLabel} of ${quotaLabel}. Show details.`;
 
-    // Card configuration
-    const cardConfigs = useMemo(
-      () => [
-        {
-          key: 'size' as keyof StorageData,
-          label: 'Used',
-          formatter: fileSizeFormatter,
-        },
-        {
-          key: 'quota' as keyof StorageData,
-          label: 'Quota',
-          formatter: fileSizeFormatter,
-        },
-        {
-          key: 'usage' as keyof StorageData,
-          label: 'Usage',
-          formatter: (val: number) => `${(val || 0).toFixed(1)}%`,
-        },
-      ],
-      [fileSizeFormatter],
-    );
+    const handleClose = useCallback(() => {
+      setAnchorEl(null);
+    }, []);
 
-    // Memoized card data
-    const cardData: StorageCardData[] = useMemo(() => {
-      return cardConfigs.map((config) => ({
-        label: config.label,
-        value: config.formatter((displayData?.[config.key] as number) ?? 0),
-        isWarning:
-          config.key === 'usage' &&
-          displayData?.usage !== undefined &&
-          displayData.usage > warningThreshold,
-      }));
-    }, [displayData, cardConfigs, warningThreshold]);
-
-    const sizeTotalsModifiedAbsolute = useMemo(() => {
-      return displayData?.date ? dateFormatter(displayData.date) : null;
-    }, [displayData?.date, dateFormatter]);
-
-    const sizeTotalsModifiedRelative = useMemo(() => {
-      return displayData?.date ? formatRelativeStorageModified(displayData.date, relativeNowMs) : null;
-    }, [displayData?.date, relativeNowMs]);
-
-    useEffect(() => {
-      if (!displayData?.date) return;
-      setRelativeNowMs(Date.now());
-
-      const intervalId = window.setInterval(() => {
-        setRelativeNowMs(Date.now());
-      }, 60000);
-
-      return () => {
-        window.clearInterval(intervalId);
-      };
-    }, [displayData?.date]);
+    const handleToggle = useCallback((event: React.MouseEvent<HTMLElement>) => {
+      setAnchorEl((current) => (current ? null : event.currentTarget));
+    }, []);
 
     return (
-      <DashboardWidget
-        ref={ref}
-        title={title}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        error={errorMessage}
-        onRefresh={showRefreshButton ? onRefresh : undefined}
-        refreshAriaLabel="refresh storage"
-        refreshTooltip="Refresh storage"
-        help={helpUrl || helpContent ? { url: helpUrl, content: helpContent } : undefined}
-        showStatusBar={showProgressIndicator}
-        statusValue={progressPercentage > 0 ? progressPercentage : 100}
-        fillHeight={fillHeight}
-        maxWidth={600}
-      >
-        {/* Storage Cards or Empty State */}
-        {!displayData && !isLoading && !errorMessage ? (
-          <Box
+      <Box ref={ref} sx={{ display: 'inline-flex' }}>
+        <Tooltip title={open ? '' : `${title} — click for details`} disableHoverListener={open}>
+          <ButtonBase
+            onClick={handleToggle}
+            aria-label={ariaLabel}
+            aria-haspopup="dialog"
+            aria-expanded={open}
             sx={{
-              flex: fillHeight ? 1 : undefined,
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              textAlign: 'center',
-              py: fillHeight ? 0 : 4,
-              color: theme.palette.text.secondary,
+              width: USAGE_RING_SIZE,
+              height: USAGE_RING_SIZE,
+              minHeight: USAGE_RING_SIZE,
+              p: 0,
+              borderRadius: '50%',
+              color: 'text.primary',
+              transition: `transform ${tokens.transitions.press.duration} ${tokens.transitions.easing.easeOut}, background-color ${tokens.transitions.duration.fastCSS} ${tokens.transitions.easing.emphasized}`,
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
+              '&:active': {
+                transform: `scale(${tokens.transitions.press.scale})`,
+              },
+              '@media (prefers-reduced-motion: reduce)': {
+                '&:active': { transform: 'none' },
+              },
             }}
           >
-            <Typography variant="body2">{emptyMessage}</Typography>
-          </Box>
-        ) : (
-          <Box sx={{ mb: 2 }}>
-            <Grid container spacing={2} direction="column">
-              {cardData.map((card) => (
-                <Grid size={12} key={card.label}>
-                  <StorageCard
-                    label={card.label}
-                    value={card.value}
-                    isLoading={isLoading}
-                    isWarning={card.isWarning}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        )}
+            <UsageRing
+              usage={errorMessage && !data ? 0 : usage}
+              isLoading={isLoading}
+              usedColor={errorMessage && !data ? theme.palette.error.main : usedColor}
+              trackColor={trackColor}
+              icon={<StorageIcon />}
+            />
+          </ButtonBase>
+        </Tooltip>
 
-        {/* When used size / quota totals last changed (VOSpace node mtime), not “last polled” */}
-        {sizeTotalsModifiedRelative &&
-          sizeTotalsModifiedRelative !== 'Unknown' &&
-          !isLoading && (
-            <Box
-              sx={{
-                textAlign: 'center',
-                mt: 'auto',
-                pt: 2,
-                color: theme.palette.text.secondary,
-              }}
-            >
-              <Tooltip
-                title={
-                  sizeTotalsModifiedAbsolute
-                    ? `${sizeTotalsModifiedAbsolute}`
-                    : 'Unknown'
-                }
-                arrow
-              >
-                <Typography variant="caption" sx={{ fontSize: '10px' }}>
-                  Modified{' '}
-                  <Typography
-                    component="span"
-                    variant="caption"
-                    sx={{
-                      fontSize: '10px',
-                      fontWeight: 'bold',
-                      color: 'primary.500',
-                    }}
-                  >
-                    {sizeTotalsModifiedRelative}
-                  </Typography>
-                  {'.'}
-                </Typography>
-              </Tooltip>
-            </Box>
-          )}
-
-      </DashboardWidget>
+        <Popover
+          open={open}
+          anchorEl={anchorEl}
+          onClose={handleClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          slotProps={{
+            paper: {
+              sx: { overflow: 'visible', width: 320 },
+            },
+          }}
+        >
+          <StorageDetailsPanel
+            isLoading={isLoading}
+            isFetching={isFetching}
+            data={data}
+            emptyMessage={emptyMessage}
+            dateFormatter={dateFormatter}
+            fileSizeFormatter={fileSizeFormatter}
+            errorMessage={errorMessage}
+            onClose={handleClose}
+            onRefresh={showRefreshButton ? onRefresh : undefined}
+          />
+        </Popover>
+      </Box>
     );
   },
 );

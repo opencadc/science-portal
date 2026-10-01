@@ -12,9 +12,14 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Refresh as RefreshIcon, HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
+import {
+  Refresh as RefreshIcon,
+  HelpOutline as HelpOutlineIcon,
+  OpenInNew as OpenInNewIcon,
+} from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import type { DashboardWidgetProps, DashboardWidgetHelp } from '@/app/types/DashboardWidgetProps';
+import { tokens } from '@/app/design-system/tokens';
 
 function HelpAffordance({ help, widgetTitle }: { help: DashboardWidgetHelp; widgetTitle: React.ReactNode }) {
   const theme = useTheme();
@@ -28,21 +33,25 @@ function HelpAffordance({ help, widgetTitle }: { help: DashboardWidgetHelp; widg
     setAnchorEl(null);
   }, []);
 
+  // URL help: trailing external-link arrow (Launch Session and any future
+  // docs links). Popover help keeps the circled ? below.
   if (help.url) {
     return (
       <Link
         href={help.url}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="help"
+        aria-label="Open documentation"
         sx={{
           display: 'inline-flex',
           alignItems: 'center',
+          color: 'inherit',
+          opacity: 0.7,
           textDecoration: 'none',
-          '&:hover': { textDecoration: 'underline' },
+          '&:hover': { opacity: 1 },
         }}
       >
-        <HelpOutlineIcon sx={{ fontSize: theme.spacing(2.5) }} />
+        <OpenInNewIcon sx={{ fontSize: theme.spacing(2) }} />
       </Link>
     );
   }
@@ -89,6 +98,7 @@ export function DashboardWidgetImpl({
   refreshAriaLabel = 'refresh',
   refreshTooltip,
   help,
+  headerActions,
   showStatusBar = true,
   statusValue = 100,
   footer,
@@ -112,9 +122,22 @@ export function DashboardWidgetImpl({
       disabled={isBusy}
       size="small"
       sx={{
-        [theme.breakpoints.down('sm')]: {
-          alignSelf: 'flex-end',
-          mt: -1,
+        width: 32,
+        height: 32,
+        p: 0,
+        borderRadius: '50%',
+        backgroundColor: theme.palette.primary.main,
+        color: theme.palette.primary.contrastText,
+        '&:hover': {
+          backgroundColor:
+            theme.palette.mode === 'dark' ? theme.palette.primary.light : theme.palette.primary.dark,
+        },
+        '&.Mui-disabled': {
+          backgroundColor: theme.palette.action.disabledBackground,
+          color: theme.palette.action.disabled,
+        },
+        '& .MuiSvgIcon-root': {
+          fontSize: 18,
         },
       }}
     >
@@ -131,11 +154,16 @@ export function DashboardWidgetImpl({
       sx={[
         {
           position: 'relative',
+          width: '100%',
+          minWidth: 0,
           padding: theme.spacing(2),
           overflow: 'hidden',
-          borderRadius: 2,
-          border: `1px solid ${theme.palette.divider}`,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          borderRadius: tokens.borderRadius.xlCSS,
+          border: `1px solid ${theme.palette.mode === 'dark' ? tokens.colors.surface.hairline.dark : tokens.colors.surface.hairline.light}`,
+          boxShadow:
+            theme.palette.mode === 'dark'
+              ? '0 1px 2px rgba(0,0,0,0.35)'
+              : '0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.04)',
           display: 'flex',
           flexDirection: 'column',
           ...(maxWidth !== undefined && { maxWidth }),
@@ -162,11 +190,7 @@ export function DashboardWidgetImpl({
           alignItems: 'center',
           marginBottom: theme.spacing(1),
           flexShrink: 0,
-          [theme.breakpoints.down('sm')]: {
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            gap: 1,
-          },
+          gap: 1,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -178,41 +202,60 @@ export function DashboardWidgetImpl({
                 fontSize: theme.typography.body1.fontSize,
                 fontWeight: theme.typography.fontWeightBold,
               },
+              letterSpacing: '-0.02em',
+              fontWeight: theme.typography.fontWeightBold,
             }}
           >
             {title}
           </Typography>
           {help && <HelpAffordance help={help} widgetTitle={title} />}
         </Box>
-        {refreshButton &&
-          (refreshTooltip ? (
-            // span keeps the tooltip working while the button is disabled
-            <Tooltip title={refreshTooltip}>
-              <Box component="span" sx={{ display: 'inline-flex' }}>
-                {refreshButton}
-              </Box>
-            </Tooltip>
-          ) : (
-            refreshButton
-          ))}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 'auto', flexShrink: 0 }}>
+          {headerActions}
+          {refreshButton &&
+            (refreshTooltip ? (
+              // span keeps the tooltip working while the button is disabled
+              <Tooltip title={refreshTooltip}>
+                <Box component="span" sx={{ display: 'inline-flex' }}>
+                  {refreshButton}
+                </Box>
+              </Tooltip>
+            ) : (
+              refreshButton
+            ))}
+        </Box>
       </Box>
 
-      {/* Status bar */}
-      {showStatusBar && (
-        <LinearProgress
-          color={isBusy ? 'primary' : 'success'}
-          variant={isBusy ? 'indeterminate' : 'determinate'}
-          value={isBusy ? undefined : statusValue}
-          sx={{
-            width: '100%',
-            height: 4,
-            marginBottom: theme.spacing(2),
-            borderRadius: 2,
-            flexShrink: 0,
-            '& .MuiLinearProgress-bar': { borderRadius: 2 },
-          }}
-        />
-      )}
+      {/* Status bar — visible motion only while fetching; idle is a hairline. */}
+      {showStatusBar &&
+        (isBusy ? (
+          <LinearProgress
+            color="primary"
+            variant="indeterminate"
+            sx={{
+              width: '100%',
+              height: 3,
+              marginBottom: theme.spacing(2),
+              borderRadius: 2,
+              flexShrink: 0,
+              '& .MuiLinearProgress-bar': { borderRadius: 2 },
+            }}
+          />
+        ) : (
+          <Box
+            aria-hidden
+            sx={{
+              width: '100%',
+              height: '1px',
+              marginBottom: theme.spacing(2),
+              flexShrink: 0,
+              backgroundColor:
+                theme.palette.mode === 'dark'
+                  ? tokens.colors.surface.hairline.dark
+                  : tokens.colors.surface.hairline.light,
+            }}
+          />
+        ))}
 
       {/* Content */}
       <Box

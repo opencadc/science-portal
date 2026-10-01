@@ -1,72 +1,83 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, FormLabel, IconButton, TextField, useTheme } from '@mui/material';
-import {
-  KeyboardArrowUp as ArrowUpIcon,
-  KeyboardArrowDown as ArrowDownIcon,
-} from '@mui/icons-material';
+import { Box, FormLabel } from '@mui/material';
 import { CanfarRange } from '@/app/components/CanfarRange/CanfarRange';
-import { generateValuesWithPowersOfTwo } from '@/lib/utils/resource-options';
+import { nearestOption, resourceSliderMarkIndices } from '@/lib/utils/resource-options';
 import { ResourceFieldProps } from '@/app/types/ResourceFieldProps';
+import { tokens } from '@/app/design-system/tokens';
 
-/**
- * Slider + numeric input + stacked stepper buttons backed by a single local
- * "draft" value. One source of truth, one commit path.
- *
- * Performance:
- *  - dragging the slider only re-renders this component (parent form is
- *    notified once on release)
- *  - the input mirrors the draft live during drag
- *  - stepper buttons commit a single new value, no internal-state cascade
- *  - wrapped in React.memo: when one ResourceField commits, the others
- *    (with unchanged value/min/max) skip re-rendering entirely
- *
- * Stepper buttons step through powers of 2 (1 → 2 → 4 → 8 …) for fast coarse
- * selection; typing accepts any integer in [min, max] for fine control.
- */
 const ResourceFieldComponent = React.forwardRef<HTMLDivElement, ResourceFieldProps>(
-  ({ label, value, min, max, step = 1, onChange, disabled = false }, ref) => {
-    const theme = useTheme();
+  ({ label, value, options, unit, onChange, disabled = false }, ref) => {
+    const inputId = `${label.replace(/\s+/g, '-').toLowerCase()}-value`;
 
     const [draft, setDraft] = useState(value);
     const [text, setText] = useState(String(value));
-    // Don't let an external `value` change clobber the user's in-flight edit.
     const isInteracting = useRef(false);
 
-    const validOptions = useMemo(() => generateValuesWithPowersOfTwo(min, max), [min, max]);
+    const validOptions = useMemo(() => {
+      const sorted = [...options].filter((n) => n >= 1).sort((a, b) => a - b);
+      return sorted.length > 0 ? sorted : [1];
+    }, [options]);
+    const floor = validOptions[0];
+    const hi = validOptions[validOptions.length - 1] ?? 0;
+    const axis = validOptions;
+
+    const sliderMarks = useMemo(() => {
+      return resourceSliderMarkIndices(axis).map((index) => ({ value: index }));
+    }, [axis]);
+
+    const sliderIndex = useMemo(() => {
+      const index = axis.indexOf(draft);
+      return index >= 0 ? index : 0;
+    }, [axis, draft]);
+
+    const resolveIndex = useCallback(
+      (index: number) => {
+        const clamped = Math.min(Math.max(Math.round(index), 0), axis.length - 1);
+        return axis[clamped] ?? floor;
+      },
+      [axis, floor],
+    );
 
     useEffect(() => {
-      if (!isInteracting.current) {
-        setDraft(value);
-        setText(String(value));
+      if (isInteracting.current) return;
+      const next = value < floor ? floor : value;
+      setDraft(next);
+      setText(String(next));
+      if (next !== value) {
+        onChange(next);
       }
-    }, [value]);
+    }, [floor, onChange, value]);
 
     const commit = useCallback(
       (next: number) => {
-        const clamped = Math.min(Math.max(next, min), max);
-        setDraft(clamped);
-        setText(String(clamped));
-        if (clamped !== value) {
-          onChange(clamped);
+        const snapped = nearestOption(Math.max(next, floor), validOptions);
+        setDraft(snapped);
+        setText(String(snapped));
+        if (snapped !== value) {
+          onChange(snapped);
         }
       },
-      [min, max, onChange, value],
+      [floor, onChange, validOptions, value],
     );
 
-    const handleSliderChange = useCallback((next: number) => {
-      isInteracting.current = true;
-      setDraft(next);
-      setText(String(next));
-    }, []);
+    const handleSliderChange = useCallback(
+      (next: number) => {
+        isInteracting.current = true;
+        const resolved = resolveIndex(next);
+        setDraft(resolved);
+        setText(String(resolved));
+      },
+      [resolveIndex],
+    );
 
     const handleSliderCommitted = useCallback(
       (next: number) => {
         isInteracting.current = false;
-        commit(next);
+        commit(resolveIndex(next));
       },
-      [commit],
+      [commit, resolveIndex],
     );
 
     const handleInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,137 +85,127 @@ const ResourceFieldComponent = React.forwardRef<HTMLDivElement, ResourceFieldPro
       setText(event.target.value);
     }, []);
 
-    const handleInputBlur = useCallback(() => {
+    const commitFromText = useCallback(() => {
       isInteracting.current = false;
       const parsed = Number(text);
-      if (Number.isInteger(parsed) && parsed >= min && parsed <= max) {
+      if (Number.isInteger(parsed)) {
         commit(parsed);
       } else {
-        // Reject and snap back to the last known good value.
         setText(String(draft));
       }
-    }, [text, draft, min, max, commit]);
+    }, [text, draft, commit]);
 
-    const nextOption = useMemo(
-      () => validOptions.find((opt) => opt > draft),
-      [validOptions, draft],
+    const handleInputKeyDown = useCallback(
+      (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        commitFromText();
+        event.currentTarget.blur();
+      },
+      [commitFromText],
     );
-    const prevOption = useMemo(() => {
-      for (let i = validOptions.length - 1; i >= 0; i--) {
-        if (validOptions[i] < draft) return validOptions[i];
-      }
-      return undefined;
-    }, [validOptions, draft]);
-
-    const handleIncrement = useCallback(() => {
-      if (nextOption !== undefined) commit(nextOption);
-    }, [nextOption, commit]);
-
-    const handleDecrement = useCallback(() => {
-      if (prevOption !== undefined) commit(prevOption);
-    }, [prevOption, commit]);
-
-    const isAtMax = nextOption === undefined;
-    const isAtMin = prevOption === undefined;
-
-    const stepperButtonSx = {
-      width: 22,
-      flex: 1,
-      minHeight: 0,
-      borderRadius: 0,
-      padding: 0,
-      color: theme.palette.text.secondary,
-      '&:hover': { backgroundColor: theme.palette.action.hover },
-      '&.Mui-disabled': { color: theme.palette.action.disabled },
-    } as const;
 
     return (
-      <Box ref={ref}>
+      <Box
+        ref={ref}
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: '4.75rem minmax(0, 1fr) 6.5rem',
+          columnGap: 2,
+          alignItems: 'center',
+          minWidth: 0,
+        }}
+      >
         <FormLabel
-          sx={{ fontSize: '0.75rem', fontWeight: 400, mb: 1, display: 'block' }}
+          htmlFor={inputId}
+          sx={{
+            m: 0,
+            typography: 'body2',
+            fontWeight: 600,
+            color: 'text.primary',
+          }}
         >
           {label}
         </FormLabel>
-        <CanfarRange
-          value={draft}
-          min={min}
-          max={max}
-          step={step}
-          onChange={handleSliderChange}
-          onChangeCommitted={handleSliderCommitted}
-          disabled={disabled}
-          label={label}
-        />
-        <Box sx={{ mt: 1 }}>
-          <TextField
-            type="number"
-            value={text}
-            onChange={handleInputChange}
-            onBlur={handleInputBlur}
+        <Box sx={{ minWidth: 0 }}>
+          <CanfarRange
+            value={sliderIndex}
+            min={0}
+            max={Math.max(axis.length - 1, 0)}
+            marks={sliderMarks}
+            onChange={handleSliderChange}
+            onChangeCommitted={handleSliderCommitted}
             disabled={disabled}
-            fullWidth
-            size="small"
-            inputProps={{
-              'aria-label': label,
-              inputMode: 'numeric',
-              min,
-              max,
-              step: 1,
-            }}
+            label={label}
+            valueMin={floor}
+            valueMax={hi}
+            valueNow={draft}
+            valueText={unit ? `${draft} ${unit}` : String(draft)}
+          />
+        </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            boxSizing: 'border-box',
+            gap: 0.5,
+            height: 32,
+            width: '6.5rem',
+            flexShrink: 0,
+            px: 1,
+            borderRadius: tokens.borderRadius.smCSS,
+            border: '1px solid',
+            borderColor: 'divider',
+            bgcolor: 'action.hover',
+            fontFamily: tokens.typography.fontFamily.mono,
+            '&:focus-within': {
+              bgcolor: 'background.paper',
+              borderColor: 'primary.main',
+            },
+          }}
+        >
+          <Box
+            component="input"
+            id={inputId}
+            inputMode="numeric"
+            aria-label={unit ? `${label} in ${unit}` : label}
+            value={text}
+            disabled={disabled}
+            onChange={handleInputChange}
+            onBlur={commitFromText}
+            onKeyDown={handleInputKeyDown}
             sx={{
-              '& input[type=number]': { MozAppearance: 'textfield' },
-              '& input[type=number]::-webkit-outer-spin-button, & input[type=number]::-webkit-inner-spin-button':
-                {
-                  WebkitAppearance: 'none',
-                  margin: 0,
-                },
-              '& .MuiOutlinedInput-root': { paddingRight: 0, alignItems: 'stretch' },
-              '& .MuiOutlinedInput-input': { paddingRight: theme.spacing(0.5) },
-              '& .MuiInputAdornment-root': {
-                height: 'auto',
-                maxHeight: 'none',
-                alignSelf: 'stretch',
-                marginLeft: 0,
-              },
-            }}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      borderLeft: `1px solid ${theme.palette.divider}`,
-                      alignSelf: 'stretch',
-                      height: '100%',
-                    }}
-                  >
-                    <IconButton
-                      size="small"
-                      onClick={handleIncrement}
-                      disabled={disabled || isAtMax}
-                      aria-label={`Increase ${label}`}
-                      sx={{
-                        ...stepperButtonSx,
-                        borderBottom: `1px solid ${theme.palette.divider}`,
-                      }}
-                    >
-                      <ArrowUpIcon fontSize="inherit" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={handleDecrement}
-                      disabled={disabled || isAtMin}
-                      aria-label={`Decrease ${label}`}
-                      sx={stepperButtonSx}
-                    >
-                      <ArrowDownIcon fontSize="inherit" />
-                    </IconButton>
-                  </Box>
-                ),
-              },
+              width: '4ch',
+              m: 0,
+              p: 0,
+              border: 0,
+              outline: 0,
+              bgcolor: 'transparent',
+              color: 'text.primary',
+              font: 'inherit',
+              fontSize: '0.8125rem',
+              fontWeight: 500,
+              lineHeight: 1,
+              textAlign: 'right',
+              fontVariantNumeric: 'tabular-nums',
             }}
           />
+          {unit ? (
+            <Box
+              component="span"
+              sx={{
+                font: 'inherit',
+                fontSize: '0.8125rem',
+                fontWeight: 500,
+                lineHeight: 1,
+                color: 'text.primary',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {unit}
+            </Box>
+          ) : null}
         </Box>
       </Box>
     );

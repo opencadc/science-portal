@@ -16,7 +16,7 @@ export function LaunchFormWidgetImpl({
   isFetching = false,
   errorMessage,
   onRefresh,
-  title = 'Launch New Session',
+  title = 'Launch Session',
   showProgressIndicator = false,
   progressPercentage = 0,
   helpUrl,
@@ -47,9 +47,18 @@ export function LaunchFormWidgetImpl({
           formData.sourceTab === 'advanced' ||
           (formData.sourceTab !== 'standard' && Boolean(formData.image?.trim()));
 
-        const imageToUse = isAdvancedLaunch
-          ? `${formData.repositoryHost}/${formData.image}`
-          : formData.containerImage;
+        let imageToUse = formData.containerImage;
+        if (isAdvancedLaunch) {
+          const project = formData.project?.trim();
+          const image = formData.image?.trim();
+          if (image) {
+            // Typed image may already include project/ (legacy); otherwise compose.
+            const path = image.includes('/')
+              ? image
+              : [project, image].filter(Boolean).join('/');
+            imageToUse = `${formData.repositoryHost}/${path}`;
+          }
+        }
 
         const launchParams = {
           sessionType: formData.type,

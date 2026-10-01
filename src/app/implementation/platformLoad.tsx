@@ -1,134 +1,148 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import { Typography, Box, useMediaQuery, Stack } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Typography, Box, Stack } from '@mui/material';
 import { WarningAmber as WarningAmberIcon } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
-import { PlatformLoadProps } from '../types/PlatformLoadProps';
+import { PlatformLoadProps, type PlatformLoadData } from '../types/PlatformLoadProps';
 import { DashboardWidget } from '@/app/components/DashboardWidget/DashboardWidget';
 import { MetricBlock } from '../components/MetricBlock/MetricBlock';
 import { PLATFORM_LOAD_DISABLED_MESSAGE } from '@/lib/config/static-platform-load';
+import { tokens } from '@/app/design-system/tokens';
+import { usageTrackColor } from '@/app/design-system/usageMeter';
+import { formatRelativeToNow } from '@/lib/utils/relative-time';
 
-/**
- * PlatformLoad implementation component
- */
-export const PlatformLoadImpl: React.FC<PlatformLoadProps> = ({
+const PLATFORM_STATS_UNAVAILABLE = 'Platform statistics unavailable';
+
+function toLastUpdateMs(lastUpdate: string | Date): number | null {
+  const ms = typeof lastUpdate === 'string' ? Date.parse(lastUpdate) : lastUpdate.getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function PlatformMetricsSection({
   data,
   isLoading = false,
+}: {
+  data: PlatformLoadData | null;
+  isLoading?: boolean;
+}) {
+  const theme = useTheme();
+  const trackColor = usageTrackColor(theme);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const lastUpdateMs = data?.lastUpdate ? toLastUpdateMs(data.lastUpdate) : null;
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  useEffect(() => {
+    if (lastUpdateMs != null) setNowMs(Date.now());
+  }, [lastUpdateMs]);
+
+  const formattedLastUpdate =
+    lastUpdateMs != null ? `Updated ${formatRelativeToNow(lastUpdateMs, nowMs)}` : null;
+
+  if (!data && !isLoading) {
+    return (
+      <Typography variant="body1" color="text.secondary">
+        {PLATFORM_STATS_UNAVAILABLE}
+      </Typography>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Stack spacing={1}>
+        <MetricBlock label="CPU" series={{ name: 'CPU', used: 0, free: 0 }} max={1} isLoading />
+        <MetricBlock label="RAM" series={{ name: 'RAM', used: 0, free: 0 }} max={1} isLoading />
+      </Stack>
+    );
+  }
+
+  return (
+    <>
+      <Stack spacing={0.5}>
+        <MetricBlock label="CPU" series={data.cpu} max={data.maxValues.cpu} isLoading={isLoading} />
+        <MetricBlock label="RAM" series={data.ram} max={data.maxValues.ram} isLoading={isLoading} />
+      </Stack>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 1,
+          mt: 0.5,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '2px',
+                flexShrink: 0,
+                backgroundImage: (t) =>
+                  `linear-gradient(to right, ${t.palette.success.light}, ${t.palette.warning.main}, ${t.palette.error.main})`,
+              }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              Used
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '2px',
+                flexShrink: 0,
+                backgroundColor: trackColor,
+              }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              Free
+            </Typography>
+          </Box>
+        </Box>
+        {formattedLastUpdate && (
+          <Typography variant="caption" color="text.secondary" noWrap>
+            {formattedLastUpdate}
+          </Typography>
+        )}
+      </Box>
+    </>
+  );
+}
+
+export const PlatformLoadImpl: React.FC<PlatformLoadProps> = ({
+  data = null,
+  isLoading = false,
+  isFetching = false,
+  error,
   onRefresh,
   className,
-  title = 'Platform Load',
+  title = 'Platform Usage',
   showDisabledOverlay = false,
 }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-
   const effectiveLoading = showDisabledOverlay ? false : isLoading;
-
-  // Memoized to prevent recalculation on every render
-  // Only recalculates when the date actually changes
-  const formattedLastUpdate = useMemo(() => {
-    const dateStr =
-      typeof data.lastUpdate === 'string' ? data.lastUpdate : data.lastUpdate.toISOString();
-    return dateStr.replace('T', ' ').slice(0, -5) + ' UTC';
-  }, [data.lastUpdate]);
-
-  const metricsContent = (
-    <>
-      {isMobile ? (
-        <Stack spacing={2}>
-          <MetricBlock
-            label="CPU"
-            series={data.cpu}
-            max={data.maxValues.cpu}
-            isLoading={effectiveLoading}
-          />
-          <MetricBlock
-            label="RAM"
-            series={data.ram}
-            max={data.maxValues.ram}
-            isLoading={effectiveLoading}
-          />
-        </Stack>
-      ) : (
-        <Stack spacing={1}>
-          <MetricBlock
-            label="CPU"
-            series={data.cpu}
-            max={data.maxValues.cpu}
-            isLoading={effectiveLoading}
-          />
-          <MetricBlock
-            label="RAM"
-            series={data.ram}
-            max={data.maxValues.ram}
-            isLoading={effectiveLoading}
-          />
-        </Stack>
-      )}
-    </>
-  );
-
-  // Footer with the last-update timestamp; hidden when live stats are disabled.
-  const lastUpdateFooter = !showDisabledOverlay && (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'flex-end',
-        [theme.breakpoints.down('sm')]: {
-          justifyContent: 'center', // Center text on mobile
-        },
-      }}
-    >
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{
-          fontSize: '10px',
-          [theme.breakpoints.down('sm')]: {
-            textAlign: 'center',
-          },
-        }}
-      >
-        Last update:{' '}
-        <Typography
-          component="span"
-          variant="caption"
-          sx={{
-            fontSize: '10px',
-            fontWeight: 'bold',
-            fontFamily: 'monospace',
-            color: 'primary.500',
-          }}
-        >
-          {formattedLastUpdate}
-        </Typography>
-      </Typography>
-    </Box>
-  );
 
   return (
     <DashboardWidget
       className={className}
       title={title}
       isLoading={effectiveLoading}
+      isFetching={showDisabledOverlay ? false : isFetching}
+      error={showDisabledOverlay ? undefined : error}
       onRefresh={showDisabledOverlay ? undefined : onRefresh}
-      footer={lastUpdateFooter || undefined}
     >
-      {/* Content - Responsive MetricBlock layout; blurred when live stats disabled (CADC-15555) */}
-      <Box sx={{ marginBottom: theme.spacing(2), position: 'relative' }}>
+      <Box sx={{ mb: 2, position: 'relative' }}>
         {showDisabledOverlay ? (
           <>
-            <Box
-              sx={{
-                filter: 'blur(4px)',
-                WebkitFilter: 'blur(4px)',
-                opacity: 0.85,
-                pointerEvents: 'none',
-                userSelect: 'none',
-              }}
-            >
-              {metricsContent}
+            <Box sx={{ opacity: 0.32, pointerEvents: 'none', userSelect: 'none' }}>
+              <PlatformMetricsSection data={data} isLoading={effectiveLoading} />
             </Box>
             <Box
               sx={{
@@ -142,24 +156,19 @@ export const PlatformLoadImpl: React.FC<PlatformLoadProps> = ({
                 px: 2,
                 backgroundColor:
                   theme.palette.mode === 'dark'
-                    ? 'rgba(0, 0, 0, 0.72)'
-                    : 'rgba(255, 255, 255, 0.72)',
-                borderRadius: 1,
+                    ? 'rgba(44, 44, 46, 0.82)'
+                    : 'rgba(255, 255, 255, 0.82)',
+                borderRadius: tokens.borderRadius.mdCSS,
                 zIndex: 5,
               }}
             >
               <WarningAmberIcon
-                sx={{
-                  color: '#b58900',
-                  fontSize: 28,
-                  mb: 1.25,
-                }}
+                sx={{ color: 'warning.main', fontSize: 28, mb: 1.25 }}
                 aria-hidden
               />
               <Typography
                 variant="body1"
                 sx={{
-                  fontSize: 16,
                   lineHeight: 1.4,
                   color: 'text.primary',
                   fontWeight: 500,
@@ -171,7 +180,7 @@ export const PlatformLoadImpl: React.FC<PlatformLoadProps> = ({
             </Box>
           </>
         ) : (
-          metricsContent
+          <PlatformMetricsSection data={data} isLoading={effectiveLoading} />
         )}
       </Box>
     </DashboardWidget>

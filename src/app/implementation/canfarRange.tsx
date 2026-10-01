@@ -1,19 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Slider, Box, useTheme } from '@mui/material';
+import { Slider, Box, useTheme, alpha } from '@mui/material';
 import { CanfarRangeProps } from '@/app/types/CanfarRangeProps';
 
-/**
- * Dumb controlled slider over [min, max] with step=1 by default.
- *
- * Performance note: this component is intentionally controlled. To avoid the
- * parent form re-rendering on every drag tick, host this in a wrapper that
- * keeps a local "draft" value during drag and only propagates upward on
- * `onChangeCommitted`. See `ResourceField` for the pattern.
- */
 export const CanfarRangeImpl = React.forwardRef<HTMLDivElement, CanfarRangeProps>(
-  ({ value, min, max, step = 1, onChange, onChangeCommitted, disabled = false, label }, ref) => {
+  (
+    { value, min, max, step = 1, marks, onChange, onChangeCommitted, disabled = false, label, valueText, valueMin, valueMax, valueNow },
+    ref,
+  ) => {
     const theme = useTheme();
 
     const [lo, hi] = min > max ? [max, min] : [min, max];
@@ -34,39 +29,82 @@ export const CanfarRangeImpl = React.forwardRef<HTMLDivElement, CanfarRangeProps
     };
 
     return (
-      <Box ref={ref} sx={{ width: '100%', px: 1 }}>
+      <Box ref={ref} sx={{ width: '100%' }}>
         <Slider
+          size="small"
           value={clamped}
           min={lo}
           max={hi}
           step={step}
+          marks={marks}
           onChange={handleChange}
           onChangeCommitted={handleCommitted}
           disabled={disabled || lo === hi}
           aria-label={label}
-          aria-valuemin={lo}
-          aria-valuemax={hi}
-          aria-valuenow={clamped}
-          aria-valuetext={`${clamped} out of ${hi}`}
+          slotProps={{
+            input: {
+              'aria-valuemin': valueMin ?? lo,
+              'aria-valuemax': valueMax ?? hi,
+              'aria-valuenow': valueNow ?? clamped,
+              'aria-valuetext': valueText ?? `${clamped} out of ${hi}`,
+            },
+          }}
           sx={{
             color: theme.palette.primary.main,
-            height: 8,
-            '& .MuiSlider-track': { border: 'none' },
+            boxSizing: 'border-box',
+            display: 'block',
+            width: '100%',
+            height: 5,
+            py: '8px',
+            // Inset the thumb without growing past the column (content-box + 100% overflows).
+            px: '10px',
+            '& .MuiSlider-track': {
+              border: 'none',
+              height: 5,
+              borderRadius: 999,
+              transition: 'none',
+            },
             '& .MuiSlider-thumb': {
               height: 20,
               width: 20,
               backgroundColor: theme.palette.primary.main,
-              border: '2px solid #fff',
-              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-              '&:focus, &:hover, &.Mui-active, &.Mui-focusVisible': {
-                boxShadow: '0 3px 8px rgba(0, 0, 0, 0.3)',
+              border: 'none',
+              boxShadow: 'none',
+              // No transform/transition on the thumb — scaling or animating
+              // position while dragging desyncs from the pointer and jumps.
+              transition: 'none',
+              '&:focus, &:hover, &.Mui-focusVisible': {
+                boxShadow: `0 0 0 4px ${alpha(theme.palette.primary.main, 0.16)}`,
+              },
+              '&.Mui-active': {
+                boxShadow: `0 0 0 4px ${alpha(theme.palette.primary.main, 0.22)}`,
               },
               '&:before': { display: 'none' },
             },
             '& .MuiSlider-rail': {
-              color: theme.palette.mode === 'dark' ? '#bfbfbf' : '#dee2e6',
+              color:
+                theme.palette.mode === 'dark'
+                  ? theme.palette.grey[700]
+                  : theme.palette.grey[300],
               opacity: 1,
-              height: 8,
+              height: 5,
+              borderRadius: 999,
+              // MUI sizes the rail to the padding box, so horizontal padding
+              // otherwise pushes it into the next column.
+              width: 'calc(100% - 20px)',
+            },
+            '& .MuiSlider-mark': {
+              width: 2,
+              height: 5,
+              borderRadius: 0.5,
+              backgroundColor:
+                theme.palette.mode === 'dark'
+                  ? theme.palette.grey[500]
+                  : theme.palette.grey[400],
+            },
+            '& .MuiSlider-markActive': {
+              backgroundColor: theme.palette.primary.contrastText,
+              opacity: 0.72,
             },
           }}
         />

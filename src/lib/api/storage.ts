@@ -36,6 +36,8 @@ export interface UserStorageSummary {
   quota: number;
   date: string;
   usage: number;
+  /** Session mount path, e.g. `/arc/home/user/`. */
+  path?: string;
 }
 
 /**

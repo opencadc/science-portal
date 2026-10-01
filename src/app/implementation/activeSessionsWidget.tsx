@@ -55,17 +55,14 @@ export function ActiveSessionsWidgetImpl({
   errorMessage,
   onRefresh,
   title = 'Active Sessions',
-  showSessionCount = true,
   maxSessionsToShow,
   emptyMessage = 'No active sessions',
+  headerActions,
   fillHeight = false,
 }: ActiveSessionsWidgetProps) {
   const theme = useTheme();
   const isLgUp = useMediaQuery(theme.breakpoints.up('lg'));
   const skeletonCount = isLgUp ? VISIBLE_DESKTOP_CARDS : 3;
-
-  const displayTitle =
-    showSessionCount && sessions.length > 0 ? `${title} (${sessions.length})` : title;
 
   const sessionsToDisplay = maxSessionsToShow ? sessions.slice(0, maxSessionsToShow) : sessions;
 
@@ -93,14 +90,14 @@ export function ActiveSessionsWidgetImpl({
 
   return (
     <DashboardWidget
-      title={displayTitle}
+      title={title}
       isLoading={isLoading}
       isFetching={isFetching}
       error={errorMessage}
       onRefresh={onRefresh}
+      headerActions={headerActions}
       fillHeight={fillHeight}
     >
-      {/* Content - Session Cards */}
       {isLoading ? (
         <Box sx={sessionsLayoutSx}>
           {Array.from({ length: skeletonCount }, (_, index) => (

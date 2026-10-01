@@ -45,11 +45,11 @@ export function PortalLayout({ children }: PortalLayoutProps) {
         variant="surface"
         position="sticky"
         elevation={0}
-        wordmark="Science Portal"
+        wordmark={isOIDCMode ? 'Science Portal' : undefined}
         logoHref="/"
-        logo={isOIDCMode ? <SRCNetLogo /> : <CanfarLogo />}
+        logo={isOIDCMode ? <SRCNetLogo /> : <CanfarLogo alt="" />}
         links={isOIDCMode ? [] : canfarAppBarLinks}
-        accountButton={<ThemeToggle size="md" />}
+        accountButton={<ThemeToggle />}
         showLoginButton={true}
       />
       {children}

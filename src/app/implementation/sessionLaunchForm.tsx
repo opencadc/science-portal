@@ -8,26 +8,26 @@ import {
   MenuItem,
   Button,
   Alert,
-  Divider,
-  Grid,
   Tooltip,
   SelectChangeEvent,
-  useTheme,
   FormControl,
   FormLabel,
-  RadioGroup,
   FormControlLabel,
-  Radio,
   Typography,
   Skeleton,
   Stack,
+  Checkbox,
+  ToggleButton,
+  ToggleButtonGroup,
+  IconButton,
+  InputAdornment,
 } from '@mui/material';
-import { HelpOutline as HelpOutlineIcon } from '@mui/icons-material';
+import { Visibility, VisibilityOff, RadioButtonUnchecked, CheckCircle } from '@mui/icons-material';
 import { useQueryStates, parseAsString, parseAsInteger, createParser } from 'nuqs';
 import { Select } from '@/app/components/Select/Select';
 import { TextField } from '@/app/components/TextField/TextField';
-import { Card, CardContent } from '@/app/components/Card';
 import { ResourceField } from '@/app/components/ResourceField/ResourceField';
+import { tokens } from '@/app/design-system/tokens';
 import {
   SessionLaunchFormProps,
   SessionFormData,
@@ -51,6 +51,8 @@ import {
   NOTEBOOK_TYPE,
   SKAHA_PROJECT,
 } from '@/lib/config/constants';
+
+const SESSION_KINDS = ['notebook', 'desktop', 'carta', 'contributed', 'firefly'] as const;
 
 /** MUI Tabs indices — Standard / Advanced keep independent form drafts. */
 const LAUNCH_TAB = {
@@ -108,7 +110,6 @@ interface TabPanelProps {
 
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
-  const theme = useTheme();
 
   return (
     <div
@@ -118,8 +119,294 @@ function TabPanel(props: TabPanelProps) {
       aria-labelledby={`session-tab-${index}`}
       {...other}
     >
-      {value === index && <Box sx={{ pt: theme.spacing(3) }}>{children}</Box>}
+      {value === index && <Box sx={{ pt: 2.5 }}>{children}</Box>}
     </div>
+  );
+}
+
+function LaunchField({
+  label,
+  help,
+  children,
+}: {
+  label: string;
+  help?: string;
+  children: React.ReactNode;
+}) {
+  const labelNode = (
+    <FormLabel
+      sx={{
+        display: 'inline-flex',
+        width: 'fit-content',
+        m: 0,
+        fontWeight: 600,
+        color: 'text.primary',
+        typography: 'body2',
+        letterSpacing: '0.01em',
+      }}
+    >
+      {label}
+    </FormLabel>
+  );
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, minWidth: 0 }}>
+      {help ? (
+        <Tooltip title={help} placement="top" enterDelay={400}>
+          {labelNode}
+        </Tooltip>
+      ) : (
+        labelNode
+      )}
+      {children}
+    </Box>
+  );
+}
+
+function LaunchSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1.75,
+      }}
+    >
+      <Typography
+        variant="overline"
+        component="h3"
+        sx={{
+          m: 0,
+          color: 'text.primary',
+          letterSpacing: '0.08em',
+          fontWeight: 700,
+          lineHeight: 1.2,
+          fontSize: '0.6875rem',
+        }}
+      >
+        {title}
+      </Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75 }}>{children}</Box>
+    </Box>
+  );
+}
+
+function LaunchRow({
+  columns,
+  children,
+}: {
+  columns: 2 | 3;
+  children: React.ReactNode;
+}) {
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: {
+          xs: '1fr',
+          sm: columns === 2 ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))',
+        },
+        gap: 1.5,
+        minWidth: 0,
+        alignItems: 'start',
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+const SEGMENT_PILL_HEIGHT = 32;
+
+const segmentPillSx = {
+  minHeight: SEGMENT_PILL_HEIGHT,
+  height: SEGMENT_PILL_HEIGHT,
+  py: 0,
+  px: 1.5,
+  border: 0,
+  borderRadius: `${tokens.borderRadius.smCSS} !important`,
+  textTransform: 'none' as const,
+  fontWeight: 600,
+  fontSize: '0.875rem',
+  lineHeight: 1.25,
+  letterSpacing: '0.01em',
+  color: 'text.secondary',
+  transition: `background-color ${tokens.transitions.duration.fastCSS} ${tokens.transitions.easing.emphasized}, color ${tokens.transitions.duration.fastCSS} ${tokens.transitions.easing.emphasized}, transform ${tokens.transitions.press.duration} ${tokens.transitions.easing.emphasized}`,
+  '@media (prefers-reduced-motion: reduce)': {
+    transition: 'none',
+  },
+  '&:active': {
+    transform: `scale(${tokens.transitions.press.scale})`,
+  },
+  '&.Mui-selected': {
+    color: 'primary.contrastText',
+    bgcolor: 'primary.main',
+    boxShadow: 'none',
+    '&:hover': {
+      bgcolor: 'primary.dark',
+    },
+  },
+};
+
+const segmentedControlSx = {
+  minHeight: SEGMENT_PILL_HEIGHT + 8,
+  p: 0.5,
+  gap: 0.5,
+  borderRadius: tokens.borderRadius.mdCSS,
+  bgcolor: 'action.hover',
+};
+
+const segmentedTabsSx = {
+  ...segmentedControlSx,
+  '& .MuiTabs-indicator': { display: 'none' },
+  '& .MuiTabs-flexContainer': { gap: 0.5 },
+  '& .MuiTab-root': {
+    ...segmentPillSx,
+    flex: 1,
+  },
+};
+
+const hintFieldSx = {
+  '& input::placeholder': {
+    color: 'text.disabled',
+    fontStyle: 'italic',
+    opacity: 1,
+  },
+};
+
+const segmentedToggleSx = {
+  ...segmentedControlSx,
+  '& .MuiToggleButtonGroup-grouped': {
+    ...segmentPillSx,
+    flex: 1,
+  },
+};
+
+function ResourceModeFields({
+  type,
+  fixedAllowed,
+  isLoading,
+  options,
+  values,
+  onChange,
+}: {
+  type: 'flexible' | 'fixed';
+  fixedAllowed: boolean;
+  isLoading: boolean;
+  options: {
+    memory: readonly number[];
+    cores: readonly number[];
+    gpus: readonly number[];
+  };
+  values: {
+    memory: number;
+    cores: number;
+    gpus: number;
+  };
+  onChange: {
+    type: (value: 'flexible' | 'fixed') => void;
+    memory: (value: number) => void;
+    cores: (value: number) => void;
+    gpus: (value: number) => void;
+  };
+}) {
+  const gpuChoices = options.gpus.filter((n) => n > 0);
+  const gpuEnabled = values.gpus > 0;
+
+  return (
+    <LaunchSection title="Resources">
+      <FormControl component="fieldset" sx={{ m: 0, width: '100%' }}>
+        <ToggleButtonGroup
+          exclusive
+          fullWidth
+          value={type}
+          disabled={isLoading}
+          onChange={(_event, value: 'flexible' | 'fixed' | null) => {
+            if (value) onChange.type(value);
+          }}
+          aria-label="Resource allocation mode"
+          sx={segmentedToggleSx}
+        >
+          <ToggleButton value="flexible">Flexible</ToggleButton>
+          <ToggleButton value="fixed" disabled={!fixedAllowed}>
+            Fixed
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </FormControl>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ display: 'block', mt: -0.5, lineHeight: 1.5 }}
+      >
+        {!fixedAllowed
+          ? 'This kind always uses flexible resources.'
+          : type === 'fixed'
+            ? 'This session keeps the CPU and memory you set.'
+            : 'Flexible resources allow dynamic allocation based on availability.'}
+      </Typography>
+      {type === 'fixed' && (
+        <Stack spacing={1.25} sx={{ mt: 0.25 }}>
+          <ResourceField
+            label="Memory"
+            unit="GB"
+            value={values.memory}
+            options={options.memory}
+            onChange={onChange.memory}
+            disabled={isLoading}
+          />
+          <ResourceField
+            label="Compute"
+            unit="CPUs"
+            value={values.cores}
+            options={options.cores}
+            onChange={onChange.cores}
+            disabled={isLoading}
+          />
+          {gpuChoices.length > 0 && (
+            <>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={gpuEnabled}
+                    icon={<RadioButtonUnchecked />}
+                    checkedIcon={<CheckCircle />}
+                    onChange={(event) => {
+                      onChange.gpus(event.target.checked ? (gpuChoices[0] ?? 1) : 0);
+                    }}
+                    disabled={isLoading}
+                    sx={{ p: 0.25, '& .MuiSvgIcon-root': { fontSize: 20 } }}
+                  />
+                }
+                label="Request a GPU"
+                sx={{
+                  alignSelf: 'flex-start',
+                  mx: 0,
+                  my: 0,
+                  ml: -0.25,
+                  '& .MuiFormControlLabel-label': { typography: 'body2' },
+                }}
+              />
+              {gpuEnabled && gpuChoices.length > 1 && (
+                <ResourceField
+                  label="GPU"
+                  value={values.gpus}
+                  options={gpuChoices}
+                  onChange={onChange.gpus}
+                  disabled={isLoading}
+                />
+              )}
+            </>
+          )}
+        </Stack>
+      )}
+    </LaunchSection>
   );
 }
 
@@ -151,12 +438,13 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     },
     ref,
   ) => {
-    const theme = useTheme();
+    const [secretVisible, setSecretVisible] = useState(false);
+    const [advancedError, setAdvancedError] = useState<string | null>(null);
 
     const renderLaunchButton = (formIncomplete: boolean) => {
       const disabled = isLoading || !canLaunch || formIncomplete;
       const button = (
-        <Button type="submit" variant="contained" size="small" disabled={disabled}>
+        <Button type="submit" variant="contained" size="medium" disabled={disabled}>
           Launch
         </Button>
       );
@@ -209,8 +497,9 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     // Independent drafts per tab — switching tabs must not leak Advanced
     // image/auth into a Standard launch (or vice versa).
     const [formsByTab, setFormsByTab] = useState<FormsByTab>(() => {
+      const sessionType = (urlParams.type as SessionType) || NOTEBOOK_TYPE;
       const initial: SessionFormData = {
-        type: urlParams.type as SessionType,
+        type: sessionType,
         project: urlParams.project,
         containerImage: urlParams.image,
         sessionName: urlParams.name || defaultValues.sessionName || 'notebook1',
@@ -219,15 +508,20 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         gpus: urlParams.gpus ?? defaultValues.gpus ?? 0,
         resourceType: initialResourceType,
         repositoryHost: defaultRepositoryHost(repositoryHosts),
-        // Advanced-only fields start empty on both tabs so Standard never
-        // inherits a leftover custom image/auth from a previous Advanced visit.
+        // Advanced-only fields start empty on Standard so it never inherits
+        // leftover custom image/auth from a previous Advanced visit.
         image: '',
         repositoryAuthUsername: '',
         repositoryAuthSecret: '',
       };
       return {
         [LAUNCH_TAB.STANDARD]: { ...initial },
-        [LAUNCH_TAB.ADVANCED]: { ...initial },
+        [LAUNCH_TAB.ADVANCED]: {
+          ...initial,
+          project: '',
+          image: '',
+          containerImage: '',
+        },
       };
     });
 
@@ -355,6 +649,15 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     const supportsResourceConfig = useMemo(() => {
       return supportsCustomResources(formData.type);
     }, [formData.type]);
+
+    useEffect(() => {
+      if (supportsResourceConfig || resourceType !== 'fixed') return;
+      setResourceType('flexible');
+      setFormData((prev) =>
+        prev.resourceType === 'flexible' ? prev : { ...prev, resourceType: 'flexible' },
+      );
+      setUrlParams({ cores: null, memory: null, gpus: null });
+    }, [supportsResourceConfig, resourceType, setResourceType, setFormData, setUrlParams]);
 
     // Count only interactive sessions — headless are batch jobs with their own quota.
     // Used for the auto-naming counter (notebook1, notebook2…).
@@ -522,6 +825,9 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
               : event.target.value;
 
           setIsFormDirty(true);
+          if (isAdvancedTab && (field === 'project' || field === 'image')) {
+            setAdvancedError(null);
+          }
           setFormData((prev) => ({
             ...prev,
             [field]: value,
@@ -532,7 +838,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
             setUrlParams({ name: value as string });
           }
         },
-      [setUrlParams, setFormData, setIsFormDirty],
+      [isAdvancedTab, setUrlParams, setFormData, setIsFormDirty],
     );
 
     const handleSelectChange = useCallback(
@@ -568,19 +874,20 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
 
           // Reset dependent fields when session type changes
           if (field === 'type' && typeof value === 'string') {
-            newData.project = nextProject;
-            newData.containerImage = ''; // Will be auto-selected by useEffect
-            // Automatically update session name based on the new type
             newData.sessionName = generateSessionName(value);
+            if (!isAdvancedTab) {
+              newData.project = nextProject;
+              newData.containerImage = ''; // Will be auto-selected by useEffect (Standard)
+            }
           }
 
-          if (field === 'repositoryHost') {
+          if (field === 'repositoryHost' && !isAdvancedTab) {
             newData.project = '';
             newData.containerImage = '';
           }
 
-          // Reset container image when project changes
-          if (field === 'project') {
+          // Reset container image when catalog project changes (Standard)
+          if (field === 'project' && !isAdvancedTab) {
             newData.containerImage = '';
           }
 
@@ -661,9 +968,19 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     const handleSubmit = useCallback(
       async (event: React.FormEvent) => {
         event.preventDefault();
+        const advanced = activeTab === LAUNCH_TAB.ADVANCED;
+        const project = (formData.project ?? '').trim();
+        const image = (formData.image ?? '').trim();
+        if (advanced && (!project || !image)) {
+          setAdvancedError('Project and image are required.');
+          return;
+        }
+        setAdvancedError(null);
         if (onLaunch) {
           await onLaunch({
             ...formData,
+            project: advanced ? project : formData.project,
+            image: advanced ? image : formData.image,
             resourceType,
             sourceTab: sourceTabForIndex(activeTab),
           });
@@ -674,8 +991,9 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
 
     const handleReset = useCallback(() => {
       const resetHost = defaultRepositoryHost(repositoryHosts);
+      const resetType = defaultValues.type || NOTEBOOK_TYPE;
       const resetForm: SessionFormData = {
-        type: defaultValues.type || NOTEBOOK_TYPE,
+        type: resetType,
         project: defaultValues.project || SKAHA_PROJECT,
         containerImage: '', // Will be auto-selected by useEffect
         sessionName: defaultValues.sessionName || 'notebook1',
@@ -695,12 +1013,19 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       });
       setFormsByTab({
         [LAUNCH_TAB.STANDARD]: { ...resetForm },
-        [LAUNCH_TAB.ADVANCED]: { ...resetForm },
+        [LAUNCH_TAB.ADVANCED]: {
+          ...resetForm,
+          project: '',
+          image: '',
+          containerImage: '',
+        },
       });
       setResourceTypeByTab({
         [LAUNCH_TAB.STANDARD]: 'flexible',
         [LAUNCH_TAB.ADVANCED]: 'flexible',
       });
+      setSecretVisible(false);
+      setAdvancedError(null);
       setTabValue(LAUNCH_TAB.STANDARD);
 
       // Reset URL parameters to defaults (never write auth credentials)
@@ -720,8 +1045,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       }
     }, [defaultValues, onReset, repositoryHosts, setUrlParams]);
 
-    const handleResourceTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const newResourceType = event.target.value as 'flexible' | 'fixed';
+    const handleResourceTypeChange = (newResourceType: 'flexible' | 'fixed') => {
       setIsFormDirty(true);
       setResourceType(newResourceType);
 
@@ -740,8 +1064,6 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       }
     };
 
-    // One handler per resource field. Stable refs across renders so a memoized
-    // ResourceField bails out when the *other* fields change.
     const handleMemoryChange = useCallback(
       (value: number) => {
         setIsFormDirty(true);
@@ -767,216 +1089,144 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       [setUrlParams, setFormData, setIsFormDirty],
     );
 
-    // Helper component for the help icon tooltip
-    const HelpIcon = ({ title }: { title: string }) => (
-      <Tooltip title={title} placement="top">
-        <HelpOutlineIcon
-          fontSize="small"
+    const actionRow = (launch: React.ReactNode) => (
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: 1.5,
+          pt: 2.5,
+          mt: 1,
+          borderTop: 1,
+          borderColor: 'divider',
+        }}
+      >
+        {launch}
+        <Button
+          type="button"
+          variant="text"
+          size="medium"
+          onClick={handleReset}
+          disabled={isLoading}
           sx={{
-            ml: 0.5,
-            color: theme.palette.primary.main,
-            cursor: 'help',
-            verticalAlign: 'middle',
-          }}
-        />
-      </Tooltip>
-    );
-
-    return (
-      <Card ref={ref} elevation={0}>
-        <CardContent
-          sx={{
-            // Better mobile padding
-            [theme.breakpoints.down('sm')]: {
-              padding: theme.spacing(1.5),
-              '&:last-child': {
-                paddingBottom: theme.spacing(1.5),
-              },
+            color: 'text.secondary',
+            fontWeight: 600,
+            '&:active': {
+              transform: `scale(${tokens.transitions.press.scale})`,
+            },
+            transition: `transform ${tokens.transitions.press.duration} ${tokens.transitions.easing.emphasized}`,
+            '@media (prefers-reduced-motion: reduce)': {
+              transition: 'none',
             },
           }}
         >
-          <Box sx={{ borderBottom: 1, borderColor: theme.palette.divider }}>
-            <Tabs
-              value={tabValue}
-              onChange={handleTabChange}
-              aria-label="session launch tabs"
-              variant="fullWidth"
-              sx={{
-                // Better mobile tab handling
-                [theme.breakpoints.down('sm')]: {
-                  minHeight: 40,
-                  '& .MuiTab-root': {
-                    minHeight: 40,
-                    padding: theme.spacing(1, 1.5),
-                    fontSize: theme.typography.body2.fontSize,
-                  },
-                },
-                // Use scrollable tabs for very small screens if needed
-                [theme.breakpoints.down('xs')]: {
-                  variant: 'scrollable',
-                  scrollButtons: 'auto',
-                },
-              }}
-            >
-              <Tab label="Standard" id="session-tab-0" aria-controls="session-tabpanel-0" />
-              <Tab label="Advanced" id="session-tab-1" aria-controls="session-tabpanel-1" />
-            </Tabs>
+          Reset
+        </Button>
+      </Box>
+    );
+
+    const resourceModeFields = (
+      <ResourceModeFields
+        type={supportsResourceConfig ? resourceType : 'flexible'}
+        fixedAllowed={supportsResourceConfig}
+        isLoading={isLoading}
+        options={{
+          memory: memoryOptions?.length ? memoryOptions : DEFAULT_MEMORY_OPTIONS,
+          cores: coreOptions?.length ? coreOptions : DEFAULT_CORE_OPTIONS,
+          gpus: gpuOptions?.length ? gpuOptions : [0],
+        }}
+        values={{
+          memory: formData.memory,
+          cores: formData.cores,
+          gpus: formData.gpus || 0,
+        }}
+        onChange={{
+          type: handleResourceTypeChange,
+          memory: handleMemoryChange,
+          cores: handleCoresChange,
+          gpus: handleGpusChange,
+        }}
+      />
+    );
+
+    return (
+      <Box ref={ref}>
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          aria-label="session launch tabs"
+          variant="fullWidth"
+          sx={segmentedTabsSx}
+        >
+          <Tab label="Standard" id="session-tab-0" aria-controls="session-tabpanel-0" />
+          <Tab label="Advanced" id="session-tab-1" aria-controls="session-tabpanel-1" />
+        </Tabs>
+
+        {errorMessage && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            {errorMessage}
+          </Alert>
+        )}
+
+        {isLoading ? (
+          <Box sx={{ pt: 2.5 }}>
+            <Stack spacing={2.5}>
+              {[60, 70, 55, 75, 65].map((width, index) => (
+                <Box key={index} sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                  <Skeleton variant="text" width={`${width}%`} height={20} />
+                  <Skeleton
+                    variant="rectangular"
+                    width="100%"
+                    height={40}
+                    sx={{ borderRadius: tokens.borderRadius.smCSS }}
+                  />
+                </Box>
+              ))}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                <Skeleton variant="text" width="40%" height={20} />
+                <Skeleton
+                  variant="rectangular"
+                  width="100%"
+                  height={40}
+                  sx={{ borderRadius: tokens.borderRadius.mdCSS }}
+                />
+              </Box>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 1.5,
+                  pt: 2.5,
+                  mt: 1,
+                  borderTop: 1,
+                  borderColor: 'divider',
+                }}
+              >
+                <Skeleton
+                  variant="rectangular"
+                  width={96}
+                  height={36}
+                  sx={{ borderRadius: tokens.borderRadius.smCSS }}
+                />
+                <Skeleton
+                  variant="rectangular"
+                  width={72}
+                  height={36}
+                  sx={{ borderRadius: tokens.borderRadius.smCSS }}
+                />
+              </Box>
+            </Stack>
           </Box>
-
-          {errorMessage && (
-            <Alert severity="error" sx={{ mt: theme.spacing(2) }}>
-              {errorMessage}
-            </Alert>
-          )}
-
-          {isLoading ? (
-            // Skeleton loading state
-            <Box sx={{ pt: theme.spacing(3) }}>
-              <Stack spacing={2.5}>
-                {/* Type field skeleton */}
-                <Grid container alignItems="center" spacing={1}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Skeleton variant="text" width="60%" height={20} />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 8 }}>
-                    <Skeleton
-                      variant="rectangular"
-                      width="100%"
-                      height={40}
-                      sx={{ borderRadius: 1 }}
-                    />
-                  </Grid>
-                </Grid>
-
-                {/* Image registry field skeleton */}
-                <Grid container alignItems="center" spacing={1}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Skeleton variant="text" width="55%" height={20} />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 8 }}>
-                    <Skeleton
-                      variant="rectangular"
-                      width="100%"
-                      height={40}
-                      sx={{ borderRadius: 1 }}
-                    />
-                  </Grid>
-                </Grid>
-
-                {/* Project field skeleton */}
-                <Grid container alignItems="center" spacing={1}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Skeleton variant="text" width="60%" height={20} />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 8 }}>
-                    <Skeleton
-                      variant="rectangular"
-                      width="100%"
-                      height={40}
-                      sx={{ borderRadius: 1 }}
-                    />
-                  </Grid>
-                </Grid>
-
-                {/* Container Image field skeleton */}
-                <Grid container alignItems="center" spacing={1}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Skeleton variant="text" width="80%" height={20} />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 8 }}>
-                    <Skeleton
-                      variant="rectangular"
-                      width="100%"
-                      height={40}
-                      sx={{ borderRadius: 1 }}
-                    />
-                  </Grid>
-                </Grid>
-
-                {/* Session Name field skeleton */}
-                <Grid container alignItems="center" spacing={1}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Skeleton variant="text" width="70%" height={20} />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 8 }}>
-                    <Skeleton
-                      variant="rectangular"
-                      width="100%"
-                      height={40}
-                      sx={{ borderRadius: 1 }}
-                    />
-                  </Grid>
-                </Grid>
-
-                {/* Resources field skeleton */}
-                <Grid container alignItems="center" spacing={1}>
-                  <Grid size={{ xs: 12, sm: 4 }}>
-                    <Skeleton variant="text" width="60%" height={20} />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 8 }}>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                      <Skeleton
-                        variant="rectangular"
-                        width={120}
-                        height={32}
-                        sx={{ borderRadius: 1 }}
-                      />
-                      <Skeleton
-                        variant="rectangular"
-                        width={120}
-                        height={32}
-                        sx={{ borderRadius: 1 }}
-                      />
-                    </Box>
-                  </Grid>
-                </Grid>
-
-                {/* Buttons skeleton */}
-                <Grid container spacing={2} sx={{ mt: theme.spacing(3) }}>
-                  <Grid size={{ xs: 12, sm: 4 }} />
-                  <Grid size={{ xs: 12, sm: 8 }}>
-                    <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                      <Skeleton
-                        variant="rectangular"
-                        width={80}
-                        height={32}
-                        sx={{ borderRadius: 1 }}
-                      />
-                      <Skeleton
-                        variant="rectangular"
-                        width={80}
-                        height={32}
-                        sx={{ borderRadius: 1 }}
-                      />
-                    </Box>
-                  </Grid>
-                </Grid>
-              </Stack>
-            </Box>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <TabPanel value={tabValue} index={0}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: theme.spacing(2.5),
-                  }}
-                >
-                  {/* Type field */}
-                  <Grid container alignItems="center" spacing={1}>
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <FormLabel
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                      >
-                        type
-                        <HelpIcon title="Select the type of session to launch" />
-                      </FormLabel>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 8 }}>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <TabPanel value={tabValue} index={0}>
+              <Stack spacing={3}>
+                <LaunchSection title="Session">
+                  <LaunchRow columns={2}>
+                    <LaunchField
+                      label="Kind"
+                      help="Select the type of session to launch"
+                    >
                       <Select
                         id="session-type"
                         value={formData.type}
@@ -989,29 +1239,38 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                         fullWidth
                         size="sm"
                       >
-                        <MenuItem value="notebook">notebook</MenuItem>
-                        <MenuItem value="desktop">desktop</MenuItem>
-                        <MenuItem value="carta">carta</MenuItem>
-                        <MenuItem value="contributed">contributed</MenuItem>
-                        <MenuItem value="firefly">firefly</MenuItem>
+                        {SESSION_KINDS.map((kind) => (
+                          <MenuItem key={kind} value={kind}>
+                            {kind}
+                          </MenuItem>
+                        ))}
                       </Select>
-                    </Grid>
-                  </Grid>
+                    </LaunchField>
 
-                  {/* Image registry field */}
-                  <Grid container alignItems="center" spacing={1}>
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <FormLabel
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                      >
-                        image registry
-                        <HelpIcon title="Select the image registry containing your container images." />
-                      </FormLabel>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 8 }}>
+                    <LaunchField
+                      label="Name"
+                      help="Enter a unique name for your session (max 15 characters)"
+                    >
+                      <TextField
+                        id="session-name"
+                        value={formData.sessionName}
+                        onChange={handleFieldChange('sessionName')}
+                        disabled={isLoading}
+                        inputProps={{ maxLength: 15 }}
+                        placeholder="Enter session name"
+                        fullWidth
+                        size="sm"
+                      />
+                    </LaunchField>
+                  </LaunchRow>
+                </LaunchSection>
+
+                <LaunchSection title="Container Registry">
+                  <LaunchRow columns={3}>
+                    <LaunchField
+                      label="Server"
+                      help="Select the image registry containing your container images."
+                    >
                       {hasMultipleRegistries ? (
                         <Select
                           id="session-registry"
@@ -1040,23 +1299,12 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                           size="sm"
                         />
                       )}
-                    </Grid>
-                  </Grid>
+                    </LaunchField>
 
-                  {/* Project field */}
-                  <Grid container alignItems="center" spacing={1}>
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <FormLabel
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                      >
-                        project
-                        <HelpIcon title="Select your project allocation" />
-                      </FormLabel>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 8 }}>
+                    <LaunchField
+                      label="Project"
+                      help="Select your project allocation"
+                    >
                       <Select
                         id="session-project"
                         value={formData.project}
@@ -1082,23 +1330,12 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                           </MenuItem>
                         ))}
                       </Select>
-                    </Grid>
-                  </Grid>
+                    </LaunchField>
 
-                  {/* Container Image field */}
-                  <Grid container alignItems="center" spacing={1}>
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <FormLabel
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                      >
-                        container image
-                        <HelpIcon title="Select the container image for your session" />
-                      </FormLabel>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 8 }}>
+                    <LaunchField
+                      label="Image"
+                      help="Select the container image for your session"
+                    >
                       <Select
                         id="session-image"
                         value={formData.containerImage}
@@ -1125,450 +1362,206 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                           </MenuItem>
                         ))}
                       </Select>
-                    </Grid>
-                  </Grid>
+                    </LaunchField>
+                  </LaunchRow>
+                </LaunchSection>
 
-                  {/* Session Name field */}
-                  <Grid container alignItems="center" spacing={1}>
-                    <Grid size={{ xs: 12, sm: 4 }}>
-                      <FormLabel
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
+                {resourceModeFields}
+              </Stack>
+
+              {actionRow(renderLaunchButton(!formData.project || !formData.containerImage))}
+            </TabPanel>
+
+            <TabPanel value={tabValue} index={1}>
+              <Stack spacing={3}>
+                <LaunchSection title="Session">
+                  <LaunchRow columns={2}>
+                    <LaunchField
+                      label="Kind"
+                      help="Select the type of session to launch"
+                    >
+                      <Select
+                        id="advanced-session-type"
+                        value={formData.type}
+                        onChange={
+                          handleSelectChange('type') as React.ComponentProps<
+                            typeof Select
+                          >['onChange']
+                        }
+                        disabled={isLoading}
+                        fullWidth
+                        size="sm"
                       >
-                        session name
-                        <HelpIcon title="Enter a unique name for your session (max 15 characters)" />
-                      </FormLabel>
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 8 }}>
+                        {SESSION_KINDS.map((kind) => (
+                          <MenuItem key={kind} value={kind}>
+                            {kind}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </LaunchField>
+
+                    <LaunchField
+                      label="Name"
+                      help="Choose a unique name for your session (max 15 characters)"
+                    >
                       <TextField
-                        id="session-name"
+                        id="advanced-session-name"
                         value={formData.sessionName}
                         onChange={handleFieldChange('sessionName')}
                         disabled={isLoading}
-                        inputProps={{ maxLength: 15 }}
-                        placeholder="Enter session name"
                         fullWidth
                         size="sm"
+                        inputProps={{ maxLength: 15 }}
+                        placeholder="Enter session name"
                       />
-                    </Grid>
-                  </Grid>
+                    </LaunchField>
+                  </LaunchRow>
+                </LaunchSection>
 
-                  {/* Resources field - only show for session types that support it */}
-                  {supportsResourceConfig && (
-                    <Grid container alignItems="center" spacing={1}>
-                      <Grid size={{ xs: 12, sm: 4 }}>
-                        <FormLabel>resources</FormLabel>
-                      </Grid>
-                      <Grid size={{ xs: 12, sm: 8 }}>
-                        <FormControl component="fieldset">
-                          <RadioGroup row value={resourceType} onChange={handleResourceTypeChange}>
-                            <FormControlLabel
-                              value="flexible"
-                              control={<Radio size="small" />}
-                              label="Flexible"
-                              disabled={isLoading}
-                              sx={{ mr: 1 }}
-                            />
-                            <HelpIcon title="Flexible resources allow dynamic allocation based on availability" />
-                            <FormControlLabel
-                              value="fixed"
-                              control={<Radio size="small" />}
-                              label="Fixed"
-                              disabled={isLoading}
-                              sx={{ ml: 2, mr: 1 }}
-                            />
-                            <HelpIcon title="Fixed resources guarantee specific CPU and memory allocation" />
-                          </RadioGroup>
-                        </FormControl>
-                      </Grid>
-                    </Grid>
-                  )}
-
-                  {/* Conditional Memory, CPU, and GPU fields when Fixed is selected and supported */}
-                  {supportsResourceConfig && resourceType === 'fixed' && (
-                    <Grid container alignItems="flex-start" spacing={2}>
-                      <Grid size={{ xs: 12, sm: 4 }}>{/* Empty grid for alignment */}</Grid>
-                      <Grid size={{ xs: 12, sm: 8 }}>
-                        <Grid container spacing={2}>
-                          <Grid size={{ xs: 12, sm: 4 }}>
-                            <ResourceField
-                              label="Memory (GB)"
-                              value={formData.memory}
-                              min={(memoryOptions || DEFAULT_MEMORY_OPTIONS)[0] ?? 1}
-                              max={
-                                (memoryOptions || DEFAULT_MEMORY_OPTIONS)[
-                                  (memoryOptions || DEFAULT_MEMORY_OPTIONS).length - 1
-                                ]
-                              }
-                              onChange={handleMemoryChange}
-                              disabled={isLoading}
-                            />
-                          </Grid>
-                          <Grid size={{ xs: 12, sm: 4 }}>
-                            <ResourceField
-                              label="CPU Cores"
-                              value={formData.cores}
-                              min={(coreOptions || DEFAULT_CORE_OPTIONS)[0] ?? 1}
-                              max={
-                                (coreOptions || DEFAULT_CORE_OPTIONS)[
-                                  (coreOptions || DEFAULT_CORE_OPTIONS).length - 1
-                                ]
-                              }
-                              onChange={handleCoresChange}
-                              disabled={isLoading}
-                            />
-                          </Grid>
-                          <Grid size={{ xs: 12, sm: 4 }}>
-                            <ResourceField
-                              label="GPU"
-                              value={formData.gpus || 0}
-                              min={0}
-                              max={(gpuOptions || [0])[(gpuOptions || [0]).length - 1] ?? 0}
-                              onChange={handleGpusChange}
-                              disabled={isLoading}
-                            />
-                          </Grid>
-                        </Grid>
-                      </Grid>
-                    </Grid>
-                  )}
-                </Box>
-
-                {/* Buttons */}
-                <Grid container spacing={2} sx={{ mt: theme.spacing(3) }}>
-                  <Grid size={{ xs: 12, sm: 4 }}>{/* Empty grid for alignment */}</Grid>
-                  <Grid size={{ xs: 12, sm: 8 }}>
-                    <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                      {renderLaunchButton(!formData.project || !formData.containerImage)}
-                      <Button
-                        type="button"
-                        variant="outlined"
-                        size="small"
-                        onClick={handleReset}
-                        disabled={isLoading}
-                      >
-                        Reset
-                      </Button>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </TabPanel>
-
-              <TabPanel value={tabValue} index={1}>
-                <Box>
-                  {/* Image access section */}
-                  <Box sx={{ mb: theme.spacing(4) }}>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{
-                        fontWeight: 500,
-                        mb: theme.spacing(1),
-                        ml: theme.spacing(2),
-                      }}
+                <LaunchSection title="Container Registry">
+                  <LaunchRow columns={3}>
+                    <LaunchField
+                      label="Server"
+                      help="Select the image registry containing your container images."
                     >
-                      Image access
-                    </Typography>
-                    <Divider sx={{ mb: theme.spacing(3) }} />
-                    <Box sx={{ px: theme.spacing(2) }}>
-                      {/* Container image field */}
-                      <Grid container alignItems="center" spacing={1} sx={{ mb: 2 }}>
-                        <Grid size={{ xs: 12, sm: 4 }}>
-                          <FormLabel
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            container image
-                            <HelpIcon title="Specify a custom container image path" />
-                          </FormLabel>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 3 }}>
-                          <Select
-                            id="repository-host"
-                            value={
-                              formData.repositoryHost ||
-                              repositoryHosts.find((h) => h && typeof h === 'string') ||
-                              'images-rc.canfar.net'
-                            }
-                            onChange={
-                              handleSelectChange('repositoryHost') as React.ComponentProps<
-                                typeof Select
-                              >['onChange']
-                            }
-                            disabled={isLoading}
-                            fullWidth
-                            size="sm"
-                          >
-                            {repositoryHosts
-                              .filter((host) => host && typeof host === 'string')
-                              .map((host) => (
-                                <MenuItem key={host} value={host}>
-                                  {host}
-                                </MenuItem>
-                              ))}
-                          </Select>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 5 }}>
-                          <TextField
-                            id="image"
-                            value={formData.image}
-                            onChange={handleFieldChange('image')}
-                            disabled={isLoading}
-                            fullWidth
-                            size="sm"
-                            placeholder="project/example-image:1.0.0"
-                          />
-                        </Grid>
-                      </Grid>
-
-                      {/* Repository username field */}
-                      <Grid container alignItems="center" spacing={1} sx={{ mb: 2 }}>
-                        <Grid size={{ xs: 12, sm: 4 }}>
-                          <FormLabel
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            repository username
-                            <HelpIcon title="Username for private repository access" />
-                          </FormLabel>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 8 }}>
-                          <TextField
-                            id="repository-username"
-                            value={formData.repositoryAuthUsername}
-                            onChange={handleFieldChange('repositoryAuthUsername')}
-                            disabled={isLoading}
-                            fullWidth
-                            size="sm"
-                            placeholder="Repository username"
-                            autoComplete="username"
-                          />
-                        </Grid>
-                      </Grid>
-
-                      {/* Repository secret field */}
-                      <Grid container alignItems="center" spacing={1}>
-                        <Grid size={{ xs: 12, sm: 4 }}>
-                          <FormLabel
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            repository secret
-                            <HelpIcon title="Password or token for private repository" />
-                          </FormLabel>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 8 }}>
-                          <TextField
-                            id="repository-secret"
-                            type="password"
-                            value={formData.repositoryAuthSecret}
-                            onChange={handleFieldChange('repositoryAuthSecret')}
-                            disabled={isLoading}
-                            fullWidth
-                            size="sm"
-                            placeholder="Repository secret"
-                            autoComplete="current-password"
-                          />
-                        </Grid>
-                      </Grid>
-                    </Box>
-                  </Box>
-
-                  {/* Launch session section */}
-                  <Box>
-                    <Typography
-                      variant="subtitle2"
-                      sx={{
-                        fontWeight: 500,
-                        mb: theme.spacing(1),
-                        ml: theme.spacing(2),
-                      }}
-                    >
-                      Launch session
-                    </Typography>
-                    <Divider sx={{ mb: theme.spacing(3) }} />
-                    <Box sx={{ px: theme.spacing(2) }}>
-                      {/* Type field */}
-                      <Grid container alignItems="center" spacing={1} sx={{ mb: 2 }}>
-                        <Grid size={{ xs: 12, sm: 4 }}>
-                          <FormLabel
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            type
-                            <HelpIcon title="Select the type of session to launch" />
-                          </FormLabel>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 8 }}>
-                          <Select
-                            id="advanced-session-type"
-                            value={formData.type}
-                            onChange={
-                              handleSelectChange('type') as React.ComponentProps<
-                                typeof Select
-                              >['onChange']
-                            }
-                            disabled={isLoading}
-                            fullWidth
-                            size="sm"
-                          >
-                            <MenuItem value="notebook">notebook</MenuItem>
-                            <MenuItem value="desktop">desktop</MenuItem>
-                            <MenuItem value="carta">carta</MenuItem>
-                            <MenuItem value="contributed">contributed</MenuItem>
-                            <MenuItem value="firefly">firefly</MenuItem>
-                          </Select>
-                        </Grid>
-                      </Grid>
-
-                      {/* Session name field */}
-                      <Grid container alignItems="center" spacing={1} sx={{ mb: 2 }}>
-                        <Grid size={{ xs: 12, sm: 4 }}>
-                          <FormLabel
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            session name
-                            <HelpIcon title="Choose a unique name for your session (max 15 characters)" />
-                          </FormLabel>
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 8 }}>
-                          <TextField
-                            id="advanced-session-name"
-                            value={formData.sessionName}
-                            onChange={handleFieldChange('sessionName')}
-                            disabled={isLoading}
-                            fullWidth
-                            size="sm"
-                            inputProps={{ maxLength: 15 }}
-                            placeholder="Enter session name"
-                          />
-                        </Grid>
-                      </Grid>
-
-                      {/* Resources field - only show for session types that support it */}
-                      {supportsResourceConfig && (
-                        <>
-                          <Grid container alignItems="center" spacing={1} sx={{ mb: 2 }}>
-                            <Grid size={{ xs: 12, sm: 4 }}>
-                              <FormLabel>resources</FormLabel>
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 8 }}>
-                              <FormControl component="fieldset">
-                                <RadioGroup
-                                  row
-                                  value={resourceType}
-                                  onChange={handleResourceTypeChange}
-                                >
-                                  <FormControlLabel
-                                    value="flexible"
-                                    control={<Radio size="small" />}
-                                    label="Flexible"
-                                    disabled={isLoading}
-                                    sx={{ mr: 1 }}
-                                  />
-                                  <HelpIcon title="Flexible resources allow dynamic allocation based on availability" />
-                                  <FormControlLabel
-                                    value="fixed"
-                                    control={<Radio size="small" />}
-                                    label="Fixed"
-                                    disabled={isLoading}
-                                    sx={{ ml: 2, mr: 1 }}
-                                  />
-                                  <HelpIcon title="Fixed resources guarantee specific CPU and memory allocation" />
-                                </RadioGroup>
-                              </FormControl>
-                            </Grid>
-                          </Grid>
-
-                          {/* Conditional Memory, CPU, and GPU fields when Fixed is selected */}
-                          {resourceType === 'fixed' && (
-                            <Grid container alignItems="flex-start" spacing={2}>
-                              <Grid size={{ xs: 12, sm: 4 }}>{/* Empty grid for alignment */}</Grid>
-                              <Grid size={{ xs: 12, sm: 8 }}>
-                                <Grid container spacing={2}>
-                                  <Grid size={{ xs: 12, sm: 4 }}>
-                                    <ResourceField
-                                      label="Memory (GB)"
-                                      value={formData.memory}
-                                      min={(memoryOptions || DEFAULT_MEMORY_OPTIONS)[0] ?? 1}
-                                      max={
-                                        (memoryOptions || DEFAULT_MEMORY_OPTIONS)[
-                                          (memoryOptions || DEFAULT_MEMORY_OPTIONS).length - 1
-                                        ]
-                                      }
-                                      onChange={handleMemoryChange}
-                                      disabled={isLoading}
-                                    />
-                                  </Grid>
-                                  <Grid size={{ xs: 12, sm: 4 }}>
-                                    <ResourceField
-                                      label="CPU Cores"
-                                      value={formData.cores}
-                                      min={(coreOptions || DEFAULT_CORE_OPTIONS)[0] ?? 1}
-                                      max={
-                                        (coreOptions || DEFAULT_CORE_OPTIONS)[
-                                          (coreOptions || DEFAULT_CORE_OPTIONS).length - 1
-                                        ]
-                                      }
-                                      onChange={handleCoresChange}
-                                      disabled={isLoading}
-                                    />
-                                  </Grid>
-                                  <Grid size={{ xs: 12, sm: 4 }}>
-                                    <ResourceField
-                                      label="GPU"
-                                      value={formData.gpus || 0}
-                                      min={0}
-                                      max={(gpuOptions || [0])[(gpuOptions || [0]).length - 1] ?? 0}
-                                      onChange={handleGpusChange}
-                                      disabled={isLoading}
-                                    />
-                                  </Grid>
-                                </Grid>
-                              </Grid>
-                            </Grid>
-                          )}
-                        </>
-                      )}
-                    </Box>
-                  </Box>
-
-                  {/* Buttons */}
-                  <Grid container spacing={2} sx={{ mt: theme.spacing(3) }}>
-                    <Grid size={{ xs: 12, sm: 4 }}>{/* Empty grid for alignment */}</Grid>
-                    <Grid size={{ xs: 12, sm: 8 }}>
-                      <Box sx={{ display: 'flex', gap: theme.spacing(2) }}>
-                        {renderLaunchButton(false)}
-                        <Button
-                          type="button"
-                          variant="outlined"
-                          size="small"
-                          onClick={handleReset}
+                      {hasMultipleRegistries ? (
+                        <Select
+                          id="advanced-session-registry"
+                          value={formData.repositoryHost ?? ''}
+                          onChange={
+                            handleSelectChange('repositoryHost') as React.ComponentProps<
+                              typeof Select
+                            >['onChange']
+                          }
                           disabled={isLoading}
+                          fullWidth
+                          size="sm"
                         >
-                          Reset
-                        </Button>
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </Box>
-              </TabPanel>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+                          {validHosts.map((host) => (
+                            <MenuItem key={host} value={host}>
+                              {host}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      ) : (
+                        <TextField
+                          id="advanced-session-registry-readonly"
+                          value={validHosts[0] ?? formData.repositoryHost ?? ''}
+                          disabled
+                          fullWidth
+                          size="sm"
+                        />
+                      )}
+                    </LaunchField>
+
+                    <LaunchField
+                      label="Project"
+                      help="Repository project path for the container image"
+                    >
+                      <TextField
+                        id="advanced-session-project"
+                        value={formData.project}
+                        onChange={handleFieldChange('project')}
+                        disabled={isLoading}
+                        fullWidth
+                        size="sm"
+                        placeholder="your-project"
+                        error={Boolean(advancedError) && !(formData.project ?? '').trim()}
+                        InputProps={{ sx: hintFieldSx }}
+                      />
+                    </LaunchField>
+
+                    <LaunchField
+                      label="Image"
+                      help="Container image name and tag, for example container-name:latest"
+                    >
+                      <TextField
+                        id="advanced-session-image"
+                        value={formData.image}
+                        onChange={handleFieldChange('image')}
+                        disabled={isLoading}
+                        fullWidth
+                        size="sm"
+                        placeholder="container-name:latest"
+                        error={Boolean(advancedError) && !(formData.image ?? '').trim()}
+                        InputProps={{ sx: hintFieldSx }}
+                      />
+                    </LaunchField>
+                  </LaunchRow>
+
+                  <LaunchRow columns={2}>
+                    <LaunchField
+                      label="Username"
+                      help="Username for private repository access"
+                    >
+                      <TextField
+                        id="repository-username"
+                        value={formData.repositoryAuthUsername}
+                        onChange={handleFieldChange('repositoryAuthUsername')}
+                        disabled={isLoading}
+                        fullWidth
+                        size="sm"
+                        placeholder="johnsmith"
+                        autoComplete="username"
+                        InputProps={{ sx: hintFieldSx }}
+                      />
+                    </LaunchField>
+
+                    <LaunchField
+                      label="Secret"
+                      help="Password or token for private repository"
+                    >
+                      <TextField
+                        id="repository-secret"
+                        type={secretVisible ? 'text' : 'password'}
+                        value={formData.repositoryAuthSecret}
+                        onChange={handleFieldChange('repositoryAuthSecret')}
+                        disabled={isLoading}
+                        fullWidth
+                        size="sm"
+                        placeholder="xxxxxxxxx"
+                        autoComplete="current-password"
+                        InputProps={{
+                          sx: hintFieldSx,
+                          endAdornment: formData.repositoryAuthSecret ? (
+                            <InputAdornment position="end">
+                              <IconButton
+                                type="button"
+                                size="small"
+                                edge="end"
+                                aria-label={secretVisible ? 'Hide secret' : 'Show secret'}
+                                aria-pressed={secretVisible}
+                                onClick={() => setSecretVisible((visible) => !visible)}
+                                disabled={isLoading}
+                              >
+                                {secretVisible ? (
+                                  <VisibilityOff fontSize="small" />
+                                ) : (
+                                  <Visibility fontSize="small" />
+                                )}
+                              </IconButton>
+                            </InputAdornment>
+                          ) : undefined,
+                        }}
+                      />
+                    </LaunchField>
+                  </LaunchRow>
+                </LaunchSection>
+
+                {resourceModeFields}
+              </Stack>
+
+              {advancedError && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  {advancedError}
+                </Alert>
+              )}
+
+              {actionRow(renderLaunchButton(!(formData.project ?? '').trim() || !(formData.image ?? '').trim()))}
+            </TabPanel>
+          </form>
+        )}
+      </Box>
     );
   },
 );

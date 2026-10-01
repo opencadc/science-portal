@@ -56,10 +56,9 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const data: SkahaStatsResponse = await response.json();
 
   // Transform SKAHA stats response to PlatformLoad format
-  // Use ISO string for consistent serialization and to avoid hydration mismatch
   const lastUpdate = new Date().toISOString();
 
-  // Parse RAM values by splitting on 'G' and converting to number (e.g., "5032G" -> 5032)
+  // Parse RAM quantities like "5032G"
   const requestedRAM = +data.ram.requestedRAM.split('G')[0];
   const ramAvailable = +data.ram.ramAvailable.split('G')[0];
 

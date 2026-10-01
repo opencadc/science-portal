@@ -259,7 +259,7 @@ export function AppBarWithAuth({
       </Typography>
     </Box>
   ) : (
-    'Login'
+    'Sign in'
   );
 
   return (

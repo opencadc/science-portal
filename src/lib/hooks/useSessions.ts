@@ -13,6 +13,7 @@ import {
 } from '@tanstack/react-query';
 import {
   getSessions,
+  getPlatformLoad,
   getSession,
   launchSession,
   deleteSession,
@@ -21,6 +22,7 @@ import {
   getSessionEvents,
   type Session,
   type SessionLaunchParams,
+  type PlatformLoad,
 } from '@/lib/api/skaha';
 import { useAppStore } from '@/lib/stores';
 import { isLaunchPendingPlaceholder } from '@/lib/sessions/sessionQuota';
@@ -37,7 +39,23 @@ export const sessionKeys = {
   detail: (id: string) => [...sessionKeys.details(), id] as const,
   logs: (id: string) => [...sessionKeys.all, 'logs', id] as const,
   events: (id: string) => [...sessionKeys.all, 'events', id] as const,
+  platformLoad: () => [...sessionKeys.all, 'platform-load'] as const,
 };
+
+/** Cluster CPU and RAM from Skaha platform stats. */
+export function usePlatformLoad(
+  isAuthenticated?: boolean,
+  options?: Omit<UseQueryOptions<PlatformLoad>, 'queryKey' | 'queryFn'>,
+) {
+  return useQuery({
+    queryKey: sessionKeys.platformLoad(),
+    queryFn: getPlatformLoad,
+    enabled: isAuthenticated !== false,
+    retry: retryUnlessAuthFailure,
+    staleTime: 60 * 1000,
+    ...options,
+  });
+}
 
 /**
  * Get all active sessions

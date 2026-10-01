@@ -2,20 +2,19 @@
 
 import { useMemo, useCallback, useEffect } from 'react';
 import { ActiveSessionsWidget } from '@/app/components/ActiveSessionsWidget/ActiveSessionsWidget';
+import { SessionQuotaWidget } from '@/app/components/SessionQuotaWidget/SessionQuotaWidget';
 import { UserStorageWidget } from '@/app/components/UserStorageWidget/UserStorageWidget';
 import { LaunchFormWidget } from '@/app/components/LaunchFormWidget/LaunchFormWidget';
 import { PlatformLoad } from '@/app/components/PlatformLoad/PlatformLoad';
 import { Footer } from '@/app/components/Footer/Footer';
 import { Box } from '@/app/components/Box/Box';
-import { Container, Typography, useMediaQuery } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { Button, Container, Typography } from '@mui/material';
 import type { SessionCardProps } from '@/app/types/SessionCardProps';
 import { useAuthStatus } from '@/lib/hooks/useAuth';
 import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
-import { useSessions, useLaunchSession } from '@/lib/hooks/useSessions';
+import { useSessions, useLaunchSession, usePlatformLoad } from '@/lib/hooks/useSessions';
 import { useContainerImages, useImageRepositories, useContext } from '@/lib/hooks/useImages';
 import { useUserStorageSummary } from '@/lib/hooks/useUserStorage';
-import { STATIC_PLATFORM_LOAD_DATA } from '@/lib/config/static-platform-load';
 import type { Session, SessionLaunchParams } from '@/lib/api/skaha';
 import {
   DOCS_URL,
@@ -25,13 +24,11 @@ import {
   DISCORD_URL,
   STATUS_PAGE_URL,
 } from '@/lib/config/site-config';
-import { useOperatingSessionIds, useSessionUiActions } from '@/lib/stores';
+import { useAuthModalActions, useOperatingSessionIds, useSessionUiActions } from '@/lib/stores';
 import { SessionModalsHost } from '@/lib/features/sessions/SessionModalsHost';
 import { joinQueryErrors, queryErrorMessage } from '@/lib/query/query-result';
 
 export function SessionsDashboard() {
-  const theme = useTheme();
-  const isDesktopTopRow = useMediaQuery(theme.breakpoints.up('lg'));
   const { useCanfar, serviceUrls } = usePublicRuntimeConfig();
   const isOIDCMode = !useCanfar;
 
@@ -43,6 +40,7 @@ export function SessionsDashboard() {
 
   const operatingSessionIds = useOperatingSessionIds();
   const { clearOperating } = useSessionUiActions();
+  const { openLogin } = useAuthModalActions();
 
   const {
     data: sessions = [],
@@ -88,6 +86,18 @@ export function SessionsDashboard() {
   const sessionsErrorMessage = queryErrorMessage(sessionsError);
   const storageErrorMessage = queryErrorMessage(storageError);
   const launchFormErrorMessage = joinQueryErrors([imagesError, repositoriesError, contextError]);
+
+  const {
+    data: platformLoad,
+    isLoading: isLoadingPlatformLoadQuery,
+    isFetching: isFetchingPlatformLoad,
+    error: platformLoadError,
+    refetch: refetchPlatformLoad,
+  } = usePlatformLoad(isAuthenticated);
+
+  const handlePlatformLoadRefresh = useCallback(() => {
+    void refetchPlatformLoad();
+  }, [refetchPlatformLoad]);
 
   const { mutateAsync: launchSessionAsync } = useLaunchSession();
 
@@ -146,12 +156,9 @@ export function SessionsDashboard() {
   }, [sessions]);
 
   const handleSessionsRefresh = useCallback(() => {
-    refetchSessions();
-  }, [refetchSessions]);
-
-  const handleStorageRefresh = useCallback(() => {
+    void refetchSessions();
     void refetchStorage();
-  }, [refetchStorage]);
+  }, [refetchSessions, refetchStorage]);
 
   const handleLaunchFormRefresh = useCallback(() => {
     refetchImages();
@@ -164,7 +171,6 @@ export function SessionsDashboard() {
       {
         title: 'Resources',
         links: [
-          { label: 'Documentation', href: DOCS_URL, external: true },
           { label: 'About', href: ABOUT_URL, external: true },
           { label: 'Open Source', href: OPEN_SOURCE_URL, external: true },
         ],
@@ -194,10 +200,27 @@ export function SessionsDashboard() {
       },
       {
         title: 'Support',
+        layout: 'cards' as const,
         links: [
-          { label: 'Help', href: SUPPORT_EMAIL, external: false },
-          { label: 'Join us on Discord', href: DISCORD_URL, external: true },
-          { label: 'Status Page', href: STATUS_PAGE_URL, external: true },
+          {
+            label: 'Guides & Docs',
+            href: DOCS_URL,
+            external: true,
+          },
+          {
+            label: 'Community Discord',
+            href: DISCORD_URL,
+            external: true,
+          },
+          {
+            label: 'Platform Status',
+            href: STATUS_PAGE_URL,
+            external: true,
+          },
+          {
+            label: 'Email Support',
+            href: SUPPORT_EMAIL,
+          },
         ],
       },
     ],
@@ -207,80 +230,74 @@ export function SessionsDashboard() {
   return (
     <>
       <SessionModalsHost />
-      <Box component="main" sx={{ flex: 1, pt: 2 }}>
+      <Box component="main" sx={{ flex: 1, pt: { xs: 3, md: 4 } }}>
         {isLoggedOut ? (
-          <Container maxWidth="sm" sx={{ py: { xs: 8, md: 12 }, textAlign: 'center' }}>
-            <Typography variant="h5" component="h1" gutterBottom>
-              Sign in to access the Science Portal
+          <Container maxWidth="sm" sx={{ py: { xs: 10, md: 14 }, textAlign: 'center' }}>
+            <Typography
+              variant="h3"
+              component="h1"
+              sx={{
+                letterSpacing: '-0.025em',
+                lineHeight: 1.12,
+                mb: 1.5,
+              }}
+            >
+              Sign in to continue
             </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Use the Login button in the header to view your active sessions, check your storage,
-              and launch new sessions.
+            <Typography
+              variant="body1"
+              color="text.secondary"
+              sx={{ mb: 4, lineHeight: 1.6, maxWidth: 420, mx: 'auto' }}
+            >
+              View your sessions, check storage, and launch notebooks, CARTA, and desktops on
+              CANFAR.
             </Typography>
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => openLogin('manual')}
+              aria-label="Sign in"
+            >
+              Sign in
+            </Button>
           </Container>
         ) : (
           <>
             <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'column', lg: 'row' },
-                  gap: 3,
-                  alignItems: { lg: isDesktopTopRow ? 'stretch' : 'flex-start' },
-                }}
-              >
-                <Box
-                  sx={{
-                    flex: { xs: 1, lg: '0 0 80%' },
-                    minWidth: 0,
-                    display: { lg: isDesktopTopRow ? 'flex' : 'block' },
-                    flexDirection: 'column',
-                  }}
-                >
-                  <ActiveSessionsWidget
-                    sessions={activeSessions}
-                    operatingSessionIds={operatingSessionIds}
-                    isLoading={isLoadingSessions}
-                    isFetching={isAuthenticated && isFetchingSessions}
-                    errorMessage={sessionsErrorMessage}
-                    onRefresh={handleSessionsRefresh}
-                    fillHeight={isDesktopTopRow}
-                  />
-                </Box>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <ActiveSessionsWidget
+                  sessions={activeSessions}
+                  operatingSessionIds={operatingSessionIds}
+                  isLoading={isLoadingSessions}
+                  isFetching={
+                    isAuthenticated && (isFetchingSessions || isFetchingStorageSummary)
+                  }
+                  errorMessage={sessionsErrorMessage}
+                  onRefresh={handleSessionsRefresh}
+                  headerActions={
+                    <>
+                      <SessionQuotaWidget
+                        count={activeSessions.length}
+                        isLoading={isLoadingSessions}
+                        isFetching={isAuthenticated && isFetchingSessions}
+                        errorMessage={sessionsErrorMessage}
+                      />
+                      <UserStorageWidget
+                        data={storageSummary ?? null}
+                        isLoading={isLoadingUserStorage}
+                        isFetching={isAuthenticated && isFetchingStorageSummary}
+                        errorMessage={storageErrorMessage}
+                      />
+                    </>
+                  }
+                />
 
                 <Box
                   sx={{
-                    flex: { xs: 1, lg: '0 0 20%' },
-                    minWidth: 0,
-                    px: { xs: 1, sm: 2 },
-                    display: { lg: isDesktopTopRow ? 'flex' : 'block' },
-                    flexDirection: 'column',
-                  }}
-                >
-                  <UserStorageWidget
-                    data={storageSummary ?? null}
-                    isLoading={isLoadingUserStorage}
-                    isFetching={isAuthenticated && isFetchingStorageSummary}
-                    errorMessage={storageErrorMessage}
-                    onRefresh={handleStorageRefresh}
-                    fillHeight={isDesktopTopRow}
-                  />
-                </Box>
-              </Box>
-            </Container>
-
-            <Container maxWidth="xl" sx={{ mb: 4, px: { xs: 2, sm: 3 } }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: { xs: 'column', lg: 'row' },
-                  gap: 3,
-                }}
-              >
-                <Box
-                  sx={{
-                    flex: { xs: 1, lg: '0 0 60%' },
-                    minWidth: 0,
+                    display: 'grid',
+                    gap: 3,
+                    gridTemplateColumns: { xs: '1fr', lg: '3fr 2fr' },
+                    alignItems: 'start',
                   }}
                 >
                   <LaunchFormWidget
@@ -299,19 +316,12 @@ export function SessionsDashboard() {
                     memoryOptions={context?.memoryGB.options}
                     gpuOptions={context?.gpus.options}
                   />
-                </Box>
-
-                <Box
-                  sx={{
-                    flex: { xs: 1, lg: '0 0 40%' },
-                    minWidth: 0,
-                    px: { xs: 1, sm: 2 },
-                  }}
-                >
                   <PlatformLoad
-                    data={STATIC_PLATFORM_LOAD_DATA}
-                    isLoading={false}
-                    showDisabledOverlay
+                    data={platformLoad}
+                    isLoading={authLoading || (isAuthenticated && isLoadingPlatformLoadQuery)}
+                    isFetching={isAuthenticated && isFetchingPlatformLoad && !isLoadingPlatformLoadQuery}
+                    error={queryErrorMessage(platformLoadError)}
+                    onRefresh={handlePlatformLoadRefresh}
                   />
                 </Box>
               </Box>
@@ -320,7 +330,9 @@ export function SessionsDashboard() {
         )}
       </Box>
 
-      {!isOIDCMode && <Footer sections={footerSections} copyright="© 2022-2026" />}
+      {!isOIDCMode && (
+        <Footer sections={footerSections} copyright="© 2022–2026 CANFAR Science Platform" />
+      )}
     </>
   );
 }

@@ -42,11 +42,11 @@ const CustomLegend: React.FC<{
         >
           <Box
             sx={{
-              width: '14px',
-              height: '14px',
+              width: 8,
+              height: 8,
               backgroundColor: item.color,
-              marginRight: theme.spacing(1),
-              borderRadius: tokens.borderRadius.smCSS,
+              marginRight: theme.spacing(0.75),
+              borderRadius: '50%',
             }}
           />
           <Typography
@@ -139,8 +139,8 @@ export const BarChartHorizontalImpl: React.FC<BarChartHorizontalProps> = React.m
 
     // Memoized X axis ticks to prevent recreation on every render
     const xAxisTicks = useMemo(() => {
-      const defaultTicks = [0, 500, 1000, 1500, 2000, calculatedTotal];
-      return axes.xAxisTicks || defaultTicks.filter((tick) => tick <= calculatedTotal);
+    if (axes.xAxisTicks) return axes.xAxisTicks;
+    return [0, calculatedTotal];
     }, [axes.xAxisTicks, calculatedTotal]);
 
     // Text colors based on theme
@@ -172,7 +172,7 @@ export const BarChartHorizontalImpl: React.FC<BarChartHorizontalProps> = React.m
       >
         {title && (
           <Typography
-            variant="body1"
+            variant="body2"
             sx={{
               color: textColor,
               fontWeight: tokens.typography.fontWeight.medium,
@@ -203,28 +203,31 @@ export const BarChartHorizontalImpl: React.FC<BarChartHorizontalProps> = React.m
                   ticks={xAxisTicks}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: tickColor, fontSize: 12 }}
+                  tick={{
+                    fill: tickColor,
+                    fontSize: 11,
+                    fontFamily: tokens.typography.fontFamily.mono,
+                  }}
                   tickFormatter={axes.xAxisFormatter}
                 />
               )}
 
-              {axes.showYAxis && (
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  axisLine={{
-                    stroke: tokens.colors.border.light,
-                    strokeWidth: 1,
-                  }}
-                  tickLine={false}
-                  width={60}
-                  tick={{
-                    fill: secondaryTextColor,
-                    fontSize: 14,
-                    dx: -10,
-                  }}
-                />
-              )}
+              <YAxis
+                type="category"
+                dataKey="name"
+                axisLine={
+                  axes.showYAxis
+                    ? { stroke: tokens.colors.border.light, strokeWidth: 1 }
+                    : false
+                }
+                tickLine={false}
+                width={axes.showYAxis ? 60 : 8}
+                tick={
+                  axes.showYAxis
+                    ? { fill: secondaryTextColor, fontSize: 14, dx: -10 }
+                    : false
+                }
+              />
 
               {stackKeys.map((key, index) => {
                 const isLast = index === stackKeys.length - 1;
