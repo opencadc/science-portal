@@ -33,7 +33,7 @@ function HelpAffordance({ help, widgetTitle }: { help: DashboardWidgetHelp; widg
     setAnchorEl(null);
   }, []);
 
-  // URL help: trailing external-link arrow (Launch New Session and any future
+  // URL help: trailing external-link arrow (Launch Session and any future
   // docs links). Popover help keeps the circled ? below.
   if (help.url) {
     return (

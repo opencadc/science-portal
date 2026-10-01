@@ -183,38 +183,29 @@ const parseImagePath = (fullImagePath: string): { project: string; image: string
   return { project: 'N/A', image: parts[0] };
 };
 
-/** Round UP to exactly 2 decimal places (e.g. 0.002 → "0.01"). */
-const formatCeil2 = (n: number): string => (Math.ceil(n * 100) / 100).toFixed(2);
+/** Round up to one decimal (0.17 → "0.2", 1.07 → "1.1"). */
+const formatCeil1 = (n: number): string => (Math.ceil(n * 10) / 10).toFixed(1);
 
-const formatCeil2Resource = (value: string | undefined): string => {
-  if (!value || value === '<none>') return 'N/A';
-  const num = parseFloat(value);
-  if (!Number.isFinite(num)) return value;
-  return formatCeil2(num);
+const parseResourceNumber = (value: string | undefined): number | null => {
+  if (!value || value === '<none>') return null;
+  const num = parseFloat(value.replace(/[KMGT]B?$/, ''));
+  return Number.isFinite(num) ? num : null;
 };
 
-/**
- * Skaha returns memory either as bare GB numbers ("1.4", "16") or, occasionally,
- * with a unit suffix ("8G"). Render with a "GB" suffix. Falsy / "<none>" → "N/A".
- */
-const formatMemoryUnit = (value: string | undefined): string => {
-  if (!value || value === '<none>') return 'N/A';
-  if (/[KMGT]$/.test(value)) {
-    const num = parseFloat(value);
-    if (!Number.isFinite(num)) return `${value}B`;
-    return `${formatCeil2(num)}${value.slice(-1)}B`;
-  }
-  if (/^\d+(\.\d+)?$/.test(value)) return `${formatCeil2(parseFloat(value))}GB`;
-  return value;
-};
-
-/**
- * Strip any unit suffix; used for the usage side of "usage / allocated" so the
- * unit appears only once at the end (e.g. "1.40 / 16.00GB").
- */
-const stripMemoryUnit = (value: string | undefined): string => {
-  if (!value || value === '<none>') return 'N/A';
-  return formatCeil2Resource(value.replace(/[KMGT]B?$/, ''));
+/** "0.2/1.1 GB" when a ceiling exists, otherwise "0.2 GB". */
+const formatResourcePair = (
+  used: string | undefined,
+  allocated: string | undefined,
+  unit: string,
+  flexible: boolean,
+): string => {
+  const usedNum = parseResourceNumber(used);
+  const usedLabel = usedNum == null ? 'N/A' : formatCeil1(usedNum);
+  const withUnit = (value: string) => (unit ? `${value} ${unit}` : value);
+  if (flexible) return withUnit(usedLabel);
+  const allocatedNum = parseResourceNumber(allocated);
+  const allocatedLabel = allocatedNum == null ? 'N/A' : formatCeil1(allocatedNum);
+  return withUnit(`${usedLabel}/${allocatedLabel}`);
 };
 
 const resourceMonoSx = { fontFamily: tokens.typography.fontFamily.mono } as const;
@@ -414,14 +405,15 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
     }
 
     const { project, image } = parseImagePath(containerImage);
-    const memoryDisplay =
-      isFixedResources === false
-        ? formatMemoryUnit(memoryUsage)
-        : `${stripMemoryUnit(memoryUsage)} / ${formatMemoryUnit(memoryAllocated)}`;
-    const cpuDisplay =
-      isFixedResources === false
-        ? formatCeil2Resource(cpuUsage)
-        : `${formatCeil2Resource(cpuUsage)} / ${formatCeil2Resource(cpuAllocated)}`;
+    const containerRef =
+      project !== 'N/A' && image !== 'N/A'
+        ? `${project}/${image}`
+        : image !== 'N/A'
+          ? image
+          : project;
+    const flexible = isFixedResources === false;
+    const memoryDisplay = formatResourcePair(memoryUsage, memoryAllocated, 'GB', flexible);
+    const cpuDisplay = formatResourcePair(cpuUsage, cpuAllocated, '', flexible);
     const showGpu = !!(gpuAllocated && gpuAllocated !== '0');
     const showResourceMode = hasResourceModeBadge(isFixedResources);
 
@@ -517,46 +509,42 @@ export const SessionCardImpl = React.forwardRef<HTMLDivElement, SessionCardProps
             </Box>
 
             <Stack spacing={0.75} sx={{ minWidth: 0, flex: 1 }}>
-              <Typography variant="body2" color="text.secondary" noWrap title={project}>
+              <Typography variant="body2" color="text.secondary" noWrap title={containerRef}>
                 <Box component="span" sx={detailLabelSx}>
-                  Project:{' '}
+                  Container:{' '}
                 </Box>
-                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  {project}
+                <Box component="span" sx={{ ...resourceMonoSx, color: 'text.primary' }}>
+                  {containerRef}
                 </Box>
               </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap title={image}>
-                <Box component="span" sx={detailLabelSx}>
-                  Image:{' '}
-                </Box>
-                <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                  {image}
-                </Box>
-              </Typography>
-              <Typography variant="body2" color="text.secondary" noWrap>
-                <Box component="span" sx={detailLabelSx}>
-                  Memory:{' '}
-                </Box>
-                <Box component="span" sx={resourceMonoSx}>
-                  {memoryDisplay}
-                </Box>
-                {' · '}
-                <Box component="span" sx={detailLabelSx}>
-                  CPU:{' '}
-                </Box>
-                <Box component="span" sx={resourceMonoSx}>
-                  {cpuDisplay}
-                </Box>
-                {showGpu && (
-                  <>
-                    {' · '}
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  columnGap: 1.5,
+                  rowGap: 0.25,
+                }}
+              >
+                {[
+                  { label: 'Memory', value: memoryDisplay },
+                  { label: 'CPU', value: cpuDisplay },
+                  ...(showGpu ? [{ label: 'GPU', value: gpuAllocated }] : []),
+                ].map((metric) => (
+                  <Typography
+                    key={metric.label}
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
                     <Box component="span" sx={detailLabelSx}>
-                      GPU:{' '}
+                      {metric.label}:{' '}
                     </Box>
-                    {gpuAllocated}
-                  </>
-                )}
-              </Typography>
+                    <Box component="span" sx={resourceMonoSx}>
+                      {metric.value}
+                    </Box>
+                  </Typography>
+                ))}
+              </Box>
               <Box
                 sx={{
                   display: 'flex',

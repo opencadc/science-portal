@@ -1465,7 +1465,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                         disabled={isLoading}
                         fullWidth
                         size="sm"
-                        placeholder="example"
+                        placeholder="your-project"
                         error={Boolean(advancedError) && !(formData.project ?? '').trim()}
                         InputProps={{ sx: hintFieldSx }}
                       />
@@ -1473,7 +1473,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
 
                     <LaunchField
                       label="Image"
-                      help="Container image name and tag, for example container:latest"
+                      help="Container image name and tag, for example container-name:latest"
                     >
                       <TextField
                         id="advanced-session-image"
@@ -1482,7 +1482,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
                         disabled={isLoading}
                         fullWidth
                         size="sm"
-                        placeholder="container:latest"
+                        placeholder="container-name:latest"
                         error={Boolean(advancedError) && !(formData.image ?? '').trim()}
                         InputProps={{ sx: hintFieldSx }}
                       />

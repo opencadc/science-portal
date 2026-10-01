@@ -16,7 +16,7 @@ export function LaunchFormWidgetImpl({
   isFetching = false,
   errorMessage,
   onRefresh,
-  title = 'Launch New Session',
+  title = 'Launch Session',
   showProgressIndicator = false,
   progressPercentage = 0,
   helpUrl,
