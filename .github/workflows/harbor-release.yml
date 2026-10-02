@@ -1,8 +1,8 @@
 # GitHub Release publishing to Harbor:
 #   - Prerelease: build and push the image (`:RELEASE_TAG` + `:sha-<git-sha>`), Cosign-sign,
 #     patch/package/upload the Helm chart.
-#   - Final release: promote `:sha-<git-sha>` (from a prior prerelease build) to the release
-#     tag and `:latest` (no rebuild), Cosign-sign, patch/package/upload the Helm chart.
+#   - Final release: add the release tag and `:latest` to the existing `:sha-<git-sha>`
+#     artifact (no rebuild, same digest), Cosign-sign, patch/package/upload the Helm chart.
 
 name: Science Portal Harbor release (build or promote, sign, and package Helm)
 
@@ -230,52 +230,114 @@ jobs:
           SHA=$(git rev-list -n 1 "$TAG")
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Retag and push release image
+      - name: Tag release image in Harbor
+        id: promote
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
           HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
+          HARBOR_API_BASE_IN: ${{ vars.HARBOR_API_BASE }}
+          HARBOR_USER: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASS: ${{ secrets.HARBOR_PASSWORD }}
         run: |
           set -euo pipefail
           SHA="${{ steps.rel.outputs.sha }}"
-          REG="${HARBOR_REGISTRY}"
-          REPO="${HARBOR_REPOSITORY}"
-          SRC_IMAGE="${REG}/${REPO}:sha-${SHA}"
           REL="${RELEASE_TAG}"
+          REF="sha-${SHA}"
 
-          echo "Promoting ${SRC_IMAGE} -> ${REG}/${REPO}:${REL}"
-          if ! docker pull "${SRC_IMAGE}"; then
-            echo "::error::Required image ${SRC_IMAGE} does not exist in Harbor." >&2
-            echo "Publish a prerelease for this commit first; prerelease builds push :sha-${SHA} to Harbor." >&2
+          case "${HARBOR_REPOSITORY}" in
+            */*) ;;
+            *)
+              echo "::error::HARBOR_REPOSITORY must be project/name (contain '/')."
+              exit 1
+              ;;
+          esac
+
+          BASE="${HARBOR_API_BASE_IN:-}"
+          BASE="${BASE%/}"
+          if [ -z "${BASE}" ]; then
+            BASE="https://${HARBOR_REGISTRY}"
+          fi
+
+          PROJECT="${HARBOR_REPOSITORY%%/*}"
+          REPO_NAME="${HARBOR_REPOSITORY#*/}"
+          PROJECT_ENC=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "${PROJECT}")
+          # Harbor requires slashes in the repository name to be double-encoded.
+          REPO_ENC=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe="").replace("%2F", "%252F"))' "${REPO_NAME}")
+          ART_URL="${BASE}/api/v2.0/projects/${PROJECT_ENC}/repositories/${REPO_ENC}/artifacts/${REF}"
+
+          code=$(curl -sS --output /tmp/harbor-artifact --write-out '%{http_code}' \
+            --user "${HARBOR_USER}:${HARBOR_PASS}" \
+            "${ART_URL}")
+          if [ "${code}" = "404" ]; then
+            echo "::error::Required image tag ${REF} does not exist in Harbor." >&2
+            echo "Publish a prerelease for this commit first; prerelease builds push :${REF} to Harbor." >&2
             exit 1
           fi
-          docker tag "${SRC_IMAGE}" "${REG}/${REPO}:${REL}"
-          docker push "${REG}/${REPO}:${REL}"
+          if [ "${code}" != "200" ]; then
+            echo "::error::Harbor artifact lookup for ${REF} failed with HTTP ${code}" >&2
+            cat /tmp/harbor-artifact >&2
+            exit 1
+          fi
 
-          echo "Tagging ${REG}/${REPO}:latest for final release ${REL}"
-          docker tag "${SRC_IMAGE}" "${REG}/${REPO}:latest"
-          docker push "${REG}/${REPO}:latest"
+          DIGEST=$(python3 -c 'import json; print(json.load(open("/tmp/harbor-artifact"))["digest"])')
+          if [ -z "${DIGEST}" ]; then
+            echo "::error::Harbor artifact ${REF} has no digest." >&2
+            exit 1
+          fi
+          echo "digest=${DIGEST}" >> "${GITHUB_OUTPUT}"
+          printf 'Promoting %s (%s) -> :%s and :latest\n' "${REF}" "${DIGEST}" "${REL}"
+
+          add_tag() {
+            local tag="$1"
+            local body code tag_enc del_url
+            body=$(python3 -c 'import json,sys; print(json.dumps({"name": sys.argv[1]}))' "${tag}")
+            code=$(curl -sS --output /tmp/harbor-tag-resp --write-out '%{http_code}' \
+              --user "${HARBOR_USER}:${HARBOR_PASS}" \
+              -H 'Content-Type: application/json' \
+              -X POST "${ART_URL}/tags" \
+              -d "${body}")
+            if [ "${code}" = "201" ] || [ "${code}" = "200" ]; then
+              printf 'Tagged %s as %s\n' "${REF}" "${tag}"
+              return 0
+            fi
+            if [ "${code}" = "409" ]; then
+              tag_enc=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "${tag}")
+              del_url="${BASE}/api/v2.0/projects/${PROJECT_ENC}/repositories/${REPO_ENC}/artifacts/${tag_enc}/tags/${tag_enc}"
+              curl --fail-with-body -sS \
+                --user "${HARBOR_USER}:${HARBOR_PASS}" \
+                -X DELETE "${del_url}"
+              curl --fail-with-body -sS \
+                --user "${HARBOR_USER}:${HARBOR_PASS}" \
+                -H 'Content-Type: application/json' \
+                -X POST "${ART_URL}/tags" \
+                -d "${body}"
+              printf 'Moved tag %s onto %s\n' "${tag}" "${REF}"
+              return 0
+            fi
+            echo "::error::Harbor tag ${tag} failed with HTTP ${code}" >&2
+            cat /tmp/harbor-tag-resp >&2
+            exit 1
+          }
+
+          add_tag "${REL}"
+          add_tag latest
 
       - name: Cosign sign container image (digest, keyless)
         env:
           HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
           HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DIGEST: ${{ steps.promote.outputs.digest }}
         run: |
           set -euo pipefail
-          REG="${HARBOR_REGISTRY}"
-          REPO="${HARBOR_REPOSITORY}"
-          IMG="${REG}/${REPO}:${RELEASE_TAG}"
-
-          DIG=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMG}" || true)
-          if [ -z "${DIG}" ]; then
-            echo "::error::Could not resolve RepoDigests for ${IMG}"
+          if [ -z "${DIGEST}" ]; then
+            echo "::error::Harbor promotion did not produce an image digest."
             exit 1
           fi
-
-          printf 'Cosign-signing container: %s (digest=%s)\n' "${IMG}" "${DIG}"
+          IMG="${HARBOR_REGISTRY}/${HARBOR_REPOSITORY}@${DIGEST}"
+          printf 'Cosign-signing container: %s\n' "${IMG}"
           cosign version
-          cosign sign --yes "${DIG}" --upload
+          cosign sign --yes "${IMG}" --upload
 
       - name: Install Helm
         uses: azure/setup-helm@v4

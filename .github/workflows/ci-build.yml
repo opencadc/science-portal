@@ -3,7 +3,7 @@
 #
 # Publishing happens only via GitHub Releases in `harbor-release.yml`:
 #   - Prerelease: build and push the image (release tag + :sha-<git-sha>), sign, package Helm.
-#   - Final release: promote :sha-<git-sha> to the release tag (no rebuild), sign, package Helm.
+#   - Final release: point the release tag and :latest at the existing :sha-<git-sha> artifact (no rebuild), sign, package Helm.
 
 name: Science Portal CI
 

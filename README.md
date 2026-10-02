@@ -214,9 +214,13 @@ Example compose files that wire OIDC env vars include [docker-compose.oidc.examp
 
 The workflow [`.github/workflows/ci-build.yml`](./.github/workflows/ci-build.yml) builds the Docker image on every push to `main` (and on manual dispatch) without uploading it.
 
-Publishing a **[GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)** does the following in order:
+Publishing a **[GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository)** ([`.github/workflows/harbor-release.yml`](./.github/workflows/harbor-release.yml)) ships the image and Helm chart to Harbor. Publish a **pre-release** before the **release**. The pre-release builds the container image; the release uses that image.
 
-1. Pushes the container image to **[Harbor](https://goharbor.io/)** with two tags (the Git release tag, e.g. `2.1.3`, plus `latest`). It appears under the project **Repositories** UI.
+Tag the pre-release with SemVer that includes a pre-release identifier, for example **`1.1.1-rc.1`**. Tag the release **`1.1.1`** (the same version with the pre-release suffix removed; bare SemVer, no `v` prefix). Point both Git tags at the same commit. The pre-release pushes the image as **`:1.1.1-rc.1`** and **`:sha-<commit>`**. The release looks up **`:sha-<commit>`** and adds **`:1.1.1`** and **`:latest`** to that same Harbor artifact. If **`:sha-<commit>`** is missing, the release job fails.
+
+Each published pre-release and release then:
+
+1. **Pre-release:** pushes the container image to **[Harbor](https://goharbor.io/)** with the pre-release tag and `:sha-<git-sha>`. **Release:** adds the release tag and `:latest` to that existing `:sha-<git-sha>` artifact, keeping the same manifest digest. The image appears under the project **Repositories** UI.
 2. Signs that image (**`cosign sign`** with **`registry-referrers-mode`** defaulting to **`legacy`**) against the pushed **manifest digest**, using Fulcio/GitHub Actions **OIDC keyless**. **Legacy** avoids the distribution **`/referrers/…`** API, which older registries (including some Harbor setups) reject with `UNAUTHORIZED` / **un‑recognized request**. Set Actions variable **`COSIGN_REGISTRY_REFERRERS_MODE`** to **`oci-1-1`** if your registry fully supports [OCI Referrers](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-references) and Harbor is new enough that you want referrer-based attachments.
 3. Sets **`helm/Chart.yaml`** `version` and **`appVersion`** to that same release tag semantically (bare SemVer, no `v` prefix).
 4. Points **`helm/values.yaml`** default **`image.repository`** / **`image.tag`** at the Harbor image (`HARBOR_REGISTRY` + `HARBOR_REPOSITORY`).
@@ -241,7 +245,7 @@ Packaging applies only inside the Actions runner—it does **not** commit Helm f
 
 **Consumers:** Charts from this path are fetched with Helm’s **`chartrepo`** index, for example **`helm repo add`** against **`https://<host>/chartrepo/<project>`** (see Harbor’s Helm chart docs for your Harbor version).
 
-Patching logic lives in [.github/scripts/patch-helm-release.py](.github/scripts/patch-helm-release.py). Use **bare SemVer** Git release tags (for example **`2.1.3`** or **`2.0.0-rc.1`**); they become **`Chart.yaml` `version`**, **`appVersion`**, and **`values.yaml` `image.tag`**, so `version` must stay valid for `helm package`.
+Patching logic lives in [.github/scripts/patch-helm-release.py](.github/scripts/patch-helm-release.py). The Git tag in effect (**`1.1.1-rc.1`** for a pre-release, **`1.1.1`** for a release) becomes **`Chart.yaml` `version`**, **`appVersion`**, and **`values.yaml` `image.tag`**, so `version` must stay valid for `helm package`.
 
 ### Deploying with OIDC (OpenID Connect)
 
