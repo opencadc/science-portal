@@ -8,6 +8,7 @@
 import { NextRequest } from 'next/server';
 import { serverApiConfig } from './server-config';
 import { fetchExternalApi, forwardCookies } from './api-utils';
+import { API_TIMEOUTS } from './http-constants';
 
 export interface AuthSession {
   authenticated: boolean;
@@ -32,7 +33,7 @@ export async function checkAuthentication(request: NextRequest): Promise<AuthSes
           Accept: 'application/json',
         },
       },
-      serverApiConfig.login.timeout,
+      API_TIMEOUTS.DEFAULT,
     );
 
     if (!response.ok) {

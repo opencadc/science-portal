@@ -221,6 +221,9 @@ export function useLaunchSession(
 
   return useMutation({
     ...restOptions,
+    // App-wide mutations retry once. Do not retry a create: a 504 often means
+    // Skaha already made the session, and a second POST creates another one.
+    retry: 0,
     mutationFn: launchSession,
     // Keep the list server-owned: do not append optimistic rows. In-flight
     // launch is tracked via `launchRequest` (Zustand) for modal + quota only.

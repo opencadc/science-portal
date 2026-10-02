@@ -16,7 +16,7 @@ import {
   forwardAuthHeader,
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
-import { HTTP_STATUS } from '@/app/api/lib/http-constants';
+import { API_TIMEOUTS, HTTP_STATUS } from '@/app/api/lib/http-constants';
 
 export interface StorageNode {
   name: string;
@@ -54,7 +54,7 @@ export const GET = withErrorHandling(
           Accept: 'application/json',
         },
       },
-      serverApiConfig.storage.timeout,
+      API_TIMEOUTS.DEFAULT,
     );
 
     if (!response.ok) {
@@ -94,7 +94,7 @@ export const POST = withErrorHandling(
         headers: authHeaders,
         body: formData,
       },
-      serverApiConfig.storage.timeout,
+      API_TIMEOUTS.DEFAULT,
     );
 
     if (!response.ok) {
@@ -131,7 +131,7 @@ export const DELETE = withErrorHandling(
         method: 'DELETE',
         headers: authHeaders,
       },
-      serverApiConfig.storage.timeout,
+      API_TIMEOUTS.DEFAULT,
     );
 
     if (!response.ok) {
@@ -172,7 +172,7 @@ export const PUT = withErrorHandling(
         },
         body: JSON.stringify({ type: 'directory' }),
       },
-      serverApiConfig.storage.timeout,
+      API_TIMEOUTS.DEFAULT,
     );
 
     if (!response.ok) {

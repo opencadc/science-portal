@@ -16,6 +16,7 @@ import {
   forwardAuthHeader,
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
+import { API_TIMEOUTS } from '@/app/api/lib/http-constants';
 import { groupImagesByTypeAndProject, type RawImage } from '@/lib/utils/image-parser';
 
 /**
@@ -55,7 +56,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
         Accept: 'application/json',
       },
     },
-    serverApiConfig.skaha.timeout,
+    API_TIMEOUTS.DEFAULT,
   );
 
   if (!response.ok) {

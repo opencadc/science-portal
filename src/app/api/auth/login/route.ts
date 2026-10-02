@@ -18,7 +18,7 @@ import {
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
 import { createLogger } from '@/app/api/lib/logger';
-import { HTTP_STATUS } from '@/app/api/lib/http-constants';
+import { API_TIMEOUTS, HTTP_STATUS } from '@/app/api/lib/http-constants';
 import { getPublicRuntimeConfigFromEnv } from '@/lib/config/public-runtime-config';
 
 export interface LoginCredentials {
@@ -102,7 +102,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       },
       body: formData.toString(),
     },
-    serverApiConfig.login.timeout,
+    API_TIMEOUTS.DEFAULT,
   );
 
   if (!response.ok) {

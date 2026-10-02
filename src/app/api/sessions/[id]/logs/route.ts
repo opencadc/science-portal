@@ -14,7 +14,7 @@ import {
   fetchExternalApi,
   forwardAuthHeader,
 } from '@/app/api/lib/api-utils';
-import { HTTP_STATUS } from '@/app/api/lib/http-constants';
+import { API_TIMEOUTS, HTTP_STATUS } from '@/app/api/lib/http-constants';
 import { serverApiConfig } from '@/app/api/lib/server-config';
 import { createLogger } from '@/app/api/lib/logger';
 
@@ -43,7 +43,7 @@ export const GET = withErrorHandling(
           Accept: 'text/plain',
         },
       },
-      serverApiConfig.skaha.timeout,
+      API_TIMEOUTS.DEFAULT,
     );
 
     if (!response.ok) {

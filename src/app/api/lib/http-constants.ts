@@ -60,7 +60,7 @@ export const HTTP_STATUS_NAMES: Record<number, string> = {
  * API Timeout Constants (in milliseconds)
  */
 export const API_TIMEOUTS = {
-  DEFAULT: 30000, // 30 seconds
+  DEFAULT: 120000, // 2 minutes
   SHORT: 10000, // 10 seconds
   LONG: 60000, // 60 seconds
   VERY_LONG: 120000, // 2 minutes

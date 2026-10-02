@@ -16,6 +16,7 @@ import {
   forwardAuthHeader,
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
+import { API_TIMEOUTS } from '@/app/api/lib/http-constants';
 import { createLogger } from '@/app/api/lib/logger';
 import type { SkahaSessionResponse } from '@/lib/api/skaha';
 import { getPublicRuntimeConfigFromEnv } from '@/lib/config/public-runtime-config';
@@ -57,7 +58,7 @@ export const POST = withErrorHandling(
         },
         body: 'action=renew',
       },
-      serverApiConfig.skaha.timeout,
+      API_TIMEOUTS.DEFAULT,
     );
 
     if (!response.ok) {
@@ -87,7 +88,7 @@ export const POST = withErrorHandling(
             Accept: 'application/json',
           },
         },
-        serverApiConfig.skaha.timeout,
+        API_TIMEOUTS.DEFAULT,
       );
 
       if (!sessionResponse.ok) {

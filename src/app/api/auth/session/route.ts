@@ -21,7 +21,7 @@ import {
   methodNotAllowed,
 } from '@/app/api/lib/api-utils';
 import { serverApiConfig } from '@/app/api/lib/server-config';
-import { HTTP_STATUS } from '@/app/api/lib/http-constants';
+import { API_TIMEOUTS, HTTP_STATUS } from '@/app/api/lib/http-constants';
 
 function isOIDCMode(): boolean {
   return process.env.NEXT_USE_CANFAR !== 'true';
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         method: 'GET',
         headers: { ...cookies, Accept: 'application/json' },
       },
-      serverApiConfig.login.timeout,
+      API_TIMEOUTS.DEFAULT,
     );
 
     if (!response.ok) {
