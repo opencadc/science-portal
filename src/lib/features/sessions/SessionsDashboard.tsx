@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { ActiveSessionsWidget } from '@/app/components/ActiveSessionsWidget/ActiveSessionsWidget';
 import { SessionQuotaWidget } from '@/app/components/SessionQuotaWidget/SessionQuotaWidget';
 import { UserStorageWidget } from '@/app/components/UserStorageWidget/UserStorageWidget';
@@ -10,7 +10,7 @@ import { Footer } from '@/app/components/Footer/Footer';
 import { Box } from '@/app/components/Box/Box';
 import { Button, Container, Typography } from '@mui/material';
 import type { SessionCardProps } from '@/app/types/SessionCardProps';
-import { useAuthStatus } from '@/lib/hooks/useAuth';
+import { useAuthStatus, useOIDCLogin } from '@/lib/hooks/useAuth';
 import { usePublicRuntimeConfig } from '@/lib/providers/PublicRuntimeConfigProvider';
 import { useSessions, useLaunchSession, usePlatformLoad } from '@/lib/hooks/useSessions';
 import { useContainerImages, useImageRepositories, useContext } from '@/lib/hooks/useImages';
@@ -24,7 +24,12 @@ import {
   DISCORD_URL,
   STATUS_PAGE_URL,
 } from '@/lib/config/site-config';
-import { useAuthModalActions, useOperatingSessionIds, useSessionUiActions } from '@/lib/stores';
+import {
+  useAuthModalActions,
+  useOidcLoginPending,
+  useOperatingSessionIds,
+  useSessionUiActions,
+} from '@/lib/stores';
 import { SessionModalsHost } from '@/lib/features/sessions/SessionModalsHost';
 import { joinQueryErrors, queryErrorMessage } from '@/lib/query/query-result';
 
@@ -40,7 +45,30 @@ export function SessionsDashboard() {
 
   const operatingSessionIds = useOperatingSessionIds();
   const { clearOperating } = useSessionUiActions();
-  const { openLogin } = useAuthModalActions();
+  const { openLogin, setOidcLoginPending } = useAuthModalActions();
+  const isOidcLoginPending = useOidcLoginPending();
+  const { login: oidcLogin } = useOIDCLogin();
+  const oidcLoginInFlightRef = useRef(false);
+
+  const handleSignInClick = useCallback(() => {
+    if (!isOIDCMode) {
+      openLogin('manual');
+      return;
+    }
+    if (oidcLoginInFlightRef.current) {
+      return;
+    }
+    oidcLoginInFlightRef.current = true;
+    setOidcLoginPending(true);
+    void oidcLogin()
+      .catch((error: unknown) => {
+        console.error('OIDC sign-in failed:', error);
+      })
+      .finally(() => {
+        oidcLoginInFlightRef.current = false;
+        setOidcLoginPending(false);
+      });
+  }, [isOIDCMode, oidcLogin, openLogin, setOidcLoginPending]);
 
   const {
     data: sessions = [],
@@ -255,10 +283,11 @@ export function SessionsDashboard() {
             <Button
               variant="contained"
               size="large"
-              onClick={() => openLogin('manual')}
+              disabled={isOidcLoginPending}
+              onClick={handleSignInClick}
               aria-label="Sign in"
             >
-              Sign in
+              {isOidcLoginPending ? 'Signing in…' : 'Sign in'}
             </Button>
           </Container>
         ) : (
