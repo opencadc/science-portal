@@ -7,7 +7,8 @@ import type { PlatformLoadData } from '@/app/types/PlatformLoadProps';
 export const STATIC_PLATFORM_LOAD_DATA: PlatformLoadData = {
   cpu: { name: 'CPU', used: 1094.838, free: 1911.162 },
   ram: { name: 'RAM', used: 9727.83, free: 2431.6100000000006 },
-  maxValues: { cpu: 3006, ram: 12159.44 },
+  gpu: { name: 'GPU', used: 15, free: 97 },
+  maxValues: { cpu: 3006, ram: 12159.44, gpu: 112 },
   lastUpdate: '2020-01-01T00:00:00.000Z',
 };
 

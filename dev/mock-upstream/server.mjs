@@ -473,7 +473,7 @@ function contextFixture() {
       defaultHeadless: 8,
       options: [4, 8, 16, 32],
     },
-    gpus: { options: [0, 1] },
+    gpus: { options: [0, 1, 2, 3] },
   };
 }
 
@@ -489,6 +489,7 @@ function platformStats() {
       ramAvailable: '256',
       maxRAM: { ram: '32', withCPUCores: 8 },
     },
+    gpu: { requestedGPU: 3, gpuAvailable: 5, maxGPU: 1 },
   };
 }
 

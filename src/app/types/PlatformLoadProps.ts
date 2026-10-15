@@ -14,11 +14,16 @@ export interface PlatformLoadData {
    */
   ram: MetricSeries;
   /**
+   * GPU metrics. Absent when the cluster does not report GPUs.
+   */
+  gpu?: MetricSeries;
+  /**
    * Maximum values for each metric
    */
   maxValues: {
     cpu: number;
     ram: number;
+    gpu?: number;
   };
   /**
    * Last update timestamp (string for API responses, Date for client-side)

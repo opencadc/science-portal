@@ -1,6 +1,6 @@
 {
   "name": "science-portal-next",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -25,11 +25,11 @@
     "@tanstack/react-query-devtools": "^5.100.9",
     "dayjs": "^1.11.20",
     "immer": "^11.1.11",
-    "next": "^15.5.15",
+    "next": "^15.5.28",
     "next-auth": "^5.0.0-beta.32",
     "nuqs": "^2.8.9",
-    "react": "19.2.5",
-    "react-dom": "19.2.5",
+    "react": "19.2.9",
+    "react-dom": "19.2.9",
     "recharts": "^2.15.4",
     "zustand": "^5.0.14"
   },
@@ -50,6 +50,7 @@
     "vitest": "^4.1.7"
   },
   "overrides": {
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.10",
+    "source-map-js": "1.2.2"
   }
 }

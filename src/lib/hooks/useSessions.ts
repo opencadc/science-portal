@@ -42,7 +42,7 @@ export const sessionKeys = {
   platformLoad: () => [...sessionKeys.all, 'platform-load'] as const,
 };
 
-/** Cluster CPU and RAM from Skaha platform stats. */
+/** Cluster CPU, RAM, and GPU from Skaha platform stats. */
 export function usePlatformLoad(
   isAuthenticated?: boolean,
   options?: Omit<UseQueryOptions<PlatformLoad>, 'queryKey' | 'queryFn'>,

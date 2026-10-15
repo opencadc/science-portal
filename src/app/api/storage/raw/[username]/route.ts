@@ -25,17 +25,8 @@ export const GET = withErrorHandling(
     }
 
     const authHeaders = await forwardAuthHeader(request);
-    // Use mode-aware storage API (SRC Cavern for OIDC, CANFAR for CANFAR mode)
     const storageBaseUrl = serverApiConfig.storage.baseUrl;
-    // Base URL already includes path, just append username
     const storageUrl = `${storageBaseUrl}${username}`;
-
-    console.log('[Storage API] Fetching storage data:', {
-      username,
-      url: storageUrl,
-      baseUrl: storageBaseUrl,
-      mode: process.env.NEXT_USE_CANFAR !== 'true' ? 'OIDC' : 'CANFAR',
-    });
 
     const response = await fetchExternalApi(
       storageUrl,
@@ -49,13 +40,6 @@ export const GET = withErrorHandling(
       API_TIMEOUTS.DEFAULT,
     );
 
-    console.log('[Storage API] Fetch response:', {
-      username,
-      status: response.status,
-      ok: response.ok,
-      statusText: response.statusText,
-    });
-
     if (!response.ok) {
       console.error('[Storage API] Failed to fetch storage data:', {
         username,
@@ -67,20 +51,7 @@ export const GET = withErrorHandling(
     }
 
     const xmlText = await response.text();
-
-    console.log('[Storage API] Raw XML response (first 500 chars):', {
-      username,
-      xmlPreview: xmlText.substring(0, 500),
-      totalLength: xmlText.length,
-    });
-
-    // Parse the XML and extract storage data
     const storageData = parseVOSpaceXML(xmlText);
-
-    console.log('[Storage API] Parsed storage data:', {
-      username,
-      data: storageData,
-    });
 
     // Return JSON response
     return NextResponse.json(storageData, {

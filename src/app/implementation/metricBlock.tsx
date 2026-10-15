@@ -20,13 +20,57 @@ function formatQuantity(value: number): string {
   return value.toFixed(digits);
 }
 
+function metricCopy(label: string): { heading: string; unit: string } {
+  if (label === 'RAM') return { heading: 'Memory', unit: 'GB' };
+  if (label === 'GPU') return { heading: 'GPUs', unit: 'GPUs' };
+  return { heading: 'CPUs', unit: 'CPUs' };
+}
+
+function MeterHeading({
+  heading,
+  detail,
+  muted = false,
+}: {
+  heading: string;
+  detail: string;
+  muted?: boolean;
+}) {
+  const color = muted ? 'text.disabled' : 'text.primary';
+  const detailColor = muted ? 'text.disabled' : 'text.secondary';
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        gap: 1.5,
+        mb: 0.75,
+      }}
+    >
+      <Typography variant="body2" sx={{ fontWeight: 600, color }}>
+        {heading}
+      </Typography>
+      <Typography
+        variant="body2"
+        sx={{
+          fontFamily: tokens.typography.fontFamily.mono,
+          fontVariantNumeric: 'tabular-nums',
+          fontSize: '0.8125rem',
+          color: detailColor,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {detail}
+      </Typography>
+    </Box>
+  );
+}
+
 export const MetricBlockImpl: React.FC<MetricBlockProps> = React.memo(
-  ({ label, series, max, isLoading = false, className }) => {
+  ({ label, series, max = 0, isLoading = false, unavailable = false, className }) => {
     const theme = useTheme();
-    const isMemory = label === 'RAM';
-    const heading = isMemory ? 'Memory' : 'CPUs';
-    const unit = isMemory ? 'GB' : 'CPUs';
-    const used = series.used;
+    const { heading, unit } = metricCopy(label);
+    const used = series?.used ?? 0;
     const safeMax = max > 0 ? max : 1;
     const usedPct = Math.min(100, Math.max(0, (used / safeMax) * 100));
     const usedPercentLabel = `${Math.round(usedPct)}%`;
@@ -37,33 +81,23 @@ export const MetricBlockImpl: React.FC<MetricBlockProps> = React.memo(
       <Box className={className} sx={{ mb: 2.5 }}>
         {isLoading ? (
           <Skeleton variant="rectangular" width="100%" height={48} sx={{ borderRadius: 1 }} />
+        ) : unavailable ? (
+          <>
+            <MeterHeading heading={heading} detail="Unavailable" muted />
+            <Box
+              role="img"
+              aria-label={`${heading} unavailable`}
+              sx={{
+                height: 8,
+                borderRadius: tokens.borderRadius.fullCSS,
+                backgroundColor: trackColor,
+                opacity: 0.45,
+              }}
+            />
+          </>
         ) : (
           <>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                gap: 1.5,
-                mb: 0.75,
-              }}
-            >
-              <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                {heading}
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontFamily: tokens.typography.fontFamily.mono,
-                  fontVariantNumeric: 'tabular-nums',
-                  fontSize: '0.8125rem',
-                  color: 'text.secondary',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {usedPercentLabel}
-              </Typography>
-            </Box>
+            <MeterHeading heading={heading} detail={usedPercentLabel} />
 
             <Tooltip
               title={hoverLabel}

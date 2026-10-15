@@ -56,6 +56,7 @@ function PlatformMetricsSection({
       <Stack spacing={1}>
         <MetricBlock label="CPU" series={{ name: 'CPU', used: 0, free: 0 }} max={1} isLoading />
         <MetricBlock label="RAM" series={{ name: 'RAM', used: 0, free: 0 }} max={1} isLoading />
+        <MetricBlock label="GPU" series={{ name: 'GPU', used: 0, free: 0 }} max={1} isLoading />
       </Stack>
     );
   }
@@ -65,6 +66,13 @@ function PlatformMetricsSection({
       <Stack spacing={0.5}>
         <MetricBlock label="CPU" series={data.cpu} max={data.maxValues.cpu} isLoading={isLoading} />
         <MetricBlock label="RAM" series={data.ram} max={data.maxValues.ram} isLoading={isLoading} />
+        <MetricBlock
+          label="GPU"
+          series={data.gpu}
+          max={data.maxValues.gpu}
+          isLoading={isLoading}
+          unavailable={!data.gpu}
+        />
       </Stack>
       <Box
         sx={{

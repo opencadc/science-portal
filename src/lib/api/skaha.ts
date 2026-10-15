@@ -70,6 +70,13 @@ export interface Session {
   requestedGPU?: string;
 }
 
+/** Cluster GPU usage from Skaha `view=stats`. Omitted when the cluster does not report GPUs. */
+export interface SkahaGpuStats {
+  requestedGPU: number;
+  gpuAvailable: number;
+  maxGPU: number;
+}
+
 // SKAHA Stats API Response - raw format from /v1/session?view=stats
 export interface SkahaStatsResponse {
   cores: {
@@ -88,6 +95,8 @@ export interface SkahaStatsResponse {
       withCPUCores: number;
     };
   };
+  /** Absent when this cluster does not report GPU capacity. */
+  gpu?: SkahaGpuStats | null;
 }
 
 export interface PlatformLoadMetric {
@@ -101,9 +110,13 @@ export interface PlatformLoadMetric {
 export interface PlatformLoad {
   cpu: PlatformLoadMetric;
   ram: PlatformLoadMetric;
+  /** Present only when Skaha reported a `gpu` block. */
+  gpu?: PlatformLoadMetric;
   maxValues: {
     cpu: number;
     ram: number;
+    /** Cluster GPU capacity (`gpuAvailable`). Absent when GPUs are not reported. */
+    gpu?: number;
   };
   lastUpdate: string | Date; // Support both string (from API) and Date for backward compatibility
 }

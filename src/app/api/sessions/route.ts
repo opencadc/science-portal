@@ -38,13 +38,11 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   }
 
   const authHeaders = await forwardAuthHeader(request);
-  console.log('📨 Session GET route - authHeaders received:', authHeaders);
 
   const finalHeaders = {
     ...authHeaders,
     Accept: 'application/json',
   };
-  console.log('📨 Session GET route - final headers:', finalHeaders);
 
   // `view=interactive` excludes headless batch jobs. Skaha source:
   // skaha/src/main/java/org/opencadc/skaha/session/GetAction.java —

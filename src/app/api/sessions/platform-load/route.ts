@@ -18,7 +18,8 @@ import {
 import { serverApiConfig } from '@/app/api/lib/server-config';
 import { API_TIMEOUTS } from '@/app/api/lib/http-constants';
 import { createLogger } from '@/app/api/lib/logger';
-import type { PlatformLoad, SkahaStatsResponse } from '@/lib/api/skaha';
+import type { SkahaStatsResponse } from '@/lib/api/skaha';
+import { platformLoadFromStats } from '@/lib/api/platform-load';
 import { getPublicRuntimeConfigFromEnv } from '@/lib/config/public-runtime-config';
 
 /**
@@ -55,34 +56,13 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   }
 
   const data: SkahaStatsResponse = await response.json();
+  const platformLoad = platformLoadFromStats(data);
 
-  // Transform SKAHA stats response to PlatformLoad format
-  const lastUpdate = new Date().toISOString();
-
-  // Parse RAM quantities like "5032G"
-  const requestedRAM = +data.ram.requestedRAM.split('G')[0];
-  const ramAvailable = +data.ram.ramAvailable.split('G')[0];
-
-  const platformLoad: PlatformLoad = {
-    cpu: {
-      name: 'CPU',
-      used: data.cores.requestedCPUCores,
-      free: data.cores.cpuCoresAvailable - data.cores.requestedCPUCores,
-    },
-    ram: {
-      name: 'RAM',
-      used: requestedRAM,
-      free: +(ramAvailable - requestedRAM).toFixed(2),
-    },
-    maxValues: {
-      cpu: data.cores.cpuCoresAvailable,
-      ram: ramAvailable,
-    },
-    lastUpdate: lastUpdate,
-  };
-
+  const gpuSummary = data.gpu
+    ? `, GPU: ${data.gpu.requestedGPU}/${data.gpu.gpuAvailable}`
+    : ', GPU: not reported';
   logger.info(
-    `Platform stats - CPU: ${data.cores.requestedCPUCores}/${data.cores.cpuCoresAvailable}, RAM: ${data.ram.requestedRAM}/${data.ram.ramAvailable}`,
+    `Platform stats - CPU: ${data.cores.requestedCPUCores}/${data.cores.cpuCoresAvailable}, RAM: ${data.ram.requestedRAM}/${data.ram.ramAvailable}${gpuSummary}`,
   );
   logger.logSuccess(200, platformLoad);
   return successResponse(platformLoad);

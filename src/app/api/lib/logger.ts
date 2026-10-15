@@ -1,10 +1,19 @@
 /**
  * API Logger Utility
  *
- * Provides structured logging for API routes with request/response details.
+ * Production logs are one line: method, route, status, duration.
+ * Header and body dumps run outside production, and credential values are
+ * never written — not even a prefix.
  */
 
 import { NextRequest } from 'next/server';
+import {
+  cookieNames,
+  isProductionLog,
+  redactBodyText,
+  redactHeaderRecord,
+  redactSecrets,
+} from './redact';
 
 export interface LogContext {
   route: string;
@@ -23,174 +32,109 @@ export class ApiLogger {
     };
   }
 
+  private durationMs(): number {
+    return Date.now() - new Date(this.context.timestamp).getTime();
+  }
+
   /**
    * Log incoming request with headers and body
    */
   logRequest(request: NextRequest, body?: unknown) {
-    console.log('\n' + '='.repeat(80));
-    console.log(`📥 INCOMING REQUEST: ${this.context.method} ${this.context.route}`);
-    console.log('='.repeat(80));
-    console.log(`⏰ Timestamp: ${this.context.timestamp}`);
-    console.log(`🔗 URL: ${request.url}`);
+    if (isProductionLog()) return;
 
-    // Log headers (mask sensitive data)
-    console.log('\n📋 Headers:');
+    console.info(`[api] ${this.context.method} ${this.context.route}`);
+
     const headers: Record<string, string> = {};
     request.headers.forEach((value, key) => {
-      if (key.toLowerCase() === 'cookie' || key.toLowerCase() === 'authorization') {
-        headers[key] = value ? `${value.substring(0, 20)}...` : '<empty>';
-      } else {
-        headers[key] = value;
-      }
+      headers[key] = value;
     });
-    console.log(JSON.stringify(headers, null, 2));
+    console.info('[api] headers', redactHeaderRecord(headers));
 
-    // Log cookies separately for visibility
     const cookieHeader = request.headers.get('cookie');
     if (cookieHeader) {
-      console.log('\n🍪 Cookies:');
-      const cookies = cookieHeader.split(';').map((c) => c.trim());
-      cookies.forEach((cookie) => {
-        const [name, ...valueParts] = cookie.split('=');
-        const value = valueParts.join('=');
-        console.log(`  - ${name}: ${value.substring(0, 30)}${value.length > 30 ? '...' : ''}`);
-      });
+      console.info('[api] cookie names', cookieNames(cookieHeader));
     }
 
-    // Log body if provided
     if (body !== undefined) {
-      console.log('\n📦 Request Body:');
-      if (typeof body === 'object' && body !== null) {
-        // Mask password fields
-        const sanitized = { ...(body as Record<string, unknown>) };
-        if ('password' in sanitized) {
-          sanitized.password = '***REDACTED***';
-        }
-        console.log(JSON.stringify(sanitized, null, 2));
-      } else {
-        console.log(body);
-      }
+      console.info('[api] body', redactSecrets(body));
     }
-    console.log('='.repeat(80) + '\n');
   }
 
   /**
    * Log external API call
    */
   logExternalCall(url: string, method: string, headers?: Record<string, unknown>) {
-    console.log('\n' + '-'.repeat(80));
-    console.log(`🌐 EXTERNAL API CALL: ${method} ${url}`);
-    console.log('-'.repeat(80));
-
-    if (headers) {
-      console.log('\n📋 Headers being sent:');
-      const sanitized = { ...headers };
-      if (sanitized.Cookie && typeof sanitized.Cookie === 'string') {
-        sanitized.Cookie = `${sanitized.Cookie.substring(0, 30)}...`;
-      }
-      console.log(JSON.stringify(sanitized, null, 2));
-    }
-    console.log('-'.repeat(80) + '\n');
+    console.info(`[upstream] ${method} ${url}`);
+    if (isProductionLog() || !headers) return;
+    console.info('[upstream] headers', redactHeaderRecord(headers));
   }
 
   /**
    * Log external API response
    */
   logExternalResponse(status: number, statusText: string, data?: unknown) {
-    console.log('\n' + '-'.repeat(80));
-    console.log(`📡 EXTERNAL API RESPONSE`);
-    console.log('-'.repeat(80));
-    console.log(`📊 Status: ${status} ${statusText}`);
+    const line = `[upstream] ${status} ${statusText}`;
+    if (status >= 400) console.warn(line);
+    else console.info(line);
 
-    if (data !== undefined) {
-      console.log('\n📦 Response Data:');
-      if (data === null) {
-        console.log('null');
-      } else if (typeof data === 'object') {
-        // Mask sensitive fields
-        const sanitized = JSON.parse(JSON.stringify(data));
-        if (sanitized.password) sanitized.password = '***REDACTED***';
-        if (sanitized.token) sanitized.token = `${sanitized.token.substring(0, 20)}...`;
-        console.log(JSON.stringify(sanitized, null, 2));
-      } else {
-        console.log(data);
-      }
+    if (!isProductionLog() && data !== undefined) {
+      console.info('[upstream] body', redactSecrets(data));
     }
-    console.log('-'.repeat(80) + '\n');
   }
 
   /**
    * Log successful response
    */
   logSuccess(statusCode: number, data?: unknown) {
-    console.log('\n' + '='.repeat(80));
-    console.log(`✅ SUCCESS RESPONSE: ${this.context.method} ${this.context.route}`);
-    console.log('='.repeat(80));
-    console.log(`📊 Status: ${statusCode}`);
-
-    if (data !== undefined) {
-      console.log('\n📦 Response Data:');
-      if (data === null) {
-        console.log('null');
-      } else if (typeof data === 'object') {
-        // Mask sensitive fields
-        const sanitized = JSON.parse(JSON.stringify(data));
-        if (sanitized.password) sanitized.password = '***REDACTED***';
-        if (sanitized.token) sanitized.token = `${sanitized.token.substring(0, 20)}...`;
-        console.log(JSON.stringify(sanitized, null, 2));
-      } else {
-        console.log(data);
-      }
+    console.info(
+      `[api] ${this.context.method} ${this.context.route} ${statusCode} ${this.durationMs()}ms`,
+    );
+    if (!isProductionLog() && data !== undefined) {
+      console.info('[api] response', redactSecrets(data));
     }
-
-    const duration = Date.now() - new Date(this.context.timestamp).getTime();
-    console.log(`\n⏱️  Duration: ${duration}ms`);
-    console.log('='.repeat(80) + '\n');
   }
 
   /**
    * Log error response
    */
   logError(statusCode: number, error: string | Error, details?: unknown) {
-    console.log('\n' + '='.repeat(80));
-    console.log(`❌ ERROR RESPONSE: ${this.context.method} ${this.context.route}`);
-    console.log('='.repeat(80));
-    console.log(`📊 Status: ${statusCode}`);
-    console.log(`💥 Error: ${error instanceof Error ? error.message : error}`);
+    const message = error instanceof Error ? error.message : error;
+    console.error(
+      `[api] ${this.context.method} ${this.context.route} ${statusCode} ${this.durationMs()}ms ${message}`,
+    );
 
-    if (error instanceof Error && error.stack) {
-      console.log('\n📚 Stack Trace:');
-      console.log(error.stack);
+    if (!isProductionLog() && error instanceof Error && error.stack) {
+      console.error(error.stack);
     }
-
-    if (details !== undefined) {
-      console.log('\n📝 Additional Details:');
-      console.log(JSON.stringify(details, null, 2));
+    if (!isProductionLog() && details !== undefined) {
+      const safe =
+        typeof details === 'string' ? redactBodyText(details) : redactSecrets(details);
+      console.error('[api] details', safe);
     }
-
-    const duration = Date.now() - new Date(this.context.timestamp).getTime();
-    console.log(`\n⏱️  Duration: ${duration}ms`);
-    console.log('='.repeat(80) + '\n');
   }
 
   /**
    * Log a general info message
    */
   info(message: string, data?: unknown) {
-    console.log(`ℹ️  [${this.context.route}] ${message}`);
-    if (data !== undefined) {
-      console.log(JSON.stringify(data, null, 2));
+    const line = `[api] ${this.context.route} ${message}`;
+    if (data === undefined || isProductionLog()) {
+      console.info(line);
+      return;
     }
+    console.info(line, redactSecrets(data));
   }
 
   /**
    * Log a warning message
    */
   warn(message: string, data?: unknown) {
-    console.warn(`⚠️  [${this.context.route}] ${message}`);
-    if (data !== undefined) {
-      console.warn(JSON.stringify(data, null, 2));
+    const line = `[api] ${this.context.route} ${message}`;
+    if (data === undefined || isProductionLog()) {
+      console.warn(line);
+      return;
     }
+    console.warn(line, redactSecrets(data));
   }
 }
 

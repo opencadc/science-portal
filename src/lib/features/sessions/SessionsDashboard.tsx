@@ -344,6 +344,13 @@ export function SessionsDashboard() {
                     coreOptions={context?.cores.options}
                     memoryOptions={context?.memoryGB.options}
                     gpuOptions={context?.gpus.options}
+                    gpuSelectionEnabled={
+                      platformLoad
+                        ? Boolean(platformLoad.gpu)
+                        : isLoadingPlatformLoadQuery
+                          ? undefined
+                          : false
+                    }
                   />
                   <PlatformLoad
                     data={platformLoad}
