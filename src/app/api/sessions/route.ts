@@ -127,9 +127,9 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     formData.append('ram', body.ram.toString());
   }
 
-  // Add gpus if provided and > 0 (API doesn't accept 0)
+  // A checked GPU request is always one GPU. Omit the field when unchecked.
   if (body.gpus && body.gpus > 0) {
-    formData.append('gpus', body.gpus.toString());
+    formData.append('gpus', '1');
   }
 
   // Add cmd if provided (for headless sessions)

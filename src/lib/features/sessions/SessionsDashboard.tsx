@@ -33,6 +33,10 @@ import {
 import { SessionModalsHost } from '@/lib/features/sessions/SessionModalsHost';
 import { joinQueryErrors, queryErrorMessage } from '@/lib/query/query-result';
 
+function contextReportsGpu(gpus: { options?: number[] } | null | undefined): boolean {
+  return Boolean(gpus?.options?.some((count) => count > 0));
+}
+
 export function SessionsDashboard() {
   const { useCanfar, serviceUrls } = usePublicRuntimeConfig();
   const isOIDCMode = !useCanfar;
@@ -343,11 +347,10 @@ export function SessionsDashboard() {
                     launchSessionFn={handleLaunchSession}
                     coreOptions={context?.cores.options}
                     memoryOptions={context?.memoryGB.options}
-                    gpuOptions={context?.gpus.options}
                     gpuSelectionEnabled={
-                      platformLoad
-                        ? Boolean(platformLoad.gpu)
-                        : isLoadingPlatformLoadQuery
+                      context
+                        ? contextReportsGpu(context.gpus)
+                        : isLoadingContext
                           ? undefined
                           : false
                     }

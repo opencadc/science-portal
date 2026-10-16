@@ -67,7 +67,7 @@ export function LaunchFormWidgetImpl({
           ...(formData.resourceType === 'fixed' && {
             cores: formData.cores,
             ram: formData.memory,
-            ...(formData.gpus && formData.gpus > 0 && { gpus: formData.gpus }),
+            ...(formData.gpus && formData.gpus > 0 && { gpus: 1 }),
           }),
           ...(isAdvancedLaunch &&
             formData.repositoryAuthUsername &&

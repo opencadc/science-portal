@@ -156,9 +156,9 @@ export interface ContextResponse {
     defaultHeadless: number;
     options: number[];
   };
-  gpus: {
+  gpus?: {
     options: number[];
-  };
+  } | null;
 }
 
 export interface SessionLaunchParams {

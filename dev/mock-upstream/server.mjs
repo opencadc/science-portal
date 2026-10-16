@@ -489,7 +489,6 @@ function platformStats() {
       ramAvailable: '256',
       maxRAM: { ram: '32', withCPUCores: 8 },
     },
-    gpu: { requestedGPU: 3, gpuAvailable: 5, maxGPU: 1 },
   };
 }
 
