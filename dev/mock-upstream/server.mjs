@@ -473,7 +473,7 @@ function contextFixture() {
       defaultHeadless: 8,
       options: [4, 8, 16, 32],
     },
-    gpus: { options: [0, 1] },
+    gpus: { options: [0, 1, 2, 3] },
   };
 }
 

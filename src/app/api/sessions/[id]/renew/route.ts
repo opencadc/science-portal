@@ -72,7 +72,7 @@ export const POST = withErrorHandling(
 
     // SKAHA might return empty response for renew action
     const text = await response.text();
-    logger.info(`Response body length: ${text.length}, preview: ${text.substring(0, 200)}`);
+    logger.info(`Response body length: ${text.length}`);
 
     if (!text || text.trim().length === 0) {
       // Empty response - renew was successful but we need to fetch the updated session

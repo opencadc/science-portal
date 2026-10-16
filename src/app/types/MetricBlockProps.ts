@@ -30,17 +30,22 @@ export interface MetricBlockProps {
    */
   label: string;
   /**
-   * The data series for the metric
+   * The data series for the metric. Unused when `unavailable` is set.
    */
-  series: MetricSeries;
+  series?: MetricSeries;
   /**
    * The maximum value for the metric (used for chart domain)
    */
-  max: number;
+  max?: number;
   /**
    * Whether the metric is in a loading state
    */
   isLoading?: boolean;
+  /**
+   * Render the meter muted with no usage reading.
+   * Used when the cluster does not report this resource.
+   */
+  unavailable?: boolean;
   /**
    * Optional custom class name
    */

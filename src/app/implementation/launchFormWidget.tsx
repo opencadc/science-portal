@@ -17,8 +17,6 @@ export function LaunchFormWidgetImpl({
   errorMessage,
   onRefresh,
   title = 'Launch Session',
-  showProgressIndicator = false,
-  progressPercentage = 0,
   helpUrl,
   signInAlertMessage,
   imagesByType = {},
@@ -67,7 +65,7 @@ export function LaunchFormWidgetImpl({
           ...(formData.resourceType === 'fixed' && {
             cores: formData.cores,
             ram: formData.memory,
-            ...(formData.gpus && formData.gpus > 0 && { gpus: formData.gpus }),
+            ...(formData.gpus && formData.gpus > 0 && { gpus: 1 }),
           }),
           ...(isAdvancedLaunch &&
             formData.repositoryAuthUsername &&
@@ -118,7 +116,6 @@ export function LaunchFormWidgetImpl({
       error={errorMessage}
       onRefresh={onRefresh}
       help={helpUrl ? { url: helpUrl } : undefined}
-      statusValue={showProgressIndicator ? progressPercentage : 100}
       alert={
         signInAlertMessage ? (
           <Alert severity="info" sx={{ mb: 2 }}>

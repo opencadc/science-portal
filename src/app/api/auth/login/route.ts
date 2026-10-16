@@ -112,7 +112,6 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
     try {
       const responseText = await response.text();
-      logger.info('Error response body', { body: responseText });
       try {
         errorData = JSON.parse(responseText);
         errorMessage = errorData.message || errorMessage;
@@ -142,7 +141,6 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
   let data: User | null = null;
   const responseText = await response.text();
-  logger.info('Response body', { body: responseText.substring(0, 200) });
 
   if (contentType.includes('application/json') && responseText) {
     try {
@@ -160,7 +158,6 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     try {
       // Decode base64 token
       const decodedToken = Buffer.from(responseText, 'base64').toString('utf-8');
-      logger.info('Decoded token', { preview: decodedToken.substring(0, 100) });
 
       // Parse token parameters (format: key1=value1&key2=value2&...)
       const params = new URLSearchParams(decodedToken);
@@ -187,25 +184,14 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   if (responseText && responseText.length > 0) {
     // The response body IS the token (base64-encoded)
     token = responseText.trim();
-    logger.info('Token extracted from response body', {
-      tokenLength: token.length,
-      tokenPreview: token.substring(0, 20) + '...',
-    });
   }
 
   // Also check Set-Cookie header as fallback
   const setCookieHeaders = response.headers.get('set-cookie');
   if (setCookieHeaders && !token) {
-    logger.info('Checking Set-Cookie header as fallback', {
-      cookies: setCookieHeaders.substring(0, 50) + '...',
-    });
-
     const cookieMatch = setCookieHeaders.match(/CADC_SSO=([^;]+)/);
     if (cookieMatch) {
       token = cookieMatch[1];
-      logger.info('Token extracted from Set-Cookie header', {
-        tokenPreview: token.substring(0, 20) + '...',
-      });
     }
   }
 

@@ -40,7 +40,12 @@ export interface SessionLaunchFormProps {
   repositoryHosts?: string[];
   memoryOptions?: number[];
   coreOptions?: number[];
-  gpuOptions?: number[];
+  /**
+   * When false, the fixed-resource GPU checkbox stays visible but cannot be selected.
+   * Used when session context omits a GPU choice.
+   * @default true
+   */
+  gpuSelectionEnabled?: boolean;
   defaultValues?: Partial<SessionFormData>;
   isLoading?: boolean;
   errorMessage?: string | null;

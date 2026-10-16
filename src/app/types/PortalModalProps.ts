@@ -48,11 +48,6 @@ export interface PortalModalProps {
   closeLabel?: string;
   /** Show the linear status bar under the title. @default true */
   showProgressBar?: boolean;
-  /**
-   * Determinate bar value when not busy (mirrors dashboard `statusValue`).
-   * @default 100
-   */
-  progressValue?: number;
   /** @default 'sm' */
   maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | false;
   /** Full-screen on small breakpoints. @default true */

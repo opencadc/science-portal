@@ -1,22 +1,24 @@
 /**
  * Debug Session Endpoint
  *
- * Displays the current NextAuth session and token information
- * REMOVE THIS IN PRODUCTION!
+ * Development-only summary of the current session. Production returns 404.
+ * Token values are never included.
  */
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 
 export async function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   const session = await auth();
 
   return NextResponse.json(
     {
-      session: session || null,
       hasSession: !!session,
       hasAccessToken: !!session?.accessToken,
-      accessTokenPrefix: session?.accessToken?.substring(0, 50),
       user: session?.user,
       error: session?.error,
       timestamp: new Date().toISOString(),
