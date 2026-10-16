@@ -26,7 +26,7 @@ import { tokens } from '@/app/design-system/tokens';
  * Mirrors {@link DashboardWidget} loading semantics:
  * - `isLoading` → spinner in the body + indeterminate progress bar
  * - `isFetching` → stale `children` stay visible + indeterminate progress bar
- * - idle → determinate success bar (same as dashboard widgets at rest)
+ * - idle → hairline, same as dashboard widgets at rest
  */
 export const PortalModalImpl = React.forwardRef<HTMLDivElement, PortalModalProps>(
   (
@@ -47,7 +47,6 @@ export const PortalModalImpl = React.forwardRef<HTMLDivElement, PortalModalProps
       actions,
       closeLabel = 'Close',
       showProgressBar = true,
-      progressValue = 100,
       maxWidth = 'sm',
       fullScreenMobile = true,
       showInitialSpinner = true,
