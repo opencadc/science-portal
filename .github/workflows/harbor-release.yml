@@ -162,7 +162,7 @@ jobs:
           echo "${HARBOR_PASS}" | helm registry login "${HARBOR_REGISTRY}" \
             --username "${HARBOR_USER}" --password-stdin
 
-          DEST="oci://${HARBOR_REGISTRY}/${CHART_PROJECT}"
+          DEST="oci://${HARBOR_REGISTRY}/platform/charts"
           printf 'helm push %s → %s\n' "${PACKAGE}" "${DEST}"
           helm push "${PACKAGE}" "${DEST}"
 
@@ -374,6 +374,6 @@ jobs:
           echo "${HARBOR_PASS}" | helm registry login "${HARBOR_REGISTRY}" \
             --username "${HARBOR_USER}" --password-stdin
 
-          DEST="oci://${HARBOR_REGISTRY}/${CHART_PROJECT}"
+          DEST="oci://${HARBOR_REGISTRY}/platform/charts"
           printf 'helm push %s → %s\n' "${PACKAGE}" "${DEST}"
           helm push "${PACKAGE}" "${DEST}"
