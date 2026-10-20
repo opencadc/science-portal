@@ -55,11 +55,6 @@ export interface DashboardWidgetProps {
   headerActions?: ReactNode;
   /** Show the linear status bar under the header. @default true */
   showStatusBar?: boolean;
-  /**
-   * Determinate status-bar value shown when not loading.
-   * @default 100 (full success bar)
-   */
-  statusValue?: number;
   /** Caption row rendered below the content. */
   footer?: ReactNode;
   /** Stretch to fill the parent's height (flex column layout). */

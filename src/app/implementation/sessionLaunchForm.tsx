@@ -295,6 +295,7 @@ function ResourceModeFields({
   options,
   values,
   onChange,
+  gpuSelectionEnabled,
 }: {
   type: 'flexible' | 'fixed';
   fixedAllowed: boolean;
@@ -302,7 +303,6 @@ function ResourceModeFields({
   options: {
     memory: readonly number[];
     cores: readonly number[];
-    gpus: readonly number[];
   };
   values: {
     memory: number;
@@ -315,9 +315,9 @@ function ResourceModeFields({
     cores: (value: number) => void;
     gpus: (value: number) => void;
   };
+  gpuSelectionEnabled: boolean;
 }) {
-  const gpuChoices = options.gpus.filter((n) => n > 0);
-  const gpuEnabled = values.gpus > 0;
+  const gpuRequested = gpuSelectionEnabled && values.gpus > 0;
 
   return (
     <LaunchSection title="Resources">
@@ -368,42 +368,38 @@ function ResourceModeFields({
             onChange={onChange.cores}
             disabled={isLoading}
           />
-          {gpuChoices.length > 0 && (
-            <>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    size="small"
-                    checked={gpuEnabled}
-                    icon={<RadioButtonUnchecked />}
-                    checkedIcon={<CheckCircle />}
-                    onChange={(event) => {
-                      onChange.gpus(event.target.checked ? (gpuChoices[0] ?? 1) : 0);
-                    }}
-                    disabled={isLoading}
-                    sx={{ p: 0.25, '& .MuiSvgIcon-root': { fontSize: 20 } }}
-                  />
-                }
-                label="Request a GPU"
+          <FormControlLabel
+            disabled={!gpuSelectionEnabled || isLoading}
+            control={
+              <Checkbox
+                size="small"
+                checked={gpuRequested}
+                icon={<RadioButtonUnchecked />}
+                checkedIcon={<CheckCircle />}
+                onChange={(event) => {
+                  if (!gpuSelectionEnabled) return;
+                  onChange.gpus(event.target.checked ? 1 : 0);
+                }}
+                disabled={!gpuSelectionEnabled || isLoading}
                 sx={{
-                  alignSelf: 'flex-start',
-                  mx: 0,
-                  my: 0,
-                  ml: -0.25,
-                  '& .MuiFormControlLabel-label': { typography: 'body2' },
+                  p: 0.25,
+                  color: gpuSelectionEnabled ? 'primary.main' : 'text.disabled',
+                  '& .MuiSvgIcon-root': { fontSize: 20 },
                 }}
               />
-              {gpuEnabled && gpuChoices.length > 1 && (
-                <ResourceField
-                  label="GPU"
-                  value={values.gpus}
-                  options={gpuChoices}
-                  onChange={onChange.gpus}
-                  disabled={isLoading}
-                />
-              )}
-            </>
-          )}
+            }
+            label="Request a GPU"
+            sx={{
+              alignSelf: 'flex-start',
+              mx: 0,
+              my: 0,
+              ml: -0.25,
+              '& .MuiFormControlLabel-label': {
+                typography: 'body2',
+                color: gpuSelectionEnabled ? 'text.primary' : 'text.disabled',
+              },
+            }}
+          />
         </Stack>
       )}
     </LaunchSection>
@@ -420,7 +416,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       repositoryHosts = [],
       memoryOptions,
       coreOptions,
-      gpuOptions,
+      gpuSelectionEnabled = true,
       defaultValues = {
         type: NOTEBOOK_TYPE,
         project: SKAHA_PROJECT,
@@ -598,7 +594,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
           image: isAdvanced ? null : data.containerImage,
           cores: resources === 'fixed' ? data.cores : null,
           memory: resources === 'fixed' ? data.memory : null,
-          gpus: resources === 'fixed' ? (data.gpus ?? 0) : null,
+          gpus: resources === 'fixed' && (data.gpus ?? 0) > 0 ? 1 : null,
         });
       },
       [setUrlParams],
@@ -658,6 +654,24 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
       );
       setUrlParams({ cores: null, memory: null, gpus: null });
     }, [supportsResourceConfig, resourceType, setResourceType, setFormData, setUrlParams]);
+
+    useEffect(() => {
+      if (gpuSelectionEnabled) return;
+      setFormsByTab((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        ([LAUNCH_TAB.STANDARD, LAUNCH_TAB.ADVANCED] as const).forEach((tab) => {
+          if ((next[tab].gpus ?? 0) !== 0) {
+            next[tab] = { ...next[tab], gpus: 0 };
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+      if ((urlParams.gpus ?? 0) !== 0) {
+        void setUrlParams({ gpus: 0 });
+      }
+    }, [gpuSelectionEnabled, urlParams.gpus, setUrlParams]);
 
     // Count only interactive sessions — headless are batch jobs with their own quota.
     // Used for the auto-naming counter (notebook1, notebook2…).
@@ -977,8 +991,10 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         }
         setAdvancedError(null);
         if (onLaunch) {
+          const requestGpu = gpuSelectionEnabled && (formData.gpus ?? 0) > 0;
           await onLaunch({
             ...formData,
+            gpus: requestGpu ? 1 : undefined,
             project: advanced ? project : formData.project,
             image: advanced ? image : formData.image,
             resourceType,
@@ -986,7 +1002,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
           });
         }
       },
-      [formData, resourceType, activeTab, onLaunch],
+      [formData, resourceType, activeTab, onLaunch, gpuSelectionEnabled],
     );
 
     const handleReset = useCallback(() => {
@@ -1060,7 +1076,11 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         setUrlParams({ cores: null, memory: null, gpus: null });
       } else {
         // If switching to Fixed, set the current form values to URL
-        setUrlParams({ cores: formData.cores, memory: formData.memory, gpus: formData.gpus ?? 0 });
+        setUrlParams({
+          cores: formData.cores,
+          memory: formData.memory,
+          gpus: gpuSelectionEnabled && (formData.gpus ?? 0) > 0 ? 1 : null,
+        });
       }
     };
 
@@ -1082,9 +1102,10 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
     );
     const handleGpusChange = useCallback(
       (value: number) => {
+        const requested = value > 0;
         setIsFormDirty(true);
-        setFormData((prev) => ({ ...prev, gpus: value }));
-        setUrlParams({ gpus: value });
+        setFormData((prev) => ({ ...prev, gpus: requested ? 1 : 0 }));
+        setUrlParams({ gpus: requested ? 1 : null });
       },
       [setUrlParams, setFormData, setIsFormDirty],
     );
@@ -1134,7 +1155,6 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
         options={{
           memory: memoryOptions?.length ? memoryOptions : DEFAULT_MEMORY_OPTIONS,
           cores: coreOptions?.length ? coreOptions : DEFAULT_CORE_OPTIONS,
-          gpus: gpuOptions?.length ? gpuOptions : [0],
         }}
         values={{
           memory: formData.memory,
@@ -1147,6 +1167,7 @@ export const SessionLaunchFormImpl = React.forwardRef<HTMLDivElement, SessionLau
           cores: handleCoresChange,
           gpus: handleGpusChange,
         }}
+        gpuSelectionEnabled={gpuSelectionEnabled}
       />
     );
 

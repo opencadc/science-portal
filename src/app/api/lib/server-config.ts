@@ -32,12 +32,10 @@ function getSkahaBaseUrl(): string {
       getProcessEnv('NEXT_PUBLIC_SRC_SKAHA_API') ||
       getProcessEnv('SRC_SKAHA_API') ||
       'https://src.canfar.net/skaha';
-    console.log('🔍 Server config - OIDC mode, using SRC Skaha API:', srcSkahaApi);
     return srcSkahaApi;
   } else {
     // CANFAR mode: Use standard CANFAR Skaha API
     const canfarSkahaApi = getProcessEnv('SKAHA_API') || getProcessEnv('NEXT_PUBLIC_SKAHA_API');
-    console.log('🔍 Server config - CANFAR mode, using CANFAR Skaha API:', canfarSkahaApi);
     return canfarSkahaApi || '';
   }
 }
@@ -54,13 +52,11 @@ function getStorageBaseUrl(): string {
       getProcessEnv('NEXT_PUBLIC_SRC_CAVERN_API') ||
       getProcessEnv('SRC_CAVERN_API') ||
       'https://src.canfar.net/cavern/nodes/home/';
-    console.log('🔍 Server config - OIDC mode, using SRC Cavern API:', srcCavernApi);
     return srcCavernApi;
   } else {
     // CANFAR mode: Use standard CANFAR storage API
     const canfarStorageApi =
       getProcessEnv('SERVICE_STORAGE_API') || getProcessEnv('NEXT_PUBLIC_SERVICE_STORAGE_API');
-    console.log('🔍 Server config - CANFAR mode, using CANFAR Storage API:', canfarStorageApi);
     return canfarStorageApi || '';
   }
 }

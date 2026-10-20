@@ -267,12 +267,12 @@ async function doRefreshAccessToken(
     // Common case: `invalid_grant` (token expired, revoked, or already
     // rotated by a parallel request before the mutex was added).
     if (response.status >= 400 && response.status < 500) {
-      console.error('Refresh terminally rejected:', response.status, refreshedTokens);
+      console.error('Refresh terminally rejected:', response.status, refreshedTokens?.error);
       return terminalRefreshFailure(token);
     }
 
     // 5xx: IdP transient failure. Keep the refresh token, retry next time.
-    console.error('Refresh transiently failed:', response.status, refreshedTokens);
+    console.error('Refresh transiently failed:', response.status, refreshedTokens?.error);
     return transientRefreshFailure(token);
   } catch (error) {
     // Network error / fetch threw. Transient — keep the refresh token.

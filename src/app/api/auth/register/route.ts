@@ -130,8 +130,6 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const userRequestJson = JSON.stringify(cadcPayload.userRequest);
   formData.append('userRequest', userRequestJson);
 
-  logger.info('CADC Proxy Headers:', proxyHeaders);
-  logger.info('Form data userRequest value:', { userRequestJson });
   logger.logExternalCall(externalUrl, 'PUT', proxyHeaders);
   logger.info('Sending user registration request', {
     username: body.username,
@@ -155,7 +153,6 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
       try {
         const responseText = await response.text();
-        logger.info('Error response body', { body: responseText, isEmpty: !responseText });
         logger.info('Response headers', {
           contentType: response.headers.get('content-type'),
           contentLength: response.headers.get('content-length'),
@@ -193,7 +190,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
     // Success response - CADC returns text, not JSON
     const responseText = await response.text();
-    logger.info('Success response from CADC', { body: responseText });
+    logger.info('Account created');
     logger.logSuccess(response.status);
 
     return NextResponse.json(

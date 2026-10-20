@@ -23,7 +23,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Resolve Harbor Helm chart project (classic Chart repo)
+      - name: Resolve Harbor Helm chart project
         id: harbor_helm
         env:
           HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
@@ -115,7 +115,7 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
         with:
-          version: v3.20.2
+          version: v3.22.0
 
       - name: Bump Helm Chart.yaml + defaults for this release
         env:
@@ -141,11 +141,10 @@ jobs:
           fi
           echo "package=${pkgs[0]}" >> "${GITHUB_OUTPUT}"
 
-      - name: Upload Helm chart to Harbor (Helm Charts tab / ChartMuseum API)
+      - name: Push Helm chart to Harbor (OCI)
         env:
           PACKAGE: ${{ steps.helm_pack.outputs.package }}
           HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
-          HARBOR_API_BASE_IN: ${{ vars.HARBOR_API_BASE }}
           CHART_PROJECT: ${{ steps.harbor_helm.outputs.helm_project }}
           HARBOR_USER: ${{ secrets.HARBOR_USERNAME }}
           HARBOR_PASS: ${{ secrets.HARBOR_PASSWORD }}
@@ -160,26 +159,12 @@ jobs:
             exit 1
           fi
 
-          BASE="${HARBOR_API_BASE_IN:-}"
-          BASE="${BASE%/}"
-          if [ -z "${BASE}" ]; then
-            BASE="https://${HARBOR_REGISTRY}"
-          fi
+          echo "${HARBOR_PASS}" | helm registry login "${HARBOR_REGISTRY}" \
+            --username "${HARBOR_USER}" --password-stdin
 
-          URL="${BASE}/api/chartrepo/${CHART_PROJECT}/charts"
-          printf 'POST chart → %s (project=%s)\n' "${URL}" "${CHART_PROJECT}"
-
-          prov_args=()
-          if [ -f "${PACKAGE}.prov" ]; then
-            printf 'Including provenance %s.prov\n' "${PACKAGE}"
-            prov_args+=( -F "prov=@${PACKAGE}.prov" )
-          fi
-
-          curl --fail-with-body -sS \
-            --user "${HARBOR_USER}:${HARBOR_PASS}" \
-            -X POST "${URL}" \
-            -F "chart=@${PACKAGE};type=application/x-compressed-tar" \
-            "${prov_args[@]}"
+          DEST="oci://${HARBOR_REGISTRY}/platform/charts"
+          printf 'helm push %s → %s\n' "${PACKAGE}" "${DEST}"
+          helm push "${PACKAGE}" "${DEST}"
 
   final-release:
     if: github.event.release.prerelease != true
@@ -188,7 +173,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Resolve Harbor Helm chart project (classic Chart repo)
+      - name: Resolve Harbor Helm chart project
         id: harbor_helm
         env:
           HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
@@ -368,11 +353,10 @@ jobs:
           fi
           echo "package=${pkgs[0]}" >> "${GITHUB_OUTPUT}"
 
-      - name: Upload Helm chart to Harbor (Helm Charts tab / ChartMuseum API)
+      - name: Push Helm chart to Harbor (OCI)
         env:
           PACKAGE: ${{ steps.helm_pack.outputs.package }}
           HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
-          HARBOR_API_BASE_IN: ${{ vars.HARBOR_API_BASE }}
           CHART_PROJECT: ${{ steps.harbor_helm.outputs.helm_project }}
           HARBOR_USER: ${{ secrets.HARBOR_USERNAME }}
           HARBOR_PASS: ${{ secrets.HARBOR_PASSWORD }}
@@ -387,23 +371,9 @@ jobs:
             exit 1
           fi
 
-          BASE="${HARBOR_API_BASE_IN:-}"
-          BASE="${BASE%/}"
-          if [ -z "${BASE}" ]; then
-            BASE="https://${HARBOR_REGISTRY}"
-          fi
+          echo "${HARBOR_PASS}" | helm registry login "${HARBOR_REGISTRY}" \
+            --username "${HARBOR_USER}" --password-stdin
 
-          URL="${BASE}/api/chartrepo/${CHART_PROJECT}/charts"
-          printf 'POST chart → %s (project=%s)\n' "${URL}" "${CHART_PROJECT}"
-
-          prov_args=()
-          if [ -f "${PACKAGE}.prov" ]; then
-            printf 'Including provenance %s.prov\n' "${PACKAGE}"
-            prov_args+=( -F "prov=@${PACKAGE}.prov" )
-          fi
-
-          curl --fail-with-body -sS \
-            --user "${HARBOR_USER}:${HARBOR_PASS}" \
-            -X POST "${URL}" \
-            -F "chart=@${PACKAGE};type=application/x-compressed-tar" \
-            "${prov_args[@]}"
+          DEST="oci://${HARBOR_REGISTRY}/platform/charts"
+          printf 'helm push %s → %s\n' "${PACKAGE}" "${DEST}"
+          helm push "${PACKAGE}" "${DEST}"

@@ -98,7 +98,6 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
 
       try {
         const responseText = await response.text();
-        logger.info('Error response body', { body: responseText });
 
         // Try to parse as JSON
         try {

@@ -100,7 +100,6 @@ export function DashboardWidgetImpl({
   help,
   headerActions,
   showStatusBar = true,
-  statusValue = 100,
   footer,
   fillHeight = false,
   maxWidth,

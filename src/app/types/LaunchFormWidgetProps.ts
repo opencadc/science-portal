@@ -13,8 +13,6 @@ export interface LaunchFormWidgetProps extends SessionLaunchFormProps {
   errorMessage?: string | null;
   onRefresh?: () => void;
   title?: string;
-  showProgressIndicator?: boolean;
-  progressPercentage?: number;
   helpUrl?: string;
   /** When set (e.g. logged-out empty state), shows an info alert above the form. */
   signInAlertMessage?: string;
