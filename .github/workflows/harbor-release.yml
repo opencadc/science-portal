@@ -221,91 +221,32 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           HARBOR_REGISTRY: ${{ vars.HARBOR_REGISTRY }}
           HARBOR_REPOSITORY: ${{ vars.HARBOR_REPOSITORY }}
-          HARBOR_API_BASE_IN: ${{ vars.HARBOR_API_BASE }}
-          HARBOR_USER: ${{ secrets.HARBOR_USERNAME }}
-          HARBOR_PASS: ${{ secrets.HARBOR_PASSWORD }}
         run: |
           set -euo pipefail
           SHA="${{ steps.rel.outputs.sha }}"
           REL="${RELEASE_TAG}"
-          REF="sha-${SHA}"
+          REG="${HARBOR_REGISTRY}"
+          REPO="${HARBOR_REPOSITORY}"
+          SRC="${REG}/${REPO}:sha-${SHA}"
+          DEST="${REG}/${REPO}:${REL}"
 
-          case "${HARBOR_REPOSITORY}" in
-            */*) ;;
-            *)
-              echo "::error::HARBOR_REPOSITORY must be project/name (contain '/')."
-              exit 1
-              ;;
-          esac
-
-          BASE="${HARBOR_API_BASE_IN:-}"
-          BASE="${BASE%/}"
-          if [ -z "${BASE}" ]; then
-            BASE="https://${HARBOR_REGISTRY}"
-          fi
-
-          PROJECT="${HARBOR_REPOSITORY%%/*}"
-          REPO_NAME="${HARBOR_REPOSITORY#*/}"
-          PROJECT_ENC=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "${PROJECT}")
-          # Harbor requires slashes in the repository name to be double-encoded.
-          REPO_ENC=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe="").replace("%2F", "%252F"))' "${REPO_NAME}")
-          ART_URL="${BASE}/api/v2.0/projects/${PROJECT_ENC}/repositories/${REPO_ENC}/artifacts/${REF}"
-
-          code=$(curl -sS --output /tmp/harbor-artifact --write-out '%{http_code}' \
-            --user "${HARBOR_USER}:${HARBOR_PASS}" \
-            "${ART_URL}")
-          if [ "${code}" = "404" ]; then
-            echo "::error::Required image tag ${REF} does not exist in Harbor." >&2
-            echo "Publish a prerelease for this commit first; prerelease builds push :${REF} to Harbor." >&2
+          printf 'Promoting %s -> :%s\n' "${SRC}" "${REL}"
+          if ! docker pull "${SRC}"; then
+            echo "::error::Required image ${SRC} does not exist in Harbor." >&2
+            echo "Publish a prerelease for this commit first; prerelease builds push :sha-${SHA} to Harbor." >&2
             exit 1
           fi
-          if [ "${code}" != "200" ]; then
-            echo "::error::Harbor artifact lookup for ${REF} failed with HTTP ${code}" >&2
-            cat /tmp/harbor-artifact >&2
-            exit 1
-          fi
+          docker tag "${SRC}" "${DEST}"
+          docker push "${DEST}"
 
-          DIGEST=$(python3 -c 'import json; print(json.load(open("/tmp/harbor-artifact"))["digest"])')
-          if [ -z "${DIGEST}" ]; then
-            echo "::error::Harbor artifact ${REF} has no digest." >&2
+          REPO_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${DEST}")
+          if [ -z "${REPO_DIGEST}" ]; then
+            echo "::error::Could not resolve digest for ${DEST}." >&2
             exit 1
           fi
+          DIGEST="${REPO_DIGEST#*@}"
           echo "digest=${DIGEST}" >> "${GITHUB_OUTPUT}"
-          printf 'Promoting %s (%s) -> :%s\n' "${REF}" "${DIGEST}" "${REL}"
-
-          add_tag() {
-            local tag="$1"
-            local body code tag_enc del_url
-            body=$(python3 -c 'import json,sys; print(json.dumps({"name": sys.argv[1]}))' "${tag}")
-            code=$(curl -sS --output /tmp/harbor-tag-resp --write-out '%{http_code}' \
-              --user "${HARBOR_USER}:${HARBOR_PASS}" \
-              -H 'Content-Type: application/json' \
-              -X POST "${ART_URL}/tags" \
-              -d "${body}")
-            if [ "${code}" = "201" ] || [ "${code}" = "200" ]; then
-              printf 'Tagged %s as %s\n' "${REF}" "${tag}"
-              return 0
-            fi
-            if [ "${code}" = "409" ]; then
-              tag_enc=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "${tag}")
-              del_url="${BASE}/api/v2.0/projects/${PROJECT_ENC}/repositories/${REPO_ENC}/artifacts/${tag_enc}/tags/${tag_enc}"
-              curl --fail-with-body -sS \
-                --user "${HARBOR_USER}:${HARBOR_PASS}" \
-                -X DELETE "${del_url}"
-              curl --fail-with-body -sS \
-                --user "${HARBOR_USER}:${HARBOR_PASS}" \
-                -H 'Content-Type: application/json' \
-                -X POST "${ART_URL}/tags" \
-                -d "${body}"
-              printf 'Moved tag %s onto %s\n' "${tag}" "${REF}"
-              return 0
-            fi
-            echo "::error::Harbor tag ${tag} failed with HTTP ${code}" >&2
-            cat /tmp/harbor-tag-resp >&2
-            exit 1
-          }
-
-          add_tag "${REL}"
+          printf 'Tagged sha-%s as %s (%s)\n' "${SHA}" "${REL}" "${DIGEST}"
 
       - name: Cosign sign container image (digest, keyless)
         env:
