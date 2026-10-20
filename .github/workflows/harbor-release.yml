@@ -1,7 +1,7 @@
 # GitHub Release publishing to Harbor:
 #   - Prerelease: build and push the image (`:RELEASE_TAG` + `:sha-<git-sha>`), Cosign-sign,
 #     patch/package/upload the Helm chart.
-#   - Final release: add the release tag and `:latest` to the existing `:sha-<git-sha>`
+#   - Final release: add the release tag to the existing `:sha-<git-sha>`
 #     artifact (no rebuild, same digest), Cosign-sign, patch/package/upload the Helm chart.
 
 name: Science Portal Harbor release (build or promote, sign, and package Helm)
@@ -271,7 +271,7 @@ jobs:
             exit 1
           fi
           echo "digest=${DIGEST}" >> "${GITHUB_OUTPUT}"
-          printf 'Promoting %s (%s) -> :%s and :latest\n' "${REF}" "${DIGEST}" "${REL}"
+          printf 'Promoting %s (%s) -> :%s\n' "${REF}" "${DIGEST}" "${REL}"
 
           add_tag() {
             local tag="$1"
@@ -306,7 +306,6 @@ jobs:
           }
 
           add_tag "${REL}"
-          add_tag latest
 
       - name: Cosign sign container image (digest, keyless)
         env:
