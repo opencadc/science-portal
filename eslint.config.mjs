@@ -15,6 +15,11 @@ const eslintConfig = [
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+      // eslint-config-next@16 enables React Compiler hook rules; existing patterns are valid pre-compiler code.
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+      // Full-page redirects to CANFAR access / OIDC IdP (not client-side Next routing).
+      "@next/next/no-location-assign-relative-destination": "off",
     },
   },
 ];
