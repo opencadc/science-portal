@@ -4,8 +4,7 @@
 
 # Stage 1: Dependencies
 # Install dependencies only when needed
-FROM node:22-alpine AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:22-trixie-slim AS deps
 WORKDIR /app
 
 # Copy package files
@@ -16,7 +15,7 @@ RUN npm ci
 
 # Stage 2: Builder
 # Rebuild the source code only when needed
-FROM node:22-alpine AS builder
+FROM node:22-trixie-slim AS builder
 WORKDIR /app
 
 # Copy dependencies from deps stage
@@ -60,7 +59,7 @@ RUN npm run build
 
 # Stage 3: Runner
 # Production image, copy all the files and run next
-FROM node:22-alpine AS runner
+FROM node:22-trixie-slim AS runner
 
 ARG NEXT_PUBLIC_BASE_PATH=/science-portal
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
@@ -70,12 +69,22 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache curl dumb-init
+# dumb-init for signal handling. `util-linux` is an essential Debian base package
+# (not removable); apply security upgrades at build time when Debian publishes fixes.
+# Health checks use Node, not curl — omit curl to avoid extra libcurl stack.
+RUN apt update \
+  && apt upgrade -y --no-install-recommends \
+  && apt install -y --no-install-recommends dumb-init \
+  && rm -rf /var/lib/apt/lists/*
+
+# Runtime only needs `node` (standalone server). Drop bundled npm/npx and their
+# dependency tree under /usr/local/lib/node_modules/npm (Trivy HIGH CVE noise).
+RUN rm -rf /usr/local/lib/node_modules/npm \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx
 
 # Create a non-root user
-RUN addgroup --system nextjs
-RUN adduser --system -G nextjs -G node nextjs
+RUN groupadd --system nextjs \
+  && useradd --system --gid nextjs --groups node --home-dir /nonexistent --shell /usr/sbin/nologin nextjs
 
 # Copy public assets
 COPY --from=builder /app/public ./public
