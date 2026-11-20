@@ -21,7 +21,7 @@ export const DATA_PUBLICATION_URL = 'https://www.canfar.net/citation';
 /** URL for this Science Portal instance in the Services menu (set NEXT_PUBLIC_SERVICE_SCIENCE_PORTAL_URL to override at runtime). */
 export const SCIENCE_PORTAL_URL = 'https://www.canfar.net/science-portal';
 export const CADC_SEARCH_URL = 'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/search';
-export const OPENSTACK_CLOUD_URL = 'https://arbutus-canfar.cloud.computecanada.ca/';
+export const OPENSTACK_CLOUD_URL = 'https://arbutus.alliancecan.ca/auth/login/?next=/project/';
 
 // User Account Management
 export const UPDATE_PROFILE_URL =
