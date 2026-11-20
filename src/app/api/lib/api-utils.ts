@@ -157,7 +157,7 @@ export async function fetchExternalApi(
 
 /**
  * Forwards the incoming `Cookie` header onto an outbound upstream request.
- * Used by CANFAR mode so the upstream (ws-cadc.canfar.net) can verify the
+ * Used by CANFAR mode so the upstream (cadc-west-01.canfar.net) can verify the
  * `.canfar.net`-scoped `CADC_SSO` cookie.
  */
 export function forwardCookies(clientRequest: NextRequest): HeadersInit {

@@ -31,7 +31,7 @@ export const RESET_PASSWORD_URL =
 export const REQUEST_ACCOUNT_URL =
   'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/auth/request.html';
 /** Cred service base (scheme + host + path). Override with NEXT_PUBLIC_CERTIFICATE_URL. */
-export const CERTIFICATE_BASE_URL = 'https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cred';
+export const CERTIFICATE_BASE_URL = 'https://cadc-west-01.canfar.net/cred';
 
 // =============================================================================
 // CANFAR access service (CANFAR mode only)

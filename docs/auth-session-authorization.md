@@ -53,7 +53,7 @@ useSession     ──OIDC cookie──► auth() / middleware
 getAuthHeader  ──CANFAR only──►
 credentials:include
                                 forwardAuthHeader() ──Bearer──►    SRC Skaha / Cavern
-                                forwardCookies()    ──CADC_SSO──►  ws-cadc AC / whoami
+                                forwardCookies()    ──CADC_SSO──►  cadc-west-01 AC / whoami
                                 (or send nothing)   ───────────►   401 / 403
 ```
 
@@ -90,7 +90,7 @@ From `src/app/api/lib/server-config.ts`:
 |---------|------------------------|--------|
 | Skaha | `SRC_SKAHA_API` / `NEXT_PUBLIC_SRC_SKAHA_API` → default `https://src.canfar.net/skaha` | `SKAHA_API` / `NEXT_PUBLIC_SKAHA_API` → `ws-uv.canfar.net` |
 | Storage | `SRC_CAVERN_API` / `NEXT_PUBLIC_SRC_CAVERN_API` → default `https://src.canfar.net/cavern/nodes/home/` | `SERVICE_STORAGE_API` → VOSpace home base |
-| Login / AC | `LOGIN_API` (same var both modes) — typically `https://ws-cadc.canfar.net/ac` | same |
+| Login / AC | `LOGIN_API` (same var both modes) — typically `https://cadc-west-01.canfar.net/ac` | same |
 
 SRC hosts are documented as accepting **SKA IAM** tokens. CANFAR hosts accept **`CADC_SSO` / CANFAR Bearer**. Sending an IAM JWT to `ws-uv` (or a CADC cookie to SRC) produces 401/403 that look like “portal auth is broken.”
 
