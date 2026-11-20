@@ -29,7 +29,7 @@ cd science-portal-next
 docker build \
   --build-arg NEXT_PUBLIC_USE_CANFAR=true \
   --build-arg NEXT_PUBLIC_EXPERIMENTAL=true \
-  --build-arg NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac \
+  --build-arg NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac \
   --build-arg NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern \
@@ -42,7 +42,7 @@ docker build \
 docker build \
   --build-arg NEXT_PUBLIC_USE_CANFAR=false \
   --build-arg NEXT_PUBLIC_EXPERIMENTAL=true \
-  --build-arg NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac \
+  --build-arg NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac \
   --build-arg NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern \
@@ -136,7 +136,7 @@ env:
   - name: SERVICE_STORAGE_API
     value: "https://ws-uv.canfar.net/arc/nodes/home/"
   - name: LOGIN_API
-    value: "https://ws-cadc.canfar.net/ac"
+    value: "https://cadc-west-01.canfar.net/ac"
   - name: SKAHA_API
     value: "https://ws-uv.canfar.net/skaha"
   - name: SRC_SKAHA_API
@@ -148,7 +148,7 @@ env:
 
   # Client-side APIs
   - name: NEXT_PUBLIC_LOGIN_API
-    value: "https://ws-cadc.canfar.net/ac"
+    value: "https://cadc-west-01.canfar.net/ac"
   - name: NEXT_PUBLIC_SKAHA_API
     value: "https://ws-uv.canfar.net/skaha"
   - name: NEXT_PUBLIC_SRC_SKAHA_API

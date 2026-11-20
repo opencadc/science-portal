@@ -280,8 +280,9 @@ kubectl describe pod -n science-portal <pod-name>
 # Get pod details
 kubectl get pod -n science-portal <pod-name> -o yaml
 
-# Execute commands in pod
-kubectl exec -n science-portal <pod-name> -it -- /bin/sh
+# The image is distroless (no shell), so `kubectl exec ... /bin/sh` does not work.
+# Attach an ephemeral debug container to the pod instead
+kubectl debug -n science-portal <pod-name> -it --image=busybox --target=science-portal -- sh
 ```
 
 ### Check Ingress and Certificates
@@ -322,7 +323,8 @@ Check environment variables and secrets:
 
 ```bash
 kubectl get secret -n science-portal science-portal-secrets
-kubectl exec -n science-portal <pod-name> -- env | grep -E 'NEXT_|AUTH_'
+# The image has no `env` binary; print the variables with Node (absolute path, not on PATH)
+kubectl exec -n science-portal <pod-name> -- /nodejs/bin/node -e "for (const [k, v] of Object.entries(process.env)) if (/NEXT_|AUTH_/.test(k)) console.log(k + '=' + v)"
 ```
 
 ## Scaling

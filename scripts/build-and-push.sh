@@ -39,7 +39,7 @@ echo ""
 
 # Build arguments
 BUILD_ARGS=(
-  --build-arg NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac
+  --build-arg NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac
   --build-arg NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha
   --build-arg NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha
   --build-arg NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern

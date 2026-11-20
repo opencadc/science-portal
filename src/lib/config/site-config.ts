@@ -21,7 +21,7 @@ export const DATA_PUBLICATION_URL = 'https://www.canfar.net/citation';
 /** URL for this Science Portal instance in the Services menu (set NEXT_PUBLIC_SERVICE_SCIENCE_PORTAL_URL to override at runtime). */
 export const SCIENCE_PORTAL_URL = 'https://www.canfar.net/science-portal';
 export const CADC_SEARCH_URL = 'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/search';
-export const OPENSTACK_CLOUD_URL = 'https://arbutus-canfar.cloud.computecanada.ca/';
+export const OPENSTACK_CLOUD_URL = 'https://arbutus.alliancecan.ca/auth/login/?next=/project/';
 
 // User Account Management
 export const UPDATE_PROFILE_URL =
@@ -31,7 +31,7 @@ export const RESET_PASSWORD_URL =
 export const REQUEST_ACCOUNT_URL =
   'https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/auth/request.html';
 /** Cred service base (scheme + host + path). Override with NEXT_PUBLIC_CERTIFICATE_URL. */
-export const CERTIFICATE_BASE_URL = 'https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/cred';
+export const CERTIFICATE_BASE_URL = 'https://cadc-west-01.canfar.net/cred';
 
 // =============================================================================
 // CANFAR access service (CANFAR mode only)
