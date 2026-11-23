@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_LOGIN_API: https://ws-cadc.canfar.net/ac
+        NEXT_PUBLIC_LOGIN_API: https://cadc-west-01.canfar.net/ac
         NEXT_PUBLIC_SKAHA_API: https://ws-uv.canfar.net/skaha
         NEXT_PUBLIC_SRC_SKAHA_API: https://src.canfar.net/skaha
         NEXT_PUBLIC_SRC_CAVERN_API: https://src.canfar.net/cavern
@@ -20,14 +20,14 @@ services:
     environment:
       # Server-side API configuration
       - SERVICE_STORAGE_API=https://ws-uv.canfar.net/arc/nodes/home/
-      - LOGIN_API=https://ws-cadc.canfar.net/ac
+      - LOGIN_API=https://cadc-west-01.canfar.net/ac
       - SKAHA_API=https://ws-uv.canfar.net/skaha
       - SRC_SKAHA_API=https://src.canfar.net/skaha
       - SRC_CAVERN_API=https://src.canfar.net/cavern
       - API_TIMEOUT=30000
 
       # Client-side configuration
-      - NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac
+      - NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac
       - NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha
       - NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha
       - NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern
@@ -70,7 +70,7 @@ services:
       dockerfile: Dockerfile.nginx
       target: nginx
       args:
-        NEXT_PUBLIC_LOGIN_API: https://ws-cadc.canfar.net/ac
+        NEXT_PUBLIC_LOGIN_API: https://cadc-west-01.canfar.net/ac
         NEXT_PUBLIC_SKAHA_API: https://ws-uv.canfar.net/skaha
         NEXT_PUBLIC_SRC_SKAHA_API: https://src.canfar.net/skaha
         NEXT_PUBLIC_SRC_CAVERN_API: https://src.canfar.net/cavern

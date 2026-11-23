@@ -126,7 +126,7 @@ env:
   - name: SERVICE_STORAGE_API
     value: "https://ws-uv.canfar.net/arc/nodes/home/"
   - name: LOGIN_API
-    value: "https://ws-cadc.canfar.net/ac"
+    value: "https://cadc-west-01.canfar.net/ac"
   - name: SKAHA_API
     value: "https://ws-uv.canfar.net/skaha"
   - name: SRC_SKAHA_API
@@ -138,7 +138,7 @@ env:
 
   # Client-side APIs
   - name: NEXT_PUBLIC_LOGIN_API
-    value: "https://ws-cadc.canfar.net/ac"
+    value: "https://cadc-west-01.canfar.net/ac"
   - name: NEXT_PUBLIC_SKAHA_API
     value: "https://ws-uv.canfar.net/skaha"
   - name: NEXT_PUBLIC_SRC_SKAHA_API

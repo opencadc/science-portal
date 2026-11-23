@@ -40,7 +40,7 @@ Each mode requires a **different Docker image** because authentication mode is b
 - No external OAuth provider needed
 
 **APIs Used:**
-- Login: `https://ws-cadc.canfar.net/ac/login`
+- Login: `https://cadc-west-01.canfar.net/ac/login`
 - Session validation via token
 
 **Required Secrets:**
@@ -96,7 +96,7 @@ RUN npm run build  # This bakes the value into the build
 # Build with CANFAR mode enabled
 docker build \
   --build-arg NEXT_PUBLIC_USE_CANFAR=true \
-  --build-arg NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac \
+  --build-arg NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac \
   --build-arg NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern \
@@ -123,7 +123,7 @@ docker push registry.digitalocean.com/ice-image/science-portal-nextjs:canfar
 # Build with OIDC mode enabled
 docker build \
   --build-arg NEXT_PUBLIC_USE_CANFAR=false \
-  --build-arg NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac \
+  --build-arg NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac \
   --build-arg NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern \
@@ -165,7 +165,7 @@ echo "Building Science Portal images for both auth modes..."
 echo "🔨 Building CANFAR mode image..."
 docker build \
   --build-arg NEXT_PUBLIC_USE_CANFAR=true \
-  --build-arg NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac \
+  --build-arg NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac \
   --build-arg NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern \
@@ -179,7 +179,7 @@ docker build \
 echo "🔨 Building OIDC mode image..."
 docker build \
   --build-arg NEXT_PUBLIC_USE_CANFAR=false \
-  --build-arg NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac \
+  --build-arg NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac \
   --build-arg NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern \
@@ -246,13 +246,13 @@ env:
   - name: SERVICE_STORAGE_API
     value: "https://ws-uv.canfar.net/arc/nodes/home/"
   - name: LOGIN_API
-    value: "https://ws-cadc.canfar.net/ac"
+    value: "https://cadc-west-01.canfar.net/ac"
   - name: SKAHA_API
     value: "https://ws-uv.canfar.net/skaha"
 
   # Client-side APIs
   - name: NEXT_PUBLIC_LOGIN_API
-    value: "https://ws-cadc.canfar.net/ac"
+    value: "https://cadc-west-01.canfar.net/ac"
   - name: NEXT_PUBLIC_SKAHA_API
     value: "https://ws-uv.canfar.net/skaha"
 
@@ -756,7 +756,7 @@ kubectl logs -n science-portal -l app.kubernetes.io/name=science-portal --tail=2
 
 | API | Endpoint |
 |-----|----------|
-| CANFAR Login | https://ws-cadc.canfar.net/ac |
+| CANFAR Login | https://cadc-west-01.canfar.net/ac |
 | Skaha (CANFAR) | https://ws-uv.canfar.net/skaha |
 | Skaha (SRC) | https://src.canfar.net/skaha |
 | Cavern (CANFAR) | https://ws-uv.canfar.net/arc/nodes/home/ |

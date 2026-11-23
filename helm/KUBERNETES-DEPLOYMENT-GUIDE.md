@@ -379,7 +379,7 @@ echo "Building Science Portal Next.js ${VERSION}"
 
 # Build image
 docker build \
-  --build-arg NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac \
+  --build-arg NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac \
   --build-arg NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha \
   --build-arg NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern \
@@ -459,7 +459,7 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         build-args: |
-          NEXT_PUBLIC_LOGIN_API=https://ws-cadc.canfar.net/ac
+          NEXT_PUBLIC_LOGIN_API=https://cadc-west-01.canfar.net/ac
           NEXT_PUBLIC_SKAHA_API=https://ws-uv.canfar.net/skaha
           NEXT_PUBLIC_SRC_SKAHA_API=https://src.canfar.net/skaha
           NEXT_PUBLIC_SRC_CAVERN_API=https://src.canfar.net/cavern
@@ -523,7 +523,7 @@ env:
   - name: SERVICE_STORAGE_API
     value: "https://ws-uv.canfar.net/arc/nodes/home/"
   - name: LOGIN_API
-    value: "https://ws-cadc.canfar.net/ac"
+    value: "https://cadc-west-01.canfar.net/ac"
   - name: SKAHA_API
     value: "https://ws-uv.canfar.net/skaha"
   - name: SRC_SKAHA_API
@@ -1423,7 +1423,7 @@ env:
 - `AUTH_SECRET`: Session encryption key
 
 **APIs Used:**
-- Login API: `https://ws-cadc.canfar.net/ac/login`
+- Login API: `https://cadc-west-01.canfar.net/ac/login`
 - User validation: Token-based
 
 **Switching to CANFAR Mode:**
@@ -1715,8 +1715,9 @@ helm upgrade science-portal ./helm/science-portal \
 
 **Interactive Shell:**
 ```bash
-# Exec into running pod
-kubectl exec -it <pod-name> -n science-portal -- /bin/sh
+# The image is distroless (no shell), so `kubectl exec ... /bin/sh` does not work.
+# Attach an ephemeral debug container to the running pod instead
+kubectl debug -it <pod-name> -n science-portal --image=busybox --target=science-portal -- sh
 
 # Or use busybox for debugging
 kubectl run debug --image=busybox -it --rm --restart=Never -- sh
@@ -1770,8 +1771,8 @@ The Helm chart includes security configurations:
 # Pod security context
 podSecurityContext:
   runAsNonRoot: true
-  runAsUser: 1001
-  fsGroup: 1001
+  runAsUser: 65532
+  fsGroup: 65532
 
 # Container security context
 securityContext:

@@ -194,7 +194,7 @@ docker run --rm \
   -p 3000:3000 \
   -e AUTH_SECRET='replace-with-a-long-random-string' \
   -e NEXT_USE_CANFAR=true \
-  -e LOGIN_API='https://ws-cadc.canfar.net/ac' \
+  -e LOGIN_API='https://cadc-west-01.canfar.net/ac' \
   -e SKAHA_API='https://ws-uv.canfar.net/skaha' \
   -e SERVICE_STORAGE_API='https://ws-uv.canfar.net/arc/nodes/home/' \
   science-portal

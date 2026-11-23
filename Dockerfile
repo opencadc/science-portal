@@ -57,9 +57,21 @@ ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 # The standalone output will be in .next/standalone
 RUN npm run build
 
-# Stage 3: Runner
-# Production image, copy all the files and run next
-FROM node:22-trixie-slim AS runner
+# Stage 3: Init
+# The distroless runner has no package manager, so fetch dumb-init here and copy the
+# binary across. Same Debian release as the runner, so its glibc dependency matches.
+FROM node:22-trixie-slim AS init
+RUN apt update \
+  && apt install -y --no-install-recommends dumb-init \
+  && rm -rf /var/lib/apt/lists/*
+
+# Stage 4: Runner
+# Production image, copy all the files and run next.
+# Distroless Node 22 on Debian 13: no shell, package manager, npm, or Debian base
+# utilities (util-linux, perl, sqlite, ncurses, ...), which is where the unfixed
+# Trivy HIGH findings of the previous `node:22-trixie-slim` runner came from.
+# There is nothing to `apt upgrade` here; OS fixes arrive by rebuilding on a fresh base.
+FROM gcr.io/distroless/nodejs22-debian13:nonroot AS runner
 
 ARG NEXT_PUBLIC_BASE_PATH=/science-portal
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
@@ -69,32 +81,19 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# dumb-init for signal handling. `util-linux` is an essential Debian base package
-# (not removable); apply security upgrades at build time when Debian publishes fixes.
-# Health checks use Node, not curl — omit curl to avoid extra libcurl stack.
-RUN apt update \
-  && apt upgrade -y --no-install-recommends \
-  && apt install -y --no-install-recommends dumb-init \
-  && rm -rf /var/lib/apt/lists/*
-
-# Runtime only needs `node` (standalone server). Drop bundled npm/npx and their
-# dependency tree under /usr/local/lib/node_modules/npm (Trivy HIGH CVE noise).
-RUN rm -rf /usr/local/lib/node_modules/npm \
-  && rm -f /usr/local/bin/npm /usr/local/bin/npx
-
-# Create a non-root user
-RUN groupadd --system nextjs \
-  && useradd --system --gid nextjs --groups node --home-dir /nonexistent --shell /usr/sbin/nologin nextjs
+# dumb-init for signal handling (graceful shutdown) and zombie reaping
+COPY --from=init /usr/bin/dumb-init /usr/bin/dumb-init
 
 # Copy public assets
 COPY --from=builder /app/public ./public
 
-# Copy standalone build output
-COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
+# Copy standalone build output, owned by the image's built-in non-root user
+# (`nonroot`, uid/gid 65532)
+COPY --from=builder --chown=65532:65532 /app/.next/standalone ./
+COPY --from=builder --chown=65532:65532 /app/.next/static ./.next/static
 
-# Switch to non-root user
-USER nextjs
+# Run as the non-root user (already the default of the `:nonroot` tag; explicit here)
+USER 65532:65532
 
 # Expose port
 EXPOSE 3000
@@ -102,12 +101,14 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Health check for container orchestration (basePath from runner ENV)
+# Health check for container orchestration (basePath from runner ENV).
+# Exec form with an absolute path: the image has no shell and `node` is not on PATH.
+# Health checks use Node, not curl.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "const p=process.env.NEXT_PUBLIC_BASE_PATH||'';require('http').get('http://127.0.0.1:3000'+p+'/api/health',(r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
+  CMD ["/nodejs/bin/node", "-e", "const p=process.env.NEXT_PUBLIC_BASE_PATH||'';require('http').get('http://127.0.0.1:3000'+p+'/api/health',(r)=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
 
 # Use dumb-init to handle signals properly (graceful shutdown)
-ENTRYPOINT ["dumb-init", "--"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 # Start the Next.js server
-CMD ["node", "server.js"]
+CMD ["/nodejs/bin/node", "server.js"]
